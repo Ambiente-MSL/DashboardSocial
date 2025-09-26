@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <defs>
+    <radialGradient id="grad" cx="45%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#3d3d3d"/>
+      <stop offset="60%" stop-color="#1d1d1d"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </radialGradient>
+  </defs>
+  <rect width="160" height="160" fill="none"/>
+  <circle cx="80" cy="60" r="40" fill="url(#grad)" stroke="#0f172a" stroke-width="4"/>
+  <circle cx="80" cy="60" r="18" fill="none" stroke="#fdfdfd" stroke-width="6" stroke-opacity="0.25"/>
+  <path d="M92 42c6 6 10 15 10 24 0 20-16 36-36 36-9 0-18-4-24-10 5 11 18 20 32 20 19 0 35-16 35-35 0-14-9-27-21-35z" fill="#000000" opacity="0.45"/>
+  <g fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" text-anchor="middle">
+    <text x="80" y="118" font-size="22" font-weight="700">MSL ESTRATEGIA</text>
+    <text x="80" y="138" font-size="11" letter-spacing="2">COMUNICACAO E MARKETING</text>
+  </g>
+</svg>
