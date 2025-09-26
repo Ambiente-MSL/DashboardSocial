@@ -1,14 +1,16 @@
-import { ChevronDown } from 'lucide-react';
-import useQueryState from '../hooks/useQueryState';
+﻿import { ChevronDown } from "lucide-react";
+import useQueryState from "../hooks/useQueryState";
+import { accounts } from "../data/accounts";
 
-const accounts = [
-  { id: 'acc_1', label: 'Conta principal' },
-  { id: 'acc_2', label: 'Conta secundária' },
-];
+const DEFAULT_ACCOUNT_ID = accounts[0]?.id || "";
 
 export default function AccountSelect() {
-  const [get, set] = useQueryState({ account: accounts[0].id });
-  const value = get('account') || accounts[0].id;
+  const [get, set] = useQueryState({ account: DEFAULT_ACCOUNT_ID });
+  const value = get("account") || DEFAULT_ACCOUNT_ID;
+
+  const handleChange = (event) => {
+    set({ account: event.target.value || undefined });
+  };
 
   return (
     <div className="filter-select">
@@ -16,7 +18,7 @@ export default function AccountSelect() {
       <select
         id="account-select"
         value={value}
-        onChange={(event) => set({ account: event.target.value })}
+        onChange={handleChange}
         className="filter-select__input"
       >
         {accounts.map((account) => (

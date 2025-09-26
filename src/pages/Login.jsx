@@ -55,9 +55,8 @@ export default function Login() {
   return (
     <div className="auth-screen">
       <div className="auth-card">
-        <div className="auth-brand">MSL DASHBOARD</div>
+        <div className="auth-brand">DASHBOARD SOCIAL</div>
         <h1 className="auth-heading">Login</h1>
-        <p className="auth-subtext">Informe seu e-mail corporativo para acessar o painel.</p>
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-label" htmlFor="email">E-mail</label>
           <input
@@ -72,7 +71,6 @@ export default function Login() {
           />
           <div className="auth-label-row">
             <label className="auth-label" htmlFor="password">Senha</label>
-            <a className="auth-link" href="https://app.supabase.com/" target="_blank" rel="noreferrer">Esqueceu a senha?</a>
           </div>
           <input
             id="password"
@@ -85,13 +83,13 @@ export default function Login() {
             disabled={submitting}
           />
           {formError && <p className="auth-error">{formError}</p>}
+          <a className="auth-link" href="https://app.supabase.com/" target="_blank" rel="noreferrer">Esqueceu a senha?</a>
           <button type="submit" className="auth-submit" disabled={submitting}>
             <LogIn size={16} />
             {submitting ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
         <p className="auth-footnote">
-          Configure as chaves do Supabase em <code>.env</code> antes de iniciar o dashboard.
         </p>
       </div>
     </div>

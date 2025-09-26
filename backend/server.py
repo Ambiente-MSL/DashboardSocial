@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-from meta import fb_page_window, ig_window, ig_recent_posts, ads_highlights, MetaAPIError
+from meta import fb_page_window, fb_recent_posts, ig_window, ig_recent_posts, ads_highlights, MetaAPIError
 
 app = Flask(__name__)
 CORS(app)
@@ -56,6 +56,23 @@ def facebook_metrics():
     ]
     return jsonify({"since": since, "until": until, "metrics": metrics})
 
+@app.get("/api/facebook/posts")
+def facebook_posts():
+    page_id = request.args.get("pageId", PAGE_ID)
+    if not page_id:
+        return jsonify({"error": "META_PAGE_ID is not configured"}), 500
+    limit_param = request.args.get("limit")
+    try:
+        limit = int(limit_param) if limit_param is not None else 6
+    except ValueError:
+        limit = 6
+    try:
+        data = fb_recent_posts(page_id, limit)
+    except MetaAPIError as err:
+        return meta_error_response(err)
+    return jsonify(data)
+
+
 
 @app.get("/api/instagram/metrics")
 def instagram_metrics():
@@ -99,33 +116,35 @@ def instagram_posts():
         data = ig_recent_posts(page_id, limit)
     except MetaAPIError as err:
         return meta_error_response(err)
-    return jsonify(data)@app.get("/api/ads/highlights")
+    return jsonify(data)
+
+
+@app.get("/api/ads/highlights")
 def ads_high():
     act = request.args.get("actId", ACT_ID)
     if not act:
         return jsonify({"error": "META_AD_ACCOUNT_ID is not configured"}), 500
-    # Ads usa YYYY-MM-DD
+
     since = request.args.get("since")
     until = request.args.get("until")
     if not since or not until:
-        until_d = datetime.now(timezone.utc).date()
-        since_d = until_d - timedelta(days=7)
-        since, until = since_d.isoformat(), until_d.isoformat()
+        until_date = datetime.now(timezone.utc).date()
+        since_date = until_date - timedelta(days=7)
+        since, until = since_date.isoformat(), until_date.isoformat()
+
     try:
         data = ads_highlights(act, since, until)
     except MetaAPIError as err:
         return meta_error_response(err)
-    metrics = [
-        {"key": "best_ad", "label": "Melhor anuncio", "value": data["best_ad"]},
-        {"key": "video_cpm_3s", "label": "Video CPM 3s", "value": data["video_cpm_3s"]},
-        {"key": "video_cpm_10s", "label": "Video CPM 10s", "value": data["video_cpm_10s"]},
-        {"key": "video_cpm_1min", "label": "Video CPM 1min", "value": data["video_cpm_1min"]},
-    ]
-    return jsonify({"since": since, "until": until, "metrics": metrics})
+
+    response = {"since": since, "until": until}
+    response.update(data)
+    return jsonify(response)
 
 
 if __name__ == "__main__":
     app.run(port=3001, debug=True)
+
 
 
 

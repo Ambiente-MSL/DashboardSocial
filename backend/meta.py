@@ -1,4 +1,4 @@
-﻿# backend/meta.py
+# backend/meta.py
 import os
 import time
 import hmac
@@ -122,6 +122,7 @@ def fb_page_window(page_id: str, since: int, until: int):
 
 # ---- Instagram (organico) ----
 
+
 def ig_window(ig_user_id: str, since: int, until: int):
     metrics_query = "reach,profile_views,website_clicks,accounts_engaged,total_interactions"
     ins = gget(
@@ -129,7 +130,6 @@ def ig_window(ig_user_id: str, since: int, until: int):
         {
             "metric": metrics_query,
             "metric_type": "total_value",
-            "period": "day",
             "since": since,
             "until": until,
         },
@@ -190,69 +190,115 @@ def ig_window(ig_user_id: str, since: int, until: int):
         "profile_views": profile_views,
         "website_clicks": website,
     }
+
+
+
 def ig_recent_posts(page_id: str, limit: int = 6):
     try:
         limit_int = int(limit or 6)
     except (TypeError, ValueError):
         limit_int = 6
     limit_sanitized = max(1, min(limit_int, 25))
-    posts_fields = (
-        'id,created_time,message,permalink_url,full_picture,'
-        'attachments{media_type,type,media,url,subattachments},'
-        'likes.summary(true).limit(0),comments.summary(true).limit(0)'
-    )
+    media_fields = "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count"
     fields = (
-        'instagram_accounts{followers_count,id,username,profile_picture_url,has_profile_pic},'
-        f"posts.limit({limit_sanitized}){{{posts_fields}}}"
+        "instagram_accounts{followers_count,id,username,profile_picture_url,has_profile_pic,"
+        f"media.limit({limit_sanitized}){{{media_fields}}}"
+        "}"
     )
-    res = gget(f"/{page_id}", {"fields": "".join(fields)})
+    res = gget(f"/{page_id}", {"fields": fields})
 
     account_data = (res.get("instagram_accounts") or {}).get("data", [])
     account = account_data[0] if account_data else None
-
-    def extract_preview(attachments, full_picture):
-        if full_picture:
-            return full_picture
-        for att in attachments:
-            media = att.get("media") or {}
-            image = (media.get("image") or {}).get("src") or media.get("source")
-            if image:
-                return image
-            subatts = (att.get("subattachments") or {}).get("data", [])
-            for sub in subatts:
-                media = sub.get("media") or {}
-                image = (media.get("image") or {}).get("src") or media.get("source")
-                if image:
-                    return image
-            url = att.get("url")
-            if url:
-                return url
-        return None
+    media = ((account or {}).get("media") or {}).get("data", [])
 
     posts = []
-    for item in (res.get("posts") or {}).get("data", []):
-        attachments = (item.get("attachments") or {}).get("data", [])
-        preview = extract_preview(attachments, item.get("full_picture"))
-        likes_summary = ((item.get("likes") or {}).get("summary") or {}).get("total_count")
-        comments_summary = ((item.get("comments") or {}).get("summary") or {}).get("total_count")
+    for item in media:
+        preview = item.get("media_url") or item.get("thumbnail_url")
         posts.append({
             "id": item.get("id"),
-            "caption": item.get("message"),
-            "mediaType": attachments[0].get("media_type") if attachments else None,
-            "permalink": item.get("permalink_url"),
-            "timestamp": item.get("created_time"),
+            "caption": item.get("caption"),
+            "mediaType": item.get("media_type"),
+            "mediaUrl": item.get("media_url"),
+            "thumbnailUrl": item.get("thumbnail_url"),
+            "permalink": item.get("permalink"),
+            "timestamp": item.get("timestamp"),
+            "likeCount": item.get("like_count"),
+            "commentsCount": item.get("comments_count"),
             "previewUrl": preview,
-            "likeCount": likes_summary,
-            "commentsCount": comments_summary,
         })
     return {
         "account": account,
         "posts": posts,
     }
+
+
+def fb_recent_posts(page_id: str, limit: int = 6):
+    try:
+        limit_int = int(limit or 6)
+    except (TypeError, ValueError):
+        limit_int = 6
+    limit_sanitized = max(1, min(limit_int, 25))
+    fields = (
+        "id,created_time,message,permalink_url,full_picture,story,"
+        "attachments{media_type,type,media,url,description,subattachments},"
+        "reactions.summary(true).limit(0),comments.summary(true).limit(0),shares"
+    )
+    res = gget(
+        f"/{page_id}/posts",
+        {
+            "limit": limit_sanitized,
+            "fields": fields,
+        },
+    )
+    posts = []
+    for item in res.get("data", []):
+        attachments = (item.get("attachments") or {}).get("data", [])
+
+        def extract_preview(att_list):
+            for att in att_list:
+                media = att.get("media") or {}
+                image = (media.get("image") or {}).get("src") or media.get("source")
+                if image:
+                    return image
+                subatts = (att.get("subattachments") or {}).get("data", [])
+                preview = extract_preview(subatts)
+                if preview:
+                    return preview
+                url = att.get("url")
+                if url:
+                    return url
+            return None
+
+        preview = item.get("full_picture") or extract_preview(attachments)
+        reactions = ((item.get("reactions") or {}).get("summary") or {}).get("total_count")
+        comments = ((item.get("comments") or {}).get("summary") or {}).get("total_count")
+        shares = (item.get("shares") or {}).get("count")
+        posts.append({
+            "id": item.get("id"),
+            "message": item.get("message") or item.get("story"),
+            "permalink": item.get("permalink_url"),
+            "timestamp": item.get("created_time"),
+            "previewUrl": preview,
+            "reactions": reactions,
+            "comments": comments,
+            "shares": shares,
+        })
+    paging = res.get("paging") or {}
+    return {
+        "posts": posts,
+        "paging": {
+            "next": bool(paging.get("next")),
+            "previous": bool(paging.get("previous")),
+        },
+    }
+
 # ---- Ads (Marketing API) ----
 
+
+
+
 def ads_highlights(act_id: str, since_str: str, until_str: str):
-    fields = "campaign_name,adset_name,ad_name,ad_id,impressions,reach,clicks,spend,ctr,cpc,cpm,actions"
+    fields = "campaign_name,adset_name,ad_name,ad_id,impressions,reach,clicks,spend,ctr,cpc,cpm,frequency,actions"
     res = gget(
         f"/{act_id}/insights",
         {
@@ -264,34 +310,145 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
         },
     )
     best_ad = None
-    # CPMS por views especificas (se existirem)
-    v3 = v10 = v60 = None
-    spend_total = 0
-    views3 = views10 = views60 = 0
+    totals = {
+        "spend": 0.0,
+        "impressions": 0,
+        "reach": 0,
+        "clicks": 0,
+    }
+    actions_totals = {}
+
     for row in res.get("data", []):
-        spend_total += float(row.get("spend", 0) or 0)
-        acts = {a["action_type"]: float(a.get("value", 0) or 0) for a in (row.get("actions") or []) if "action_type" in a}
-        # heuristicas comuns (varia por conta): 3s~video_view, 10s=video_10s_views, 60s~thruplay
-        views3 += acts.get("video_view", 0)
-        views10 += acts.get("video_10s_views", 0)
-        views60 += acts.get("thruplay", 0)
-        # "melhor anuncio" por CTR (ajuste se quiser por conversoes)
-        if best_ad is None or float(row.get("ctr", 0) or 0) > float(best_ad.get("ctr", 0) or 0):
+        spend = float(row.get("spend", 0) or 0)
+        impressions = int(row.get("impressions", 0) or 0)
+        reach = int(row.get("reach", 0) or 0)
+        clicks = int(row.get("clicks", 0) or 0)
+        ctr = float(row.get("ctr", 0) or 0)
+        cpc = float(row.get("cpc", 0) or 0)
+        cpm = float(row.get("cpm", 0) or 0)
+        frequency = float(row.get("frequency", 0) or 0)
+
+        totals["spend"] += spend
+        totals["impressions"] += impressions
+        totals["reach"] += reach
+        totals["clicks"] += clicks
+
+        for action in row.get("actions") or []:
+            action_type = action.get("action_type")
+            if not action_type:
+                continue
+            value = float(action.get("value", 0) or 0)
+            actions_totals[action_type] = actions_totals.get(action_type, 0.0) + value
+
+        if best_ad is None or ctr > float(best_ad.get("ctr", 0) or 0):
             best_ad = {
                 "ad_id": row.get("ad_id"),
                 "ad_name": row.get("ad_name"),
-                "ctr": row.get("ctr"),
-                "impressions": row.get("impressions"),
-                "spend": row.get("spend"),
+                "campaign_name": row.get("campaign_name"),
+                "adset_name": row.get("adset_name"),
+                "ctr": ctr,
+                "cpc": cpc,
+                "cpm": cpm,
+                "frequency": frequency,
+                "impressions": impressions,
+                "reach": reach,
+                "spend": spend,
+                "clicks": clicks,
             }
 
-    def cpm(views):
-        return round(spend_total / (views / 1000.0), 2) if views and views > 0 else None
+    averages = {
+        "cpc": (totals["spend"] / totals["clicks"]) if totals["clicks"] else None,
+        "cpm": (totals["spend"] / totals["impressions"] * 1000.0) if totals["impressions"] else None,
+        "ctr": (totals["clicks"] / totals["impressions"] * 100.0) if totals["impressions"] else None,
+        "frequency": (totals["impressions"] / totals["reach"]) if totals["reach"] else None,
+    }
 
-    v3, v10, v60 = cpm(views3), cpm(views10), cpm(views60)
-    return {"best_ad": best_ad, "video_cpm_3s": v3, "video_cpm_10s": v10, "video_cpm_1min": v60}
+    actions_summary = [
+        {"type": key, "value": value}
+        for key, value in sorted(actions_totals.items(), key=lambda item: item[1], reverse=True)
+    ]
 
+    demographics = {
+        "byGender": [],
+        "byAge": [],
+        "topSegments": [],
+    }
 
+    try:
+        demo_res = gget(
+            f"/{act_id}/insights",
+            {
+                "fields": "reach,impressions,spend",
+                "time_range[since]": since_str,
+                "time_range[until]": until_str,
+                "level": "account",
+                "breakdowns": "age,gender",
+                "limit": 500,
+            },
+        )
+    except MetaAPIError:
+        demo_res = {"data": []}
 
+    gender_totals = {}
+    age_totals = {}
+    combo_totals = {}
 
+    def label_gender(value: str) -> str:
+        lookup = {"male": "Masculino", "female": "Feminino"}
+        if value is None:
+            return "Indefinido"
+        return lookup.get(value.lower(), "Indefinido")
 
+    for row in demo_res.get("data", []):
+        gender = label_gender(row.get("gender"))
+        age = row.get("age") or "Desconhecido"
+        reach = int(row.get("reach", 0) or 0)
+        impressions = int(row.get("impressions", 0) or 0)
+        spend = float(row.get("spend", 0) or 0)
+
+        gender_entry = gender_totals.setdefault(gender, {"reach": 0, "impressions": 0, "spend": 0.0})
+        gender_entry["reach"] += reach
+        gender_entry["impressions"] += impressions
+        gender_entry["spend"] += spend
+
+        age_entry = age_totals.setdefault(age, {"reach": 0, "impressions": 0, "spend": 0.0})
+        age_entry["reach"] += reach
+        age_entry["impressions"] += impressions
+        age_entry["spend"] += spend
+
+        combo_key = (age, gender)
+        combo_entry = combo_totals.setdefault(
+            combo_key,
+            {
+                "age": age,
+                "gender": gender,
+                "reach": 0,
+                "impressions": 0,
+                "spend": 0.0,
+            },
+        )
+        combo_entry["reach"] += reach
+        combo_entry["impressions"] += impressions
+        combo_entry["spend"] += spend
+
+    demographics["byGender"] = [
+        {"segment": key, **values}
+        for key, values in sorted(gender_totals.items(), key=lambda item: item[1]["reach"], reverse=True)
+    ]
+    demographics["byAge"] = [
+        {"segment": key, **values}
+        for key, values in sorted(age_totals.items(), key=lambda item: item[1]["reach"], reverse=True)
+    ]
+    demographics["topSegments"] = sorted(
+        combo_totals.values(),
+        key=lambda item: item["reach"],
+        reverse=True,
+    )[:5]
+
+    return {
+        "best_ad": best_ad,
+        "totals": totals,
+        "averages": averages,
+        "actions": actions_summary,
+        "demographics": demographics,
+    }

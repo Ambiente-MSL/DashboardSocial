@@ -6,8 +6,10 @@ import Section from "../components/Section";
 import KpiGrid from "../components/KpiGrid";
 import MetricCard from "../components/MetricCard";
 import useQueryState from "../hooks/useQueryState";
+import { accounts } from "../data/accounts";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
+const DEFAULT_ACCOUNT_ID = accounts[0]?.id || "";
 
 const mapByKey = (arr) => {
   const map = {};
@@ -43,30 +45,30 @@ const describeApiError = (payload, fallback) => {
 const SUMMARY_CARDS = [
   {
     key: "reach",
-    title: "Alcance do período",
-    hint: "Total de perfis únicos alcançados no intervalo selecionado.",
+    title: "Alcance do perÃ­odo",
+    hint: "Total de perfis Ãºnicos alcanÃ§ados no intervalo selecionado.",
   },
   {
     key: "impressions",
-    title: "Impressões totais",
-    hint: "Quantidade de visualizações dos conteúdos publicados.",
+    title: "ImpressÃµes totais",
+    hint: "Quantidade de visualizaÃ§Ãµes dos conteÃºdos publicados.",
   },
   {
     key: "engagement",
-    title: "Interações totais",
-    hint: "Soma de curtidas, comentários, compartilhamentos e salvamentos.",
+    title: "InteraÃ§Ãµes totais",
+    hint: "Soma de curtidas, comentÃ¡rios, compartilhamentos e salvamentos.",
   },
   {
     key: "engagement_rate",
     title: "Taxa de engajamento",
-    hint: "Percentual de interações em relação ao alcance.",
+    hint: "Percentual de interaÃ§Ãµes em relaÃ§Ã£o ao alcance.",
     percentage: true,
   },
 ];
 
 const mediaTypeLabel = {
   IMAGE: "Imagem",
-  VIDEO: "Vídeo",
+  VIDEO: "VÃ­deo",
   CAROUSEL_ALBUM: "Carrossel",
   REELS: "Reels",
 };
@@ -86,10 +88,15 @@ const truncate = (text, length = 140) => {
 
 export default function InstagramDashboard() {
   const { sidebarOpen, toggleSidebar } = useOutletContext();
-  const [get] = useQueryState();
+  const [get] = useQueryState({ account: DEFAULT_ACCOUNT_ID });
+  const accountId = get("account") || DEFAULT_ACCOUNT_ID;
+  const accountConfig = useMemo(
+    () => accounts.find((item) => item.id === accountId) || accounts[0],
+    [accountId],
+  );
+
   const since = get("since");
   const until = get("until");
-  const account = get("account");
 
   const [metrics, setMetrics] = useState([]);
   const [loadingMetrics, setLoadingMetrics] = useState(false);
@@ -101,6 +108,12 @@ export default function InstagramDashboard() {
   const [accountInfo, setAccountInfo] = useState(null);
 
   useEffect(() => {
+    if (!accountConfig?.instagramUserId) {
+      setMetrics([]);
+      setMetricsError("Conta do Instagram nÃ£o configurada.");
+      return;
+    }
+
     const controller = new AbortController();
 
     const loadMetrics = async () => {
@@ -110,20 +123,20 @@ export default function InstagramDashboard() {
         const params = new URLSearchParams();
         if (since) params.set("since", since);
         if (until) params.set("until", until);
-        if (account) params.set("igUserId", account);
+        params.set("igUserId", accountConfig.instagramUserId);
 
-        const url = `${API_BASE_URL}/api/instagram/metrics${params.toString() ? `?${params.toString()}` : ""}`;
+        const url = `${API_BASE_URL}/api/instagram/metrics?${params.toString()}`;
         const response = await fetch(url, { signal: controller.signal });
         const raw = await response.text();
         const json = safeParseJson(raw) || {};
         if (!response.ok) {
-          throw new Error(describeApiError(json, "Falha ao carregar métricas do Instagram."));
+          throw new Error(describeApiError(json, "Falha ao carregar mÃ©tricas do Instagram."));
         }
         setMetrics(json.metrics || []);
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error(err);
-          setMetricsError(err.message || "Não foi possível atualizar os indicadores do Instagram.");
+          setMetricsError(err.message || "NÃ£o foi possÃ­vel atualizar os indicadores do Instagram.");
         }
       } finally {
         setLoadingMetrics(false);
@@ -132,17 +145,26 @@ export default function InstagramDashboard() {
 
     loadMetrics();
     return () => controller.abort();
-  }, [since, until, account]);
+  }, [accountConfig?.instagramUserId, since, until]);
 
   useEffect(() => {
+    if (!accountConfig?.facebookPageId) {
+      setPosts([]);
+      setAccountInfo(null);
+      setPostsError("PÃ¡gina do Facebook nÃ£o configurada.");
+      return;
+    }
+
     const controller = new AbortController();
     const loadPosts = async () => {
       setLoadingPosts(true);
       setPostsError("");
       try {
-        const params = new URLSearchParams({ limit: "6" });
-        if (account) params.set("pageId", account);
-        const url = `${API_BASE_URL}/api/instagram/posts${params.toString() ? `?${params.toString()}` : ""}`;
+        const params = new URLSearchParams({
+          pageId: accountConfig.facebookPageId,
+          limit: "6",
+        });
+        const url = `${API_BASE_URL}/api/instagram/posts?${params.toString()}`;
         const response = await fetch(url, { signal: controller.signal });
         const raw = await response.text();
         const json = safeParseJson(raw) || {};
@@ -154,7 +176,7 @@ export default function InstagramDashboard() {
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error(err);
-          setPostsError(err.message || "Não foi possível carregar os posts recentes.");
+          setPostsError(err.message || "NÃ£o foi possÃ­vel carregar os posts recentes.");
         }
         setAccountInfo(null);
       } finally {
@@ -164,7 +186,7 @@ export default function InstagramDashboard() {
 
     loadPosts();
     return () => controller.abort();
-  }, [account]);
+  }, [accountConfig?.facebookPageId]);
 
   const metricsByKey = useMemo(() => mapByKey(metrics), [metrics]);
 
@@ -198,15 +220,15 @@ export default function InstagramDashboard() {
           target="_blank"
           rel="noreferrer"
           className="media-card__preview"
-          aria-label="Abrir publicação no Instagram"
+          aria-label="Abrir publicaÃ§Ã£o no Instagram"
         >
           {previewUrl ? (
             <img src={previewUrl} alt={truncate(post.caption || "Postagem do Instagram", 80)} loading="lazy" />
           ) : (
-            <div className="media-card__placeholder">Prévia indisponível</div>
+            <div className="media-card__placeholder">PrÃ©via indisponÃ­vel</div>
           )}
           {post.mediaType === "VIDEO" && (
-            <span className="media-card__badge" title="Conteúdo em vídeo">
+            <span className="media-card__badge" title="ConteÃºdo em vÃ­deo">
               <Play size={16} />
             </span>
           )}
@@ -218,10 +240,10 @@ export default function InstagramDashboard() {
         </a>
         <div className="media-card__body">
           <header className="media-card__meta">
-            <span>{publishedAt || "Data indisponível"}</span>
+            <span>{publishedAt || "Data indisponÃ­vel"}</span>
             <span>{typeLabel}</span>
           </header>
-          <p className="media-card__caption">{truncate(post.caption, 160) || "Legenda não disponível."}</p>
+          <p className="media-card__caption">{truncate(post.caption, 160) || "Legenda nÃ£o disponÃ­vel."}</p>
           <footer className="media-card__footer">
             <div className="media-card__stats">
               {likes !== null && (
@@ -280,8 +302,8 @@ export default function InstagramDashboard() {
       {metricsError && <div className="alert alert--error">{metricsError}</div>}
 
       <Section
-        title="Resumo orgânico"
-        description="Principais indicadores do perfil no período selecionado."
+        title="Resumo orgÃ¢nico"
+        description="Principais indicadores do perfil no perÃ­odo selecionado."
       >
         <KpiGrid>
           {SUMMARY_CARDS.map(({ key, title, hint, percentage }) => (
@@ -297,8 +319,8 @@ export default function InstagramDashboard() {
       </Section>
 
       <Section
-        title="Últimos posts"
-        description="Conteúdo recente publicado no feed oficial."
+        title="Ãšltimos posts"
+        description="ConteÃºdo recente publicado no feed oficial."
         right={accountBadge}
       >
         {postsError && <div className="alert alert--error">{postsError}</div>}
@@ -313,9 +335,10 @@ export default function InstagramDashboard() {
             {posts.map((post) => renderPostCard(post))}
           </div>
         ) : (
-          <p className="muted">Nenhum post recente encontrado para o período selecionado.</p>
+          <p className="muted">Nenhum post recente encontrado para o perÃ­odo selecionado.</p>
         )}
       </Section>
     </>
   );
 }
+
