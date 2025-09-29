@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { ExternalLink, Heart, MessageCircle, Play } from "lucide-react";
+
 import Topbar from "../components/Topbar";
 import Section from "../components/Section";
 import KpiGrid from "../components/KpiGrid";
@@ -10,6 +11,52 @@ import { accounts } from "../data/accounts";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const DEFAULT_ACCOUNT_ID = accounts[0]?.id || "";
+
+const INSIGHT_CARDS = [
+  {
+    key: "reach",
+    title: "Alcance",
+    hint: "Perfis unicos alcancados no intervalo selecionado.",
+  },
+  {
+    key: "impressions",
+    title: "Impressoes",
+    hint: "Total de visualizacoes do conteudo no periodo.",
+  },
+  {
+    key: "accounts_engaged",
+    title: "Contas engajadas",
+    hint: "Usuarios que interagiram com o perfil no periodo.",
+  },
+  {
+    key: "profile_views",
+    title: "Views de perfil",
+    hint: "Quantidade de visitas ao perfil no periodo.",
+  },
+  {
+    key: "website_clicks",
+    title: "Cliques no site",
+    hint: "Cliques no link do perfil durante o periodo.",
+  },
+  {
+    key: "interactions",
+    title: "Interacoes totais",
+    hint: "Soma de curtidas, comentarios, compartilhamentos e salvamentos.",
+  },
+  {
+    key: "engagement_rate",
+    title: "Taxa de engajamento",
+    hint: "Interacoes sobre alcance (em porcentagem).",
+    percentage: true,
+  },
+];
+
+const mediaTypeLabel = {
+  IMAGE: "Imagem",
+  VIDEO: "Video",
+  CAROUSEL_ALBUM: "Carrossel",
+  REELS: "Reels",
+};
 
 const mapByKey = (arr) => {
   const map = {};
@@ -42,37 +89,6 @@ const describeApiError = (payload, fallback) => {
   return fallback;
 };
 
-const SUMMARY_CARDS = [
-  {
-    key: "reach",
-    title: "Alcance do perÃ­odo",
-    hint: "Total de perfis Ãºnicos alcanÃ§ados no intervalo selecionado.",
-  },
-  {
-    key: "impressions",
-    title: "ImpressÃµes totais",
-    hint: "Quantidade de visualizaÃ§Ãµes dos conteÃºdos publicados.",
-  },
-  {
-    key: "engagement",
-    title: "InteraÃ§Ãµes totais",
-    hint: "Soma de curtidas, comentÃ¡rios, compartilhamentos e salvamentos.",
-  },
-  {
-    key: "engagement_rate",
-    title: "Taxa de engajamento",
-    hint: "Percentual de interaÃ§Ãµes em relaÃ§Ã£o ao alcance.",
-    percentage: true,
-  },
-];
-
-const mediaTypeLabel = {
-  IMAGE: "Imagem",
-  VIDEO: "VÃ­deo",
-  CAROUSEL_ALBUM: "Carrossel",
-  REELS: "Reels",
-};
-
 const formatDate = (iso) => {
   if (!iso) return "";
   const date = new Date(iso);
@@ -84,6 +100,87 @@ const truncate = (text, length = 140) => {
   if (!text) return "";
   if (text.length <= length) return text;
   return `${text.slice(0, length - 3)}...`;
+};
+
+const formatMetricValue = (metric, { percentage = false, loading } = {}) => {
+  if (loading) return "...";
+  if (!metric) return "-";
+  const value = metric.value;
+  if (value == null) return "-";
+  if (percentage && typeof value === "number") {
+    return `${Number(value).toFixed(2)}%`;
+  }
+  if (typeof value === "number") {
+    return value.toLocaleString("pt-BR");
+  }
+  return String(value);
+};
+
+const metricDelta = (metric, { loading } = {}) => {
+  if (loading) return null;
+  return metric?.deltaPct ?? null;
+};
+
+const renderCarouselCard = (post) => {
+  const previewUrl = post.previewUrl || post.mediaUrl || post.thumbnailUrl;
+  const typeLabel = mediaTypeLabel[post.mediaType] || post.mediaType || "Post";
+  const publishedAt = formatDate(post.timestamp);
+  const likes = Number.isFinite(post.likeCount) ? post.likeCount : null;
+  const comments = Number.isFinite(post.commentsCount) ? post.commentsCount : null;
+
+  return (
+    <article key={post.id} className="media-card media-card--carousel">
+      <a
+        href={post.permalink || "#"}
+        target="_blank"
+        rel="noreferrer"
+        className="media-card__preview"
+        aria-label="Abrir publicacao no Instagram"
+      >
+        {previewUrl ? (
+          <img src={previewUrl} alt={truncate(post.caption || "Postagem do Instagram", 80)} loading="lazy" />
+        ) : (
+          <div className="media-card__placeholder">Preview indisponivel</div>
+        )}
+        {post.mediaType === "VIDEO" && (
+          <span className="media-card__badge" title="Conteudo em video">
+            <Play size={16} />
+          </span>
+        )}
+        {post.mediaType === "CAROUSEL_ALBUM" && (
+          <span className="media-card__badge media-card__badge--stack" title="Carrossel">
+            +
+          </span>
+        )}
+      </a>
+      <div className="media-card__body">
+        <header className="media-card__meta">
+          <span>{publishedAt || "Data indisponivel"}</span>
+          <span>{typeLabel}</span>
+        </header>
+        <p className="media-card__caption">{truncate(post.caption, 160) || "Legenda indisponivel."}</p>
+        <footer className="media-card__footer">
+          <div className="media-card__stats">
+            {likes !== null && (
+              <span>
+                <Heart size={14} /> {likes.toLocaleString("pt-BR")}
+              </span>
+            )}
+            {comments !== null && (
+              <span>
+                <MessageCircle size={14} /> {comments.toLocaleString("pt-BR")}
+              </span>
+            )}
+          </div>
+          {post.permalink && (
+            <a href={post.permalink} target="_blank" rel="noreferrer" className="media-card__link">
+              Ver no Instagram <ExternalLink size={14} />
+            </a>
+          )}
+        </footer>
+      </div>
+    </article>
+  );
 };
 
 export default function InstagramDashboard() {
@@ -110,7 +207,7 @@ export default function InstagramDashboard() {
   useEffect(() => {
     if (!accountConfig?.instagramUserId) {
       setMetrics([]);
-      setMetricsError("Conta do Instagram nÃ£o configurada.");
+      setMetricsError("Conta do Instagram nao configurada.");
       return;
     }
 
@@ -130,13 +227,13 @@ export default function InstagramDashboard() {
         const raw = await response.text();
         const json = safeParseJson(raw) || {};
         if (!response.ok) {
-          throw new Error(describeApiError(json, "Falha ao carregar mÃ©tricas do Instagram."));
+          throw new Error(describeApiError(json, "Falha ao carregar metricas do Instagram."));
         }
         setMetrics(json.metrics || []);
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error(err);
-          setMetricsError(err.message || "NÃ£o foi possÃ­vel atualizar os indicadores do Instagram.");
+          setMetricsError(err.message || "Nao foi possivel atualizar os indicadores do Instagram.");
         }
       } finally {
         setLoadingMetrics(false);
@@ -148,10 +245,10 @@ export default function InstagramDashboard() {
   }, [accountConfig?.instagramUserId, since, until]);
 
   useEffect(() => {
-    if (!accountConfig?.facebookPageId) {
+    if (!accountConfig?.instagramUserId) {
       setPosts([]);
       setAccountInfo(null);
-      setPostsError("PÃ¡gina do Facebook nÃ£o configurada.");
+      setPostsError("Conta do Instagram nao configurada.");
       return;
     }
 
@@ -161,8 +258,8 @@ export default function InstagramDashboard() {
       setPostsError("");
       try {
         const params = new URLSearchParams({
-          pageId: accountConfig.facebookPageId,
-          limit: "6",
+          igUserId: accountConfig.instagramUserId,
+          limit: "10",
         });
         const url = `${API_BASE_URL}/api/instagram/posts?${params.toString()}`;
         const response = await fetch(url, { signal: controller.signal });
@@ -176,7 +273,7 @@ export default function InstagramDashboard() {
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error(err);
-          setPostsError(err.message || "NÃ£o foi possÃ­vel carregar os posts recentes.");
+          setPostsError(err.message || "Nao foi possivel carregar os posts recentes.");
         }
         setAccountInfo(null);
       } finally {
@@ -186,92 +283,9 @@ export default function InstagramDashboard() {
 
     loadPosts();
     return () => controller.abort();
-  }, [accountConfig?.facebookPageId]);
+  }, [accountConfig?.instagramUserId]);
 
   const metricsByKey = useMemo(() => mapByKey(metrics), [metrics]);
-
-  const formatValue = (metric, options = {}) => {
-    if (loadingMetrics) return "...";
-    if (!metric) return "-";
-    const value = metric.value;
-    if (value == null) return "-";
-    if (options.percentage && typeof value === "number") {
-      return `${Number(value).toFixed(2)}%`;
-    }
-    if (typeof value === "number") {
-      return value.toLocaleString("pt-BR");
-    }
-    return String(value);
-  };
-
-  const metricDelta = (metric) => (loadingMetrics ? null : metric?.deltaPct);
-
-  const renderPostCard = (post) => {
-    const previewUrl = post.previewUrl;
-    const typeLabel = mediaTypeLabel[post.mediaType] || post.mediaType || "Post";
-    const publishedAt = formatDate(post.timestamp);
-    const likes = Number.isFinite(post.likeCount) ? post.likeCount : null;
-    const comments = Number.isFinite(post.commentsCount) ? post.commentsCount : null;
-
-    return (
-      <article key={post.id} className="media-card">
-        <a
-          href={post.permalink || "#"}
-          target="_blank"
-          rel="noreferrer"
-          className="media-card__preview"
-          aria-label="Abrir publicaÃ§Ã£o no Instagram"
-        >
-          {previewUrl ? (
-            <img src={previewUrl} alt={truncate(post.caption || "Postagem do Instagram", 80)} loading="lazy" />
-          ) : (
-            <div className="media-card__placeholder">PrÃ©via indisponÃ­vel</div>
-          )}
-          {post.mediaType === "VIDEO" && (
-            <span className="media-card__badge" title="ConteÃºdo em vÃ­deo">
-              <Play size={16} />
-            </span>
-          )}
-          {post.mediaType === "CAROUSEL_ALBUM" && (
-            <span className="media-card__badge media-card__badge--stack" title="Carrossel">
-              +
-            </span>
-          )}
-        </a>
-        <div className="media-card__body">
-          <header className="media-card__meta">
-            <span>{publishedAt || "Data indisponÃ­vel"}</span>
-            <span>{typeLabel}</span>
-          </header>
-          <p className="media-card__caption">{truncate(post.caption, 160) || "Legenda nÃ£o disponÃ­vel."}</p>
-          <footer className="media-card__footer">
-            <div className="media-card__stats">
-              {likes !== null && (
-                <span>
-                  <Heart size={14} /> {likes.toLocaleString("pt-BR")}
-                </span>
-              )}
-              {comments !== null && (
-                <span>
-                  <MessageCircle size={14} /> {comments.toLocaleString("pt-BR")}
-                </span>
-              )}
-            </div>
-            {post.permalink && (
-              <a
-                href={post.permalink}
-                target="_blank"
-                rel="noreferrer"
-                className="media-card__link"
-              >
-                Ver no Instagram <ExternalLink size={14} />
-              </a>
-            )}
-          </footer>
-        </div>
-      </article>
-    );
-  };
 
   const accountBadge = accountInfo
     ? (
@@ -302,16 +316,16 @@ export default function InstagramDashboard() {
       {metricsError && <div className="alert alert--error">{metricsError}</div>}
 
       <Section
-        title="Resumo orgÃ¢nico"
-        description="Principais indicadores do perfil no perÃ­odo selecionado."
+        title="Insights do perfil"
+        description="Principais indicadores organicos do periodo selecionado."
       >
         <KpiGrid>
-          {SUMMARY_CARDS.map(({ key, title, hint, percentage }) => (
+          {INSIGHT_CARDS.map(({ key, title, hint, percentage }) => (
             <MetricCard
               key={key}
               title={title}
-              value={formatValue(metricsByKey[key], { percentage })}
-              delta={percentage ? null : metricDelta(metricsByKey[key])}
+              value={formatMetricValue(metricsByKey[key], { percentage, loading: loadingMetrics })}
+              delta={key === "engagement_rate" ? null : metricDelta(metricsByKey[key], { loading: loadingMetrics })}
               hint={hint}
             />
           ))}
@@ -319,8 +333,8 @@ export default function InstagramDashboard() {
       </Section>
 
       <Section
-        title="Ãšltimos posts"
-        description="ConteÃºdo recente publicado no feed oficial."
+        title="Ultimos posts"
+        description="Percorra os destaques recentes do feed oficial."
         right={accountBadge}
       >
         {postsError && <div className="alert alert--error">{postsError}</div>}
@@ -331,14 +345,13 @@ export default function InstagramDashboard() {
             ))}
           </div>
         ) : posts.length > 0 ? (
-          <div className="media-grid">
-            {posts.map((post) => renderPostCard(post))}
+          <div className="media-carousel" role="list">
+            {posts.map((post) => renderCarouselCard(post))}
           </div>
         ) : (
-          <p className="muted">Nenhum post recente encontrado para o perÃ­odo selecionado.</p>
+          <p className="muted">Nenhum post recente encontrado para o periodo selecionado.</p>
         )}
       </Section>
     </>
   );
 }
-

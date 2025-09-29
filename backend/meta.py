@@ -129,6 +129,7 @@ def ig_window(ig_user_id: str, since: int, until: int):
         f"/{ig_user_id}/insights",
         {
             "metric": metrics_query,
+            "period": "day",
             "metric_type": "total_value",
             "since": since,
             "until": until,
@@ -193,26 +194,24 @@ def ig_window(ig_user_id: str, since: int, until: int):
 
 
 
-def ig_recent_posts(page_id: str, limit: int = 6):
+def ig_recent_posts(ig_user_id: str, limit: int = 6):
     try:
         limit_int = int(limit or 6)
     except (TypeError, ValueError):
         limit_int = 6
     limit_sanitized = max(1, min(limit_int, 25))
-    media_fields = "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count"
-    fields = (
-        "instagram_accounts{followers_count,id,username,profile_picture_url,has_profile_pic,"
-        f"media.limit({limit_sanitized}){{{media_fields}}}"
-        "}"
-    )
-    res = gget(f"/{page_id}", {"fields": fields})
 
-    account_data = (res.get("instagram_accounts") or {}).get("data", [])
-    account = account_data[0] if account_data else None
-    media = ((account or {}).get("media") or {}).get("data", [])
+    media_fields = "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count"
+    media_res = gget(
+        f"/{ig_user_id}/media",
+        {
+            "limit": limit_sanitized,
+            "fields": media_fields,
+        },
+    )
 
     posts = []
-    for item in media:
+    for item in media_res.get("data", []):
         preview = item.get("media_url") or item.get("thumbnail_url")
         posts.append({
             "id": item.get("id"),
@@ -226,6 +225,13 @@ def ig_recent_posts(page_id: str, limit: int = 6):
             "commentsCount": item.get("comments_count"),
             "previewUrl": preview,
         })
+
+    account_fields = "id,username,profile_picture_url,followers_count"
+    try:
+        account = gget(f"/{ig_user_id}", {"fields": account_fields})
+    except MetaAPIError:
+        account = None
+
     return {
         "account": account,
         "posts": posts,

@@ -1,4 +1,4 @@
-﻿# backend/server.py
+# backend/server.py
 import os
 import time
 from datetime import datetime, timedelta, timezone
@@ -89,8 +89,11 @@ def instagram_metrics():
         return round(((current - previous) / previous) * 100, 2) if previous and previous > 0 and current is not None else None
     metrics = [
         {"key": "reach", "label": "ALCANCE", "value": cur["reach"], "deltaPct": pct(cur["reach"], prev["reach"])},
-        {"key": "impressions", "label": "Impressoes", "value": cur["impressions"], "deltaPct": pct(cur["impressions"], prev["impressions"])},
-        {"key": "engagement", "label": "ENGAJAMENTO TOTAL", "value": cur["interactions"], "deltaPct": pct(cur["interactions"], prev["interactions"])},
+        {"key": "impressions", "label": "IMPRESSOES", "value": cur["impressions"], "deltaPct": pct(cur["impressions"], prev["impressions"])},
+        {"key": "accounts_engaged", "label": "CONTAS ENGAJADAS", "value": cur["accounts_engaged"], "deltaPct": pct(cur["accounts_engaged"], prev["accounts_engaged"])},
+        {"key": "profile_views", "label": "VIEWS DE PERFIL", "value": cur["profile_views"], "deltaPct": pct(cur["profile_views"], prev["profile_views"])},
+        {"key": "website_clicks", "label": "CLICS SITE", "value": cur["website_clicks"], "deltaPct": pct(cur["website_clicks"], prev["website_clicks"])},
+        {"key": "interactions", "label": "INTERACOES TOTAIS", "value": cur["interactions"], "deltaPct": pct(cur["interactions"], prev["interactions"])},
         {
             "key": "engagement_rate",
             "label": "TAXA ENGAJAMENTO",
@@ -104,16 +107,16 @@ def instagram_metrics():
 
 @app.get("/api/instagram/posts")
 def instagram_posts():
-    page_id = request.args.get("pageId", PAGE_ID)
-    if not page_id:
-        return jsonify({"error": "META_PAGE_ID is not configured"}), 500
+    ig = request.args.get("igUserId", IG_ID)
+    if not ig:
+        return jsonify({"error": "META_IG_USER_ID is not configured"}), 500
     limit_param = request.args.get("limit")
     try:
         limit = int(limit_param) if limit_param is not None else 6
     except ValueError:
         limit = 6
     try:
-        data = ig_recent_posts(page_id, limit)
+        data = ig_recent_posts(ig, limit)
     except MetaAPIError as err:
         return meta_error_response(err)
     return jsonify(data)

@@ -25,17 +25,6 @@ const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const DEFAULT_ACCOUNT_ID = accounts[0]?.id || "";
 const PIE_COLORS = ["#2af0a3", "#8b9dff", "#f59e0b", "#f472b6", "#38bdf8", "#a855f7"];
 
-const ACTION_LABELS = {
-  link_click: "Cliques no link",
-  outbound_click: "Cliques externos",
-  post_engagement: "Engajamento",
-  post_reaction: "Reacoes",
-  page_engagement: "Engajamento da pagina",
-  offsite_conversion: "Conversoes",
-  purchases: "Compras",
-  leads: "Leads",
-};
-
 const toNumber = (value) => {
   if (value == null) return null;
   const num = Number(value);
@@ -70,13 +59,6 @@ const describeApiError = (payload, fallback) => {
   }
   if (payload.message) return payload.message;
   return fallback;
-};
-
-const formatActionLabel = (type) => {
-  if (!type) return "Outros";
-  const label = ACTION_LABELS[type];
-  if (label) return label;
-  return type.replace(/_/g, " ");
 };
 
 const formatShortNumber = (value) => {
@@ -165,6 +147,7 @@ export default function FacebookDashboard() {
     averages: {},
     actions: [],
     demographics: {},
+    ads_breakdown: [],
   });
   const [adsError, setAdsError] = useState("");
   const [loadingAds, setLoadingAds] = useState(false);
@@ -256,6 +239,7 @@ export default function FacebookDashboard() {
         averages: {},
         actions: [],
         demographics: {},
+        ads_breakdown: [],
       });
       setAdsError("Conta de anuncios nao configurada.");
       return;
@@ -288,6 +272,7 @@ export default function FacebookDashboard() {
           averages: {},
           actions: [],
           demographics: {},
+          ads_breakdown: [],
           ...json,
         });
       } catch (err) {
@@ -418,16 +403,16 @@ export default function FacebookDashboard() {
 
   const bestAd = adsData.best_ad;
 
-  const actionPieData = useMemo(() => {
-    const actions = Array.isArray(adsData.actions) ? adsData.actions : [];
-    const normalized = actions
-      .map((item) => ({
-        name: formatActionLabel(item.type),
-        value: Number(item.value) || 0,
+  const adsPieData = useMemo(() => {
+    const items = Array.isArray(adsData.ads_breakdown) ? adsData.ads_breakdown : [];
+    return items
+      .map((item, index) => ({
+        name: item.ad_name || `Anuncio ${index + 1}`,
+        value: Number(item.spend) || 0,
+        adId: item.ad_id || `ad-${index}`,
       }))
       .filter((item) => item.value > 0);
-    return normalized.slice(0, 6);
-  }, [adsData.actions]);
+  }, [adsData.ads_breakdown]);
 
   const totalsBarData = useMemo(() => {
     const totals = adsData?.totals || {};
@@ -438,7 +423,7 @@ export default function FacebookDashboard() {
     ];
   }, [adsData?.totals]);
 
-  const hasPieData = actionPieData.some((item) => item.value > 0);
+  const hasPieData = adsPieData.some((item) => item.value > 0);
   const hasBarData = totalsBarData.some((item) => item.value > 0);
 
   const genderRows = useMemo(() => {
@@ -519,8 +504,8 @@ export default function FacebookDashboard() {
         <div className="ads-insights-grid">
           <div className="card chart-card">
             <div>
-              <h3 className="chart-card__title">Ações mais registradas</h3>
-              <p className="chart-card__subtitle">Distribuição das ações capturadas no periódo</p>
+              <h3 className="chart-card__title">Distribuicao por anuncio</h3>
+              <p className="chart-card__subtitle">Participacao do investimento nos anuncios com maior gasto</p>
             </div>
             <div className="chart-card__viz">
               {loadingAds ? (
@@ -529,23 +514,23 @@ export default function FacebookDashboard() {
                 <ResponsiveContainer width="100%" height={260}>
                   <PieChart>
                     <Pie
-                      data={actionPieData}
+                      data={adsPieData}
                       dataKey="value"
                       nameKey="name"
                       innerRadius={60}
                       outerRadius={110}
                       paddingAngle={4}
                     >
-                      {actionPieData.map((entry, index) => (
-                        <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      {adsPieData.map((entry, index) => (
+                        <Cell key={entry.adId || entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => formatNumber(Number(value))} />
+                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="chart-card__empty">Sem dados suficientes no periódo.</div>
+                <div className="chart-card__empty">Nenhum anuncio com gasto no periodo.</div>
               )}
             </div>
           </div>
