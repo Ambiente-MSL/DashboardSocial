@@ -5,7 +5,15 @@ from datetime import datetime, timedelta, timezone
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-from meta import fb_page_window, fb_recent_posts, ig_window, ig_recent_posts, ads_highlights, MetaAPIError
+from meta import (
+    fb_page_window,
+    fb_recent_posts,
+    ig_window,
+    ig_recent_posts,
+    ig_organic_summary,   # NOVO
+    ads_highlights,
+    MetaAPIError,
+)
 
 app = Flask(__name__)
 CORS(app)
@@ -46,8 +54,10 @@ def facebook_metrics():
         prev = fb_page_window(page_id, since - (until - since), since)
     except MetaAPIError as err:
         return meta_error_response(err)
+
     def pct(current, previous):
         return round(((current - previous) / previous) * 100, 2) if previous and previous > 0 and current is not None else None
+
     metrics = [
         {"key": "reach", "label": "Alcance organico", "value": cur["reach"], "deltaPct": pct(cur["reach"], prev["reach"])},
         {"key": "post_engagement", "label": "Engajamento post", "value": cur["interactions"], "deltaPct": pct(cur["interactions"], prev["interactions"])},
@@ -55,6 +65,7 @@ def facebook_metrics():
         {"key": "profile_link_clicks", "label": "Cliques de perfil (proxy)", "value": cur["post_clicks"], "deltaPct": pct(cur["post_clicks"], prev["post_clicks"])},
     ]
     return jsonify({"since": since, "until": until, "metrics": metrics})
+
 
 @app.get("/api/facebook/posts")
 def facebook_posts():
@@ -73,9 +84,13 @@ def facebook_posts():
     return jsonify(data)
 
 
+# ============== INSTAGRAM (ORGÂNICO) ==============
 
 @app.get("/api/instagram/metrics")
 def instagram_metrics():
+    """
+    Cards orgânicos (conta) – sem 'accounts_engaged' (removido a pedido).
+    """
     ig = request.args.get("igUserId", IG_ID)
     if not ig:
         return jsonify({"error": "META_IG_USER_ID is not configured"}), 500
@@ -85,15 +100,21 @@ def instagram_metrics():
         prev = ig_window(ig, since - (until - since), since)
     except MetaAPIError as err:
         return meta_error_response(err)
+
     def pct(current, previous):
         return round(((current - previous) / previous) * 100, 2) if previous and previous > 0 and current is not None else None
+
+    # Mantemos as métricas pedidas (sem accounts_engaged)
     metrics = [
         {"key": "reach", "label": "ALCANCE", "value": cur["reach"], "deltaPct": pct(cur["reach"], prev["reach"])},
         {"key": "impressions", "label": "IMPRESSOES", "value": cur["impressions"], "deltaPct": pct(cur["impressions"], prev["impressions"])},
-        {"key": "accounts_engaged", "label": "CONTAS ENGAJADAS", "value": cur["accounts_engaged"], "deltaPct": pct(cur["accounts_engaged"], prev["accounts_engaged"])},
         {"key": "profile_views", "label": "VIEWS DE PERFIL", "value": cur["profile_views"], "deltaPct": pct(cur["profile_views"], prev["profile_views"])},
-        {"key": "website_clicks", "label": "CLICS SITE", "value": cur["website_clicks"], "deltaPct": pct(cur["website_clicks"], prev["website_clicks"])},
+        {"key": "website_clicks", "label": "CLIQUES NO SITE", "value": cur["website_clicks"], "deltaPct": pct(cur["website_clicks"], prev["website_clicks"])},
         {"key": "interactions", "label": "INTERACOES TOTAIS", "value": cur["interactions"], "deltaPct": pct(cur["interactions"], prev["interactions"])},
+        {"key": "likes", "label": "CURTIDAS", "value": cur.get("likes"), "deltaPct": None},
+        {"key": "comments", "label": "COMENTARIOS", "value": cur.get("comments"), "deltaPct": None},
+        {"key": "shares", "label": "COMPARTILHAMENTOS", "value": cur.get("shares"), "deltaPct": None},
+        {"key": "saves", "label": "SALVAMENTOS", "value": cur.get("saves"), "deltaPct": None},
         {
             "key": "engagement_rate",
             "label": "TAXA ENGAJAMENTO",
@@ -103,6 +124,23 @@ def instagram_metrics():
     ]
     return jsonify({"since": since, "until": until, "metrics": metrics})
 
+
+@app.get("/api/instagram/organic")
+def instagram_organic():
+    """
+    Resumo orgânico avançado: TOPs, médias por formato, stories (retenção).
+    Usa since/until.
+    """
+    ig = request.args.get("igUserId", IG_ID)
+    if not ig:
+        return jsonify({"error": "META_IG_USER_ID is not configured"}), 500
+    since, until = unix_range(request.args)
+    try:
+        data = ig_organic_summary(ig, since, until)
+    except MetaAPIError as err:
+        return meta_error_response(err)
+    data.update({"since": since, "until": until})
+    return jsonify(data)
 
 
 @app.get("/api/instagram/posts")
@@ -121,6 +159,8 @@ def instagram_posts():
         return meta_error_response(err)
     return jsonify(data)
 
+
+# ============== ADS / MARKETING API ==============
 
 @app.get("/api/ads/highlights")
 def ads_high():
@@ -147,9 +187,3 @@ def ads_high():
 
 if __name__ == "__main__":
     app.run(port=3001, debug=True)
-
-
-
-
-
-

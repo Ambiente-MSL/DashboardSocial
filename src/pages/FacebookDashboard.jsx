@@ -1,3 +1,4 @@
+// pages/FacebookDashboard.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { ExternalLink, MessageCircle, Share2, ThumbsUp, Trophy } from "lucide-react";
@@ -13,6 +14,8 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
+  LineChart,
+  Line,
 } from "recharts";
 import Topbar from "../components/Topbar";
 import Section from "../components/Section";
@@ -71,26 +74,10 @@ const formatShortNumber = (value) => {
 };
 
 const PAGE_SUMMARY_CARDS = [
-  {
-    key: "reach",
-    title: "Alcance do periódo",
-    hint: "Total de pessoas alcançadas organicamente.",
-  },
-  {
-    key: "impressions",
-    title: "Impressões",
-    hint: "Quantidade de visualizações registradas pelos posts.",
-  },
-  {
-    key: "post_engagement",
-    title: "Interações",
-    hint: "Soma de reações, comentários e compartilhamentos.",
-  },
-  {
-    key: "profile_link_clicks",
-    title: "Cliques no perfil",
-    hint: "Cliques que levaram ao perfil ou site da página.",
-  },
+  { key: "reach", title: "Alcance do período", hint: "Pessoas alcançadas (orgânico + pago)." },
+  { key: "impressions", title: "Impressões", hint: "Visualizações dos posts (orgânico + pago)." },
+  { key: "post_engagement", title: "Interações", hint: "Reações + comentários + compartilhamentos." },
+  { key: "profile_link_clicks", title: "Cliques em links", hint: "Cliques em links nos posts (proxy)." },
 ];
 
 const formatDate = (iso) => {
@@ -136,6 +123,8 @@ export default function FacebookDashboard() {
   const [pageMetrics, setPageMetrics] = useState([]);
   const [pageError, setPageError] = useState("");
   const [loadingPage, setLoadingPage] = useState(false);
+  const [pageSeries, setPageSeries] = useState([]);
+  const [pageSplits, setPageSplits] = useState({ impressions: {}, reach: {}, engagement: {} });
 
   const [posts, setPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
@@ -155,6 +144,8 @@ export default function FacebookDashboard() {
   useEffect(() => {
     if (!accountConfig?.facebookPageId) {
       setPageMetrics([]);
+      setPageSeries([]);
+      setPageSplits({ impressions: {}, reach: {}, engagement: {} });
       setPageError("Pagina do Facebook nao configurada.");
       return;
     }
@@ -178,6 +169,8 @@ export default function FacebookDashboard() {
           throw new Error(describeApiError(json, "Falha ao carregar metricas de pagina."));
         }
         setPageMetrics(json.metrics || []);
+        setPageSeries(Array.isArray(json.series) ? json.series : []);
+        setPageSplits(json.splits || { impressions: {}, reach: {}, engagement: {} });
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error(err);
@@ -353,66 +346,58 @@ export default function FacebookDashboard() {
     </article>
   );
 
+  // ======= Dados para gráficos da seção Orgânico =======
+  const impressionsSplitData = useMemo(() => {
+    const paid = Number(pageSplits?.impressions?.paid || 0);
+    const organic = Number(pageSplits?.impressions?.organic || 0);
+    return [
+      { name: "Pago", value: paid },
+      { name: "Orgânico", value: organic },
+    ].filter((x) => x.value > 0);
+  }, [pageSplits]);
+
+  const engagementPieData = useMemo(() => {
+    const e = pageSplits?.engagement || {};
+    return [
+      { name: "Curtidas", value: Number(e.reactions || 0) },
+      { name: "Comentários", value: Number(e.comments || 0) },
+      { name: "Compart.", value: Number(e.shares || 0) },
+    ].filter((x) => x.value > 0);
+  }, [pageSplits]);
+
+  const hasImpressionsSplit = impressionsSplitData.reduce((a, b) => a + b.value, 0) > 0;
+  const hasEngagementSplit = engagementPieData.reduce((a, b) => a + b.value, 0) > 0;
+
+  // Série para linha (alcance orgânico x pago + impressões totais)
+  const lineSeries = useMemo(() => {
+    return (pageSeries || []).map((d) => ({
+      date: d.date,
+      reach_org: Number(d.reach_organic || 0),
+      reach_paid: Number(d.reach_paid || 0),
+      impressions: Number(d.impressions || 0),
+    }));
+  }, [pageSeries]);
+
+  // ======= Métricas de ADS (já existiam) =======
   const adsTotalsCards = [
-    {
-      key: "spend",
-      title: "Investimento",
-      value: formatCurrency(Number(adsData.totals?.spend)),
-    },
-    {
-      key: "impressions",
-      title: "Impressões",
-      value: formatNumber(Number(adsData.totals?.impressions)),
-    },
-    {
-      key: "reach",
-      title: "Alcance",
-      value: formatNumber(Number(adsData.totals?.reach)),
-    },
-    {
-      key: "clicks",
-      title: "Cliques",
-      value: formatNumber(Number(adsData.totals?.clicks)),
-    },
+    { key: "spend", title: "Investimento", value: formatCurrency(Number(adsData.totals?.spend)) },
+    { key: "impressions", title: "Impressões", value: formatNumber(Number(adsData.totals?.impressions)) },
+    { key: "reach", title: "Alcance", value: formatNumber(Number(adsData.totals?.reach)) },
+    { key: "clicks", title: "Cliques", value: formatNumber(Number(adsData.totals?.clicks)) },
   ];
 
   const adsAverageCards = [
-    {
-      key: "cpc",
-      title: "CPC medio",
-      value: formatCurrency(Number(adsData.averages?.cpc)),
-    },
-    {
-      key: "cpm",
-      title: "CPM medio",
-      value: formatCurrency(Number(adsData.averages?.cpm)),
-    },
-    {
-      key: "ctr",
-      title: "CTR medio",
-      value: formatPercent(Number(adsData.averages?.ctr)),
-    },
+    { key: "cpc", title: "CPC médio", value: formatCurrency(Number(adsData.averages?.cpc)) },
+    { key: "cpm", title: "CPM médio", value: formatCurrency(Number(adsData.averages?.cpm)) },
+    { key: "ctr", title: "CTR médio", value: formatPercent(Number(adsData.averages?.ctr)) },
     {
       key: "frequency",
-      title: "Frequencia",
-      value: Number.isFinite(adsData.averages?.frequency)
-        ? adsData.averages.frequency.toFixed(2)
-        : "-",
+      title: "Frequência",
+      value: Number.isFinite(adsData.averages?.frequency) ? adsData.averages.frequency.toFixed(2) : "-",
     },
   ];
 
   const bestAd = adsData.best_ad;
-
-  const adsPieData = useMemo(() => {
-    const items = Array.isArray(adsData.ads_breakdown) ? adsData.ads_breakdown : [];
-    return items
-      .map((item, index) => ({
-        name: item.ad_name || `Anuncio ${index + 1}`,
-        value: Number(item.spend) || 0,
-        adId: item.ad_id || `ad-${index}`,
-      }))
-      .filter((item) => item.value > 0);
-  }, [adsData.ads_breakdown]);
 
   const totalsBarData = useMemo(() => {
     const totals = adsData?.totals || {};
@@ -423,53 +408,7 @@ export default function FacebookDashboard() {
     ];
   }, [adsData?.totals]);
 
-  const hasPieData = adsPieData.some((item) => item.value > 0);
   const hasBarData = totalsBarData.some((item) => item.value > 0);
-
-  const genderRows = useMemo(() => {
-    const rows = (adsData?.demographics?.byGender || [])
-      .map((item) => ({
-        segment: item.segment || "Outros",
-        reach: Number(item.reach) || 0,
-        impressions: Number(item.impressions) || 0,
-        spend: Number(item.spend) || 0,
-      }))
-      .filter((row) => row.reach > 0 || row.impressions > 0 || row.spend > 0);
-    const maxReach = rows.reduce((acc, row) => Math.max(acc, row.reach), 0);
-    return rows.map((row) => ({
-      ...row,
-      percent: maxReach ? Math.round((row.reach / maxReach) * 100) : 0,
-    }));
-  }, [adsData.demographics]);
-
-  const ageRows = useMemo(() => {
-    const rows = (adsData?.demographics?.byAge || [])
-      .map((item) => ({
-        segment: item.segment || "Outros",
-        reach: Number(item.reach) || 0,
-        impressions: Number(item.impressions) || 0,
-        spend: Number(item.spend) || 0,
-      }))
-      .filter((row) => row.reach > 0 || row.impressions > 0 || row.spend > 0);
-    const maxReach = rows.reduce((acc, row) => Math.max(acc, row.reach), 0);
-    return rows.map((row) => ({
-      ...row,
-      percent: maxReach ? Math.round((row.reach / maxReach) * 100) : 0,
-    }));
-  }, [adsData.demographics]);
-
-  const topSegments = useMemo(() => {
-    const combos = Array.isArray(adsData?.demographics?.topSegments)
-      ? adsData.demographics.topSegments
-      : [];
-    return combos
-      .map((item) => ({
-        label: `${item.age || "Indefinido"} / ${item.gender || "Indefinido"}`,
-        reach: Number(item.reach) || 0,
-      }))
-      .filter((item) => item.reach > 0)
-      .slice(0, 3);
-  }, [adsData.demographics]);
 
   const bestAdMetrics = useMemo(() => {
     if (!bestAd) return [];
@@ -485,9 +424,128 @@ export default function FacebookDashboard() {
     <>
       <Topbar title="Facebook" sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
 
+      {pageError && <div className="alert alert--error">{pageError}</div>}
+
+      <Section
+        title="Resumo orgânico"
+        description="Indicadores principais da página (intervalo selecionado)."
+      >
+        <KpiGrid>
+          {PAGE_SUMMARY_CARDS.map(({ key, title, hint }) => (
+            <MetricCard
+              key={key}
+              title={title}
+              value={formatMetric(pageMetricsByKey[key])}
+              delta={loadingPage ? null : pageMetricsByKey[key]?.deltaPct}
+              hint={hint}
+            />
+          ))}
+        </KpiGrid>
+
+        {/* Linha: Alcance Orgânico x Pago + Impressões */}
+        <div className="card chart-card">
+          <div>
+            <h3 className="chart-card__title">Evolução do alcance e impressões</h3>
+            <p className="chart-card__subtitle">Orgânico x Pago (alcance) e total de impressões</p>
+          </div>
+          <div className="chart-card__viz">
+            {loadingPage ? (
+              <div className="chart-card__empty">Carregando dados...</div>
+            ) : lineSeries.length > 0 ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={lineSeries}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--stroke-40)" />
+                  <XAxis dataKey="date" stroke="var(--text-muted)" />
+                  <YAxis tickFormatter={formatShortNumber} stroke="var(--text-muted)" />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="reach_org" name="Alcance (Orgânico)" dot={false} stroke="#2af0a3" />
+                  <Line type="monotone" dataKey="reach_paid" name="Alcance (Pago)" dot={false} stroke="#8b9dff" />
+                  <Line type="monotone" dataKey="impressions" name="Impressões (total)" dot={false} stroke="#f59e0b" />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="chart-card__empty">Sem dados suficientes no período.</div>
+            )}
+          </div>
+        </div>
+
+        {/* Pizza: Distribuição de Engajamento */}
+        <div className="ads-insights-grid">
+          <div className="card chart-card">
+            <div>
+              <h3 className="chart-card__title">Distribuição de engajamento</h3>
+              <p className="chart-card__subtitle">Curtidas, comentários e compartilhamentos</p>
+            </div>
+            <div className="chart-card__viz">
+              {loadingPage ? (
+                <div className="chart-card__empty">Carregando dados...</div>
+              ) : hasEngagementSplit ? (
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={engagementPieData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={90}
+                      label
+                    >
+                      {engagementPieData.map((_, index) => (
+                        <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="chart-card__empty">Sem dados de engajamento.</div>
+              )}
+            </div>
+          </div>
+
+          {/* Pizza: Impressões – Orgânico x Pago */}
+          <div className="card chart-card">
+            <div>
+              <h3 className="chart-card__title">Impressões por origem</h3>
+              <p className="chart-card__subtitle">Orgânico x Pago</p>
+            </div>
+            <div className="chart-card__viz">
+              {loadingPage ? (
+                <div className="chart-card__empty">Carregando dados...</div>
+              ) : hasImpressionsSplit ? (
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={impressionsSplitData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={90}
+                      label
+                    >
+                      {impressionsSplitData.map((_, index) => (
+                        <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="chart-card__empty">Sem dados de origem de impressões.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </Section>
+
       <Section
         title="Desempenho de anúncios"
-        description="Resumo das campanhas no periódo selecionado."
+        description="Resumo das campanhas no período selecionado."
       >
         {adsError && <div className="alert alert--error">{adsError}</div>}
         <KpiGrid>
@@ -501,62 +559,27 @@ export default function FacebookDashboard() {
           ))}
         </KpiGrid>
 
-        <div className="ads-insights-grid">
-          <div className="card chart-card">
-            <div>
-              <h3 className="chart-card__title">Distribuicao por anuncio</h3>
-              <p className="chart-card__subtitle">Participacao do investimento nos anuncios com maior gasto</p>
-            </div>
-            <div className="chart-card__viz">
-              {loadingAds ? (
-                <div className="chart-card__empty">Carregando dados...</div>
-              ) : hasPieData ? (
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie
-                      data={adsPieData}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={60}
-                      outerRadius={110}
-                      paddingAngle={4}
-                    >
-                      {adsPieData.map((entry, index) => (
-                        <Cell key={entry.adId || entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="chart-card__empty">Nenhum anuncio com gasto no periodo.</div>
-              )}
-            </div>
+        <div className="card chart-card">
+          <div>
+            <h3 className="chart-card__title">Volume por indicador</h3>
+            <p className="chart-card__subtitle">Comparativo de impressões, alcance e cliques</p>
           </div>
-
-          <div className="card chart-card">
-            <div>
-              <h3 className="chart-card__title">Volume por indicador</h3>
-              <p className="chart-card__subtitle">Comparativo de impressões, alcance e cliques</p>
-            </div>
-            <div className="chart-card__viz">
-              {loadingAds ? (
-                <div className="chart-card__empty">Carregando dados...</div>
-              ) : hasBarData ? (
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={totalsBarData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--stroke-40)" />
-                    <XAxis dataKey="name" stroke="var(--text-muted)" />
-                    <YAxis tickFormatter={formatShortNumber} stroke="var(--text-muted)" />
-                    <Tooltip formatter={(value) => formatNumber(Number(value))} />
-                    <Bar dataKey="value" radius={[10, 10, 0, 0]} fill="var(--accent2)" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="chart-card__empty">Sem dados suficientes no periódo.</div>
-              )}
-            </div>
+          <div className="chart-card__viz">
+            {loadingAds ? (
+              <div className="chart-card__empty">Carregando dados...</div>
+            ) : hasBarData ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={totalsBarData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--stroke-40)" />
+                  <XAxis dataKey="name" stroke="var(--text-muted)" />
+                  <YAxis tickFormatter={formatShortNumber} stroke="var(--text-muted)" />
+                  <Tooltip formatter={(value) => formatNumber(Number(value))} />
+                  <Bar dataKey="value" radius={[10, 10, 0, 0]} fill="var(--accent2)" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="chart-card__empty">Sem dados suficientes no período.</div>
+            )}
           </div>
         </div>
 
@@ -583,98 +606,10 @@ export default function FacebookDashboard() {
                 ))}
               </div>
             ) : (
-              <p className="muted">Nenhum anúncio disponível para o periódo.</p>
-            )}
-          </div>
-
-          <div className="card demographics-card">
-            <header className="demographics-card__header">
-              <h3>Demografia</h3>
-              <p>Segmentos com maior alcance</p>
-            </header>
-            <div className="demographics-card__body">
-              <div className="demographics-card__column">
-                <h4>Por gênero</h4>
-                <div className="demographics-card__list">
-                  {genderRows.length > 0 ? (
-                    genderRows.map((row) => (
-                      <div key={row.segment} className="demographics-card__item">
-                        <div className="demographics-card__item-label">
-                          <span>{row.segment}</span>
-                          <span>{formatNumber(row.reach)}</span>
-                        </div>
-                        <div className="demographics-card__progress">
-                          <div
-                            className="demographics-card__progress-bar"
-                            style={{ width: `${Math.max(row.percent || (row.reach > 0 ? 12 : 0), 0)}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="muted">Sem dados.</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="demographics-card__column">
-                <h4>Por faixa etaria</h4>
-                <div className="demographics-card__list">
-                  {ageRows.length > 0 ? (
-                    ageRows.map((row) => (
-                      <div key={row.segment} className="demographics-card__item">
-                        <div className="demographics-card__item-label">
-                          <span>{row.segment}</span>
-                          <span>{formatNumber(row.reach)}</span>
-                        </div>
-                        <div className="demographics-card__progress">
-                          <div
-                            className="demographics-card__progress-bar"
-                            style={{ width: `${Math.max(row.percent || (row.reach > 0 ? 12 : 0), 0)}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="muted">Sem dados.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-            {topSegments.length > 0 && (
-              <footer className="demographics-card__footer">
-                <h4>TOP combinacoes</h4>
-                <div className="demographics-card__chips">
-                  {topSegments.map((segment) => (
-                    <span key={segment.label} className="demographics-card__badge">
-                      {segment.label}
-                      <strong>{formatNumber(segment.reach)}</strong>
-                    </span>
-                  ))}
-                </div>
-              </footer>
+              <p className="muted">Nenhum anúncio disponível para o período.</p>
             )}
           </div>
         </div>
-      </Section>
-
-      {pageError && <div className="alert alert--error">{pageError}</div>}
-
-      <Section
-        title="Resumo orgânico"
-        description="Indicadores principais da pagina no intervalo selecionado."
-      >
-        <KpiGrid>
-          {PAGE_SUMMARY_CARDS.map(({ key, title, hint }) => (
-            <MetricCard
-              key={key}
-              title={title}
-              value={formatMetric(pageMetricsByKey[key])}
-              delta={loadingPage ? null : pageMetricsByKey[key]?.deltaPct}
-              hint={hint}
-            />
-          ))}
-        </KpiGrid>
       </Section>
 
       <Section

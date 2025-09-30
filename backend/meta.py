@@ -4,7 +4,7 @@ import time
 import hmac
 import hashlib
 import requests
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from urllib.parse import urlencode
 
 from dotenv import load_dotenv
@@ -69,6 +69,7 @@ def gget(path: str, params: Optional[dict] = None):
 def sum_values(arr, key="value"):
     return sum((x.get(key, 0) or 0) for x in arr if isinstance(x, dict))
 
+
 # ---- Facebook (organico) ----
 
 def fb_page_window(page_id: str, since: int, until: int):
@@ -86,14 +87,18 @@ def fb_page_window(page_id: str, since: int, until: int):
     reach = sum_values(by("page_impressions_unique"))
     engaged = sum_values(by("page_engaged_users"))
     likes_add = sum_values(by("page_fan_adds_unique"))
-    # agregados por post
+
     total_reac = total_com = total_sha = total_clicks = 0
     url = f"/{page_id}/posts"
     params = {
         "since": since,
         "until": until,
         "limit": 100,
-        "fields": "created_time,permalink_url," "insights.metric(post_impressions,post_engaged_users,post_clicks)," "reactions.summary(true).limit(0),comments.summary(true).limit(0),shares",
+        "fields": (
+            "created_time,permalink_url,"
+            "insights.metric(post_impressions,post_engaged_users,post_clicks),"
+            "reactions.summary(true).limit(0),comments.summary(true).limit(0),shares"
+        ),
     }
     page = gget(url, params)
     while True:
@@ -102,14 +107,13 @@ def fb_page_window(page_id: str, since: int, until: int):
             total_com += ((p_item.get("comments") or {}).get("summary") or {}).get("total_count", 0)
             total_sha += (p_item.get("shares") or {}).get("count", 0)
             ins_values = (p_item.get("insights") or {}).get("data", [])
-            clicks = next((i for i in ins_values if i.get("name") == "post_clicks"), {}).get("values", [{"value": 0}])[0][
-                "value"
-            ]
+            clicks = next((i for i in ins_values if i.get("name") == "post_clicks"), {}).get("values", [{"value": 0}])[0]["value"]
             total_clicks += clicks or 0
         nextp = (page.get("paging") or {}).get("next")
         if not nextp:
             break
         page = requests.get(nextp, timeout=15).json()
+
     interactions = total_reac + total_com + total_sha
     return {
         "impressions": impressions,
@@ -120,10 +124,13 @@ def fb_page_window(page_id: str, since: int, until: int):
         "post_clicks": total_clicks,
     }
 
-# ---- Instagram (organico) ----
 
+# ---- Instagram (orgânico) ----
 
 def ig_window(ig_user_id: str, since: int, until: int):
+    """
+    Métricas de conta + agregados básicos de mídia (para likes/comments/shares/saves).
+    """
     metrics_query = "reach,profile_views,website_clicks,accounts_engaged,total_interactions"
     ins = gget(
         f"/{ig_user_id}/insights",
@@ -146,8 +153,10 @@ def ig_window(ig_user_id: str, since: int, until: int):
     accounts_engaged = sum_values(by("accounts_engaged"))
     total_interactions_metric = sum_values(by("total_interactions"))
 
+    # Agregar métricas por mídia (para likes/comments/shares/saves/impressions)
     sum_likes = sum_comments = sum_shares = sum_saves = 0
     sum_impressions = 0
+
     url = f"/{ig_user_id}/media"
     params = {
         "since": since,
@@ -158,14 +167,12 @@ def ig_window(ig_user_id: str, since: int, until: int):
     page = gget(url, params)
     while True:
         for media in page.get("data", []):
-            sum_likes += media.get("like_count", 0)
-            sum_comments += media.get("comments_count", 0)
+            sum_likes += media.get("like_count", 0) or 0
+            sum_comments += media.get("comments_count", 0) or 0
             try:
                 mi = gget(
                     f"/{media['id']}/insights",
-                    {
-                        "metric": "impressions,reach,plays,shares,saved,likes,comments",
-                    },
+                    {"metric": "impressions,reach,plays,shares,saved,likes,comments"},
                 )
                 for k_item in mi.get("data", []):
                     v = (k_item.get("values") or [{}])[0].get("value", 0) or 0
@@ -182,6 +189,7 @@ def ig_window(ig_user_id: str, since: int, until: int):
         if not nextp:
             break
         page = requests.get(nextp, timeout=15).json()
+
     interactions = total_interactions_metric or (sum_likes + sum_comments + sum_shares + sum_saves)
     return {
         "impressions": sum_impressions,
@@ -190,8 +198,162 @@ def ig_window(ig_user_id: str, since: int, until: int):
         "accounts_engaged": accounts_engaged,
         "profile_views": profile_views,
         "website_clicks": website,
+        "likes": sum_likes,
+        "comments": sum_comments,
+        "shares": sum_shares,
+        "saves": sum_saves,
     }
 
+
+def _safe(val, cast=float):
+    try:
+        return cast(val or 0)
+    except Exception:
+        return 0
+
+
+def ig_organic_summary(ig_user_id: str, since: int, until: int) -> Dict[str, Any]:
+    """
+    - varre mídias no intervalo para calcular:
+      * tops: maior_engajamento, maior_alcance, maior_salvamentos
+      * médias por formato (IMAGE, VIDEO, CAROUSEL_ALBUM)
+    - stories: maior retenção (1 - exits/impressions), replay_rate (taps_back/impressions)
+    """
+    # ===== MÍDIAS DO FEED =====
+    media_fields = "id,media_type,timestamp,like_count,comments_count,permalink,caption,media_url,thumbnail_url"
+    media_res = gget(
+        f"/{ig_user_id}/media",
+        {"since": since, "until": until, "limit": 100, "fields": media_fields},
+    )
+
+    posts: List[Dict[str, Any]] = []
+    format_aggr: Dict[str, Dict[str, float]] = {}
+
+    def aggr_fmt(fmt, reach, interactions):
+        rec = format_aggr.setdefault(fmt, {"reach": 0.0, "interactions": 0.0, "count": 0.0})
+        rec["reach"] += _safe(reach)
+        rec["interactions"] += _safe(interactions)
+        rec["count"] += 1.0
+
+    def score_interactions(item):
+        return _safe(item.get("likes")) + _safe(item.get("comments")) + _safe(item.get("shares")) + _safe(item.get("saves"))
+
+    paging = media_res
+    while True:
+        for it in paging.get("data", []):
+            mid = it.get("id")
+            # insights por mídia
+            insights = {}
+            try:
+                ins = gget(f"/{mid}/insights", {"metric": "impressions,reach,shares,saved,likes,comments,plays"})
+                for row in ins.get("data", []):
+                    insights[row.get("name")] = (row.get("values") or [{}])[0].get("value")
+            except Exception:
+                pass
+
+            likes = it.get("like_count") or insights.get("likes") or 0
+            comments = it.get("comments_count") or insights.get("comments") or 0
+            shares = insights.get("shares") or 0
+            saves = insights.get("saved") or insights.get("saves") or 0
+            reach = insights.get("reach") or 0
+            impressions = insights.get("impressions") or 0
+
+            post_row = {
+                "id": mid,
+                "mediaType": it.get("media_type"),
+                "timestamp": it.get("timestamp"),
+                "permalink": it.get("permalink"),
+                "caption": it.get("caption"),
+                "previewUrl": it.get("media_url") or it.get("thumbnail_url"),
+                "likes": _safe(likes, int),
+                "comments": _safe(comments, int),
+                "shares": _safe(shares, int),
+                "saves": _safe(saves, int),
+                "reach": _safe(reach, int),
+                "impressions": _safe(impressions, int),
+                "total_interactions": _safe(likes, int) + _safe(comments, int) + _safe(shares, int) + _safe(saves, int),
+            }
+            posts.append(post_row)
+            aggr_fmt(post_row["mediaType"] or "OTHER", post_row["reach"], post_row["total_interactions"])
+
+        nextp = (paging.get("paging") or {}).get("next")
+        if not nextp:
+            break
+        paging = requests.get(nextp, timeout=15).json()
+
+    # TOPS
+    def top_by(key):
+        cand = None
+        for p in posts:
+            if cand is None or _safe(p.get(key)) > _safe(cand.get(key)):
+                cand = p
+        return cand
+
+    tops = {
+        "post_maior_engajamento": top_by("total_interactions"),
+        "post_maior_alcance": top_by("reach"),
+        "post_maior_salvamentos": top_by("saves"),
+    }
+
+    # MÉDIAS POR FORMATO
+    by_format = []
+    for fmt, rec in format_aggr.items():
+        avg = None
+        if rec["count"] > 0 and rec["reach"] > 0:
+            avg = (rec["interactions"] / rec["reach"]) * 100.0
+        by_format.append({
+            "format": fmt,
+            "avg_engagement_rate": round(avg, 2) if avg is not None else None,
+            "avg_interactions": round(rec["interactions"] / rec["count"], 2) if rec["count"] else None,
+            "avg_reach": round(rec["reach"] / rec["count"], 2) if rec["count"] else None,
+            "count": int(rec["count"]),
+        })
+
+    # ===== STORIES =====
+    # Algumas contas podem não retornar; tratamos de forma resiliente
+    top_story = None
+    try:
+        stories_res = gget(f"/{ig_user_id}/stories", {"since": since, "until": until, "limit": 100, "fields": "id,permalink,timestamp"})
+        best = None
+        page_s = stories_res
+        while True:
+            for st in page_s.get("data", []):
+                try:
+                    sins = gget(f"/{st['id']}/insights", {"metric": "impressions,exits,taps_forward,taps_back,replies"})
+                except Exception:
+                    continue
+                vals = {row.get("name"): (row.get("values") or [{}])[0].get("value") for row in sins.get("data", [])}
+                imp = _safe(vals.get("impressions"), int)
+                exits = _safe(vals.get("exits"), int)
+                taps_back = _safe(vals.get("taps_back"), int)
+                if imp <= 0:
+                    continue
+                retention = 1.0 - (exits / imp)
+                replay_rate = taps_back / imp
+                row = {
+                    "id": st.get("id"),
+                    "permalink": st.get("permalink"),
+                    "timestamp": st.get("timestamp"),
+                    "impressions": imp,
+                    "exits": exits,
+                    "retention": round(retention * 100.0, 2),
+                    "replay_rate": round(replay_rate * 100.0, 2),
+                }
+                if best is None or row["retention"] > best["retention"]:
+                    best = row
+            nextp = (page_s.get("paging") or {}).get("next")
+            if not nextp:
+                break
+            page_s = requests.get(nextp, timeout=15).json()
+        top_story = best
+    except MetaAPIError:
+        top_story = None
+
+    return {
+        "tops": tops,
+        "formats": by_format,
+        "top_story": top_story,
+    }
 
 
 def ig_recent_posts(ig_user_id: str, limit: int = 6):
@@ -298,10 +460,8 @@ def fb_recent_posts(page_id: str, limit: int = 6):
         },
     }
 
+
 # ---- Ads (Marketing API) ----
-
-
-
 
 def ads_highlights(act_id: str, since_str: str, until_str: str):
     fields = "campaign_name,adset_name,ad_name,ad_id,impressions,reach,clicks,spend,ctr,cpc,cpm,frequency,actions"
@@ -316,13 +476,11 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
         },
     )
     best_ad = None
-    totals = {
-        "spend": 0.0,
-        "impressions": 0,
-        "reach": 0,
-        "clicks": 0,
-    }
+    totals = {"spend": 0.0, "impressions": 0, "reach": 0, "clicks": 0}
     actions_totals = {}
+    # buckets de video
+    v3 = v10 = thru = 0.0
+    vavg = 0.0
 
     for row in res.get("data", []):
         spend = float(row.get("spend", 0) or 0)
@@ -345,6 +503,15 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
                 continue
             value = float(action.get("value", 0) or 0)
             actions_totals[action_type] = actions_totals.get(action_type, 0.0) + value
+            # capturar ações típicas de vídeo
+            if action_type == "video_3_sec_watched_actions":
+                v3 += value
+            elif action_type == "video_10_sec_watched_actions":
+                v10 += value
+            elif action_type in ("thruplay", "video_15_sec_watched_actions"):
+                thru += value
+            elif action_type == "video_avg_time_watched_actions":
+                vavg += value
 
         if best_ad is None or ctr > float(best_ad.get("ctr", 0) or 0):
             best_ad = {
@@ -374,12 +541,21 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
         for key, value in sorted(actions_totals.items(), key=lambda item: item[1], reverse=True)
     ]
 
-    demographics = {
-        "byGender": [],
-        "byAge": [],
-        "topSegments": [],
+    # resumo de vídeo
+    video_summary = {
+        "video_views_3s": int(v3),
+        "video_views_10s": int(v10),
+        "thruplays": int(thru),
+        "video_avg_time_watched": float(vavg) if vavg > 0 else None,
+        "video_completion_rate": round((thru / v3) * 100.0, 2) if v3 > 0 else None,
+        "drop_off_points": [
+            {"bucket": "0-3s", "views": int(v3)},
+            {"bucket": "3-10s", "views": int(v10)},
+            {"bucket": "10s–thruplay", "views": int(thru)},
+        ],
     }
 
+    # Demografia (igual ao seu)
     try:
         demo_res = gget(
             f"/{act_id}/insights",
@@ -425,31 +601,23 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
         combo_key = (age, gender)
         combo_entry = combo_totals.setdefault(
             combo_key,
-            {
-                "age": age,
-                "gender": gender,
-                "reach": 0,
-                "impressions": 0,
-                "spend": 0.0,
-            },
+            {"age": age, "gender": gender, "reach": 0, "impressions": 0, "spend": 0.0},
         )
         combo_entry["reach"] += reach
         combo_entry["impressions"] += impressions
         combo_entry["spend"] += spend
 
-    demographics["byGender"] = [
-        {"segment": key, **values}
-        for key, values in sorted(gender_totals.items(), key=lambda item: item[1]["reach"], reverse=True)
-    ]
-    demographics["byAge"] = [
-        {"segment": key, **values}
-        for key, values in sorted(age_totals.items(), key=lambda item: item[1]["reach"], reverse=True)
-    ]
-    demographics["topSegments"] = sorted(
-        combo_totals.values(),
-        key=lambda item: item["reach"],
-        reverse=True,
-    )[:5]
+    demographics = {
+        "byGender": [
+            {"segment": key, **values}
+            for key, values in sorted(gender_totals.items(), key=lambda item: item[1]["reach"], reverse=True)
+        ],
+        "byAge": [
+            {"segment": key, **values}
+            for key, values in sorted(age_totals.items(), key=lambda item: item[1]["reach"], reverse=True)
+        ],
+        "topSegments": sorted(combo_totals.values(), key=lambda item: item["reach"], reverse=True)[:5],
+    }
 
     return {
         "best_ad": best_ad,
@@ -457,4 +625,5 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
         "averages": averages,
         "actions": actions_summary,
         "demographics": demographics,
+        "video_summary": video_summary,  # NOVO
     }
