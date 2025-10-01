@@ -33,16 +33,17 @@ def appsecret_proof(token: Optional[str]) -> Optional[str]:
     return hmac.new(SECRET.encode(), token.encode(), hashlib.sha256).hexdigest()
 
 
-def gget(path: str, params: Optional[dict] = None):
-    if not TOKEN:
+def gget(path: str, params: Optional[dict] = None, token: Optional[str] = None):
+    request_token = token or TOKEN
+    if not request_token:
         raise RuntimeError("META_SYSTEM_USER_TOKEN is not configured")
-    p = {"access_token": TOKEN}
-    proof = appsecret_proof(TOKEN)
+    query = {"access_token": request_token}
+    proof = appsecret_proof(request_token)
     if proof:
-        p["appsecret_proof"] = proof
+        query["appsecret_proof"] = proof
     if params:
-        p.update(params)
-    url = f"{BASE}{path}?{urlencode(p, doseq=True)}"
+        query.update(params)
+    url = f"{BASE}{path}?{urlencode(query, doseq=True)}"
     for i in range(3):  # retry simples
         r = requests.get(url, timeout=15)
         if r.status_code in (429, 500, 502, 503) and i < 2:
@@ -66,63 +67,197 @@ def gget(path: str, params: Optional[dict] = None):
     return {"data": []}
 
 
+PAGE_TOKEN_CACHE: Dict[str, Dict[str, Any]] = {}
+PAGE_TOKEN_TTL = int(os.getenv("META_PAGE_TOKEN_TTL", "3300"))
+
+def get_page_access_token(page_id: str) -> str:
+    now = time.time()
+    cached = PAGE_TOKEN_CACHE.get(page_id)
+    if cached and cached.get("expires_at", 0) > now:
+        return cached["token"]
+    data = gget(f"/{page_id}", {"fields": "access_token"})
+    token_value = data.get("access_token") if isinstance(data, dict) else None
+    if not token_value:
+        raise RuntimeError(f"Could not fetch page access token for {page_id}")
+    PAGE_TOKEN_CACHE[page_id] = {"token": token_value, "expires_at": now + PAGE_TOKEN_TTL}
+    return token_value
+
+
 def sum_values(arr, key="value"):
     return sum((x.get(key, 0) or 0) for x in arr if isinstance(x, dict))
+
+
+def _coerce_number(value: Any) -> Optional[float]:
+    if isinstance(value, bool):
+        return float(value)
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value.replace(',', '.'))
+        except ValueError:
+            return None
+    if isinstance(value, dict):
+        total = 0.0
+        has_value = False
+        for inner in value.values():
+            coerced = _coerce_number(inner)
+            if coerced is not None:
+                total += coerced
+                has_value = True
+        return total if has_value else None
+    return None
+
+
+def extract_insight_values(payload: Dict[str, Any], name: str) -> List[float]:
+    if not isinstance(payload, dict):
+        return []
+    for item in payload.get('data', []):
+        if item.get('name') == name:
+            values: List[float] = []
+            for entry in item.get('values') or []:
+                if not isinstance(entry, dict):
+                    continue
+                coerced = _coerce_number(entry.get('value'))
+                if coerced is not None:
+                    values.append(coerced)
+            return values
+    return []
+
+
+def insight_value_from_list(items: List[Dict[str, Any]], name: str) -> Optional[float]:
+    if not isinstance(items, list):
+        return None
+    for item in items:
+        if item.get('name') == name:
+            values = item.get('values') or []
+            if not values:
+                return None
+            first = values[0]
+            if isinstance(first, dict):
+                return _coerce_number(first.get('value'))
+            return _coerce_number(first)
+    return None
 
 
 # ---- Facebook (organico) ----
 
 def fb_page_window(page_id: str, since: int, until: int):
-    metrics = "page_impressions,page_impressions_unique,page_engaged_users,page_fan_adds_unique"
+    page_token = get_page_access_token(page_id)
+    metrics = "page_impressions,page_impressions_unique,page_post_engagements,page_fan_adds_unique"
+    insight_params = {"metric": metrics, "period": "day", "since": since, "until": until}
     ins = gget(
         f"/{page_id}/insights",
-        {"metric": metrics, "period": "day", "since": since, "until": until},
+        insight_params,
+        token=page_token,
     )
 
-    def by(name):
-        m = next((m for m in ins.get("data", []) if m.get("name") == name), {})
-        return m.get("values", [])
+    def sum_series(name: str) -> int:
+        values = extract_insight_values(ins, name)
+        return int(round(sum(values))) if values else 0
 
-    impressions = sum_values(by("page_impressions"))
-    reach = sum_values(by("page_impressions_unique"))
-    engaged = sum_values(by("page_engaged_users"))
-    likes_add = sum_values(by("page_fan_adds_unique"))
+    impressions = sum_series("page_impressions")
+    reach = sum_series("page_impressions_unique")
+    engaged = sum_series("page_post_engagements")
+    likes_add = sum_series("page_fan_adds_unique")
 
-    total_reac = total_com = total_sha = total_clicks = 0
+    total_reac = 0
+    total_com = 0
+    total_sha = 0
+    total_clicks = 0
     url = f"/{page_id}/posts"
-    params = {
+    base_post_params = {
         "since": since,
         "until": until,
         "limit": 100,
         "fields": (
             "created_time,permalink_url,"
-            "insights.metric(post_impressions,post_engaged_users,post_clicks),"
+            "insights.metric(post_impressions,post_impressions_unique,post_engaged_users,post_clicks),"
             "reactions.summary(true).limit(0),comments.summary(true).limit(0),shares"
         ),
     }
-    page = gget(url, params)
+    page = gget(url, base_post_params, token=page_token)
     while True:
         for p_item in page.get("data", []):
-            total_reac += ((p_item.get("reactions") or {}).get("summary") or {}).get("total_count", 0)
-            total_com += ((p_item.get("comments") or {}).get("summary") or {}).get("total_count", 0)
-            total_sha += (p_item.get("shares") or {}).get("count", 0)
+            total_reac += int(((p_item.get("reactions") or {}).get("summary") or {}).get("total_count", 0) or 0)
+            total_com += int(((p_item.get("comments") or {}).get("summary") or {}).get("total_count", 0) or 0)
+            total_sha += int((p_item.get("shares") or {}).get("count", 0) or 0)
             ins_values = (p_item.get("insights") or {}).get("data", [])
-            clicks = next((i for i in ins_values if i.get("name") == "post_clicks"), {}).get("values", [{"value": 0}])[0]["value"]
-            total_clicks += clicks or 0
-        nextp = (page.get("paging") or {}).get("next")
-        if not nextp:
+            clicks_value = insight_value_from_list(ins_values, "post_clicks")
+            if clicks_value:
+                total_clicks += int(round(clicks_value))
+        paging = page.get("paging") or {}
+        cursor_after = (paging.get("cursors") or {}).get("after")
+        if not cursor_after:
             break
-        page = requests.get(nextp, timeout=15).json()
+        next_params = dict(base_post_params)
+        next_params["after"] = cursor_after
+        page = gget(url, next_params, token=page_token)
 
-    interactions = total_reac + total_com + total_sha
+    engagement_total = total_reac + total_com + total_sha
+    video_metrics = fetch_page_video_metrics(page_id, page_token, since, until)
+
     return {
         "impressions": impressions,
         "reach": reach,
-        "engaged": engaged,
+        "post_engaged": engaged,
         "likes_add": likes_add,
-        "interactions": interactions,
+        "engagement": {
+            "total": engagement_total,
+            "reactions": total_reac,
+            "comments": total_com,
+            "shares": total_sha,
+        },
+        "video": video_metrics,
         "post_clicks": total_clicks,
     }
+
+
+def fetch_page_video_metrics(page_id: str, page_token: str, since: int, until: int) -> Dict[str, Optional[float]]:
+    metric_candidates = {
+        "views_10s": ["page_video_views_10s"],
+        "views_1m": ["page_video_views_60s_exclusive", "page_video_views_60s"],
+        "avg_watch_time": ["page_video_avg_time_watched"],
+        "watch_time_total": ["page_video_view_time"],
+    }
+    results: Dict[str, Optional[float]] = {
+        "views_10s": None,
+        "views_1m": None,
+        "avg_watch_time": None,
+        "watch_time_total": None,
+    }
+
+    for key, metric_names in metric_candidates.items():
+        for metric_name in metric_names:
+            try:
+                payload = gget(
+                    f"/{page_id}/insights",
+                    {
+                        "metric": metric_name,
+                        "period": "day",
+                        "since": since,
+                        "until": until,
+                    },
+                    token=page_token,
+                )
+            except MetaAPIError:
+                continue
+            values = extract_insight_values(payload, metric_name)
+            if not values:
+                continue
+            if key == "avg_watch_time":
+                results[key] = sum(values) / len(values) if values else None
+            else:
+                results[key] = sum(values)
+            break
+
+    if results["views_10s"] is not None:
+        results["views_10s"] = int(round(results["views_10s"]))
+    if results["views_1m"] is not None:
+        results["views_1m"] = int(round(results["views_1m"]))
+    return results
+
+
 
 
 # ---- Instagram (orgânico) ----
@@ -401,6 +536,7 @@ def ig_recent_posts(ig_user_id: str, limit: int = 6):
 
 
 def fb_recent_posts(page_id: str, limit: int = 6):
+    page_token = get_page_access_token(page_id)
     try:
         limit_int = int(limit or 6)
     except (TypeError, ValueError):
@@ -409,6 +545,7 @@ def fb_recent_posts(page_id: str, limit: int = 6):
     fields = (
         "id,created_time,message,permalink_url,full_picture,story,"
         "attachments{media_type,type,media,url,description,subattachments},"
+        "insights.metric(post_impressions,post_impressions_unique,post_engaged_users,post_clicks),"
         "reactions.summary(true).limit(0),comments.summary(true).limit(0),shares"
     )
     res = gget(
@@ -417,43 +554,88 @@ def fb_recent_posts(page_id: str, limit: int = 6):
             "limit": limit_sanitized,
             "fields": fields,
         },
+        token=page_token,
     )
-    posts = []
+    posts: List[Dict[str, Any]] = []
+
+    def extract_preview(att_list):
+        for att in att_list:
+            media = att.get("media") or {}
+            image = (media.get("image") or {}).get("src") or media.get("source")
+            if image:
+                return image
+            subatts = (att.get("subattachments") or {}).get("data", [])
+            preview = extract_preview(subatts)
+            if preview:
+                return preview
+            url = att.get("url")
+            if url:
+                return url
+        return None
+
     for item in res.get("data", []):
         attachments = (item.get("attachments") or {}).get("data", [])
-
-        def extract_preview(att_list):
-            for att in att_list:
-                media = att.get("media") or {}
-                image = (media.get("image") or {}).get("src") or media.get("source")
-                if image:
-                    return image
-                subatts = (att.get("subattachments") or {}).get("data", [])
-                preview = extract_preview(subatts)
-                if preview:
-                    return preview
-                url = att.get("url")
-                if url:
-                    return url
-            return None
-
         preview = item.get("full_picture") or extract_preview(attachments)
-        reactions = ((item.get("reactions") or {}).get("summary") or {}).get("total_count")
-        comments = ((item.get("comments") or {}).get("summary") or {}).get("total_count")
-        shares = (item.get("shares") or {}).get("count")
+        reactions = ((item.get("reactions") or {}).get("summary") or {}).get("total_count", 0) or 0
+        comments = ((item.get("comments") or {}).get("summary") or {}).get("total_count", 0) or 0
+        shares = (item.get("shares") or {}).get("count", 0) or 0
+        insights_data = (item.get("insights") or {}).get("data", [])
+        impressions_val = insight_value_from_list(insights_data, "post_impressions")
+        reach_val = insight_value_from_list(insights_data, "post_impressions_unique")
+        engaged_users_val = insight_value_from_list(insights_data, "post_engaged_users")
+        clicks_val = insight_value_from_list(insights_data, "post_clicks")
+
+        impressions = int(round(impressions_val)) if impressions_val is not None else None
+        reach = int(round(reach_val)) if reach_val is not None else impressions
+        engaged_users = int(round(engaged_users_val)) if engaged_users_val is not None else None
+        post_clicks = int(round(clicks_val)) if clicks_val is not None else None
+        engagement_total = int(reactions) + int(comments) + int(shares)
+
         posts.append({
             "id": item.get("id"),
             "message": item.get("message") or item.get("story"),
             "permalink": item.get("permalink_url"),
             "timestamp": item.get("created_time"),
             "previewUrl": preview,
-            "reactions": reactions,
-            "comments": comments,
-            "shares": shares,
+            "reactions": int(reactions),
+            "comments": int(comments),
+            "shares": int(shares),
+            "impressions": impressions,
+            "reach": reach,
+            "engagedUsers": engaged_users,
+            "clicks": post_clicks,
+            "engagementTotal": engagement_total,
         })
+
+    def top_post(metric_key: str) -> Optional[Dict[str, Any]]:
+        best: Optional[Dict[str, Any]] = None
+        best_value: float = -1.0
+        for post in posts:
+            value = post.get(metric_key)
+            numeric = _coerce_number(value)
+            if numeric is None:
+                numeric = 0.0
+            if numeric > best_value:
+                best = post
+                best_value = numeric
+        if not best:
+            return None
+        clone = dict(best)
+        clone["metricKey"] = metric_key
+        clone["metricValue"] = best.get(metric_key)
+        return clone
+
+    highlights = {
+        "post_top_engagement": top_post("engagementTotal"),
+        "post_top_reach": top_post("reach"),
+        "post_top_shares": top_post("shares"),
+        "post_top_comments": top_post("comments"),
+    }
+
     paging = res.get("paging") or {}
     return {
         "posts": posts,
+        "highlights": highlights,
         "paging": {
             "next": bool(paging.get("next")),
             "previous": bool(paging.get("previous")),

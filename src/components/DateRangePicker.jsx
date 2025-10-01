@@ -1,12 +1,11 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css"
+import "react-datepicker/dist/react-datepicker.css";
 import { addDays, endOfDay, format, isSameDay, isWithinInterval, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Filter } from "lucide-react";
 import useQueryState from "../hooks/useQueryState";
 
-// utilidades
 const parseDateParam = (value) => {
   if (!value) return null;
   const numeric = Number(value);
@@ -15,26 +14,25 @@ const parseDateParam = (value) => {
   const d = new Date(ms);
   return Number.isNaN(d.getTime()) ? null : d;
 };
-const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
-const fmt = (d) => (d ? format(d, "dd/MM/yyyy") : "");
 
-const RangeInput = forwardRef(
-  ({ startText, endText, placeholder, onClick, onKeyDown, isOpen }, ref) => (
-    <button
-      ref={ref}
-      type="button"
-      onClick={onClick}
-      onKeyDown={onKeyDown}
-      className={`flex items-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-left hover:border-slate-400 dark:hover:border-slate-600 transition shadow-sm
-      ${isOpen ? "ring-2 ring-brand-500" : ""}`}
-    >
-      <Calendar size={16} className="text-slate-500" />
-      <span className="text-sm text-slate-800 dark:text-slate-200">
-        {startText && endText ? `${startText} — ${endText}` : placeholder}
-      </span>
-    </button>
-  )
-);
+const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
+const fmt = (d) => (d ? format(d, "MMM dd, yy", { locale: ptBR }).toUpperCase() : "");
+
+const RangeInput = forwardRef(({ startText, endText, placeholder, onClick, onKeyDown, isOpen }, ref) => (
+  <button
+    ref={ref}
+    type="button"
+    onClick={onClick}
+    onKeyDown={onKeyDown}
+    className="date-range-btn"
+    data-open={isOpen || undefined}
+  >
+    <span className="date-range-btn__text">
+      {startText && endText ? `${startText} — ${endText}` : placeholder}
+    </span>
+    <Filter size={16} className="date-range-btn__icon" />
+  </button>
+));
 RangeInput.displayName = "RangeInput";
 
 export default function DateRangePicker() {
@@ -111,34 +109,13 @@ export default function DateRangePicker() {
     return undefined;
   };
 
-  // container bonitão
   const CalendarFrame = ({ className, children }) => (
-  <div className={`${className || ""} rdp-container rdp-container--bg`}>
-      {/* presets topo */}
-      <div className="rdp-presets">
-        {[7, 15, 30, 60].map((d) => (
-          <button
-            key={d}
-            type="button"
-            className="rdp-preset-btn"
-            onClick={() => {
-              const s = startOfDay(addDays(defaultEnd, -(d - 1)));
-              const e = defaultEnd;
-              setRange([s, e]);
-              updateQuery(s, e);
-              datePickerRef.current?.setOpen(false);
-            }}
-          >
-            <span className="rdp-preset-label">Últimos</span>
-            <strong className="rdp-preset-days">{d}d</strong>
-          </button>
-        ))}
-      </div>
+    <div className={`rdp-container ${className || ""}`}>
       {children}
       <div className="rdp-footer">
         <button
           type="button"
-          className="rdp-btn"
+          className="rdp-btn rdp-btn--secondary"
           onClick={() => {
             setRange([null, null]);
             updateQuery(null, null);
@@ -151,37 +128,44 @@ export default function DateRangePicker() {
           type="button"
           className="rdp-btn rdp-btn--primary"
           onClick={() => {
-            // garante que a query seja atualizada quando o usuário clicar aplicar
             if (startDate && endDate) updateQuery(startDate, endDate);
             datePickerRef.current?.setOpen(false);
           }}
         >
-          Aplicar
+          Aplicar período
         </button>
       </div>
-      {/* estilos mínimos específicos para melhorar visual do range */}
-      <style>{`
-        .rdp-container { width: 360px; padding: 12px; }
-        .rdp-container--bg { background: #ffffff; border-radius: 12px; box-shadow: 0 8px 24px rgba(2,6,23,0.6); border: 1px solid rgba(255,255,255,0.04); }
-        .rdp-presets { display:flex; gap:10px; margin-bottom:10px; }
-        .rdp-preset-btn { flex:1; background:transparent; border-radius:10px; padding:6px 10px; border:1px solid rgba(255,255,255,0.06); font-size:12px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; }
-        .rdp-preset-label { font-size:11px; color:#94a3b8; }
-        .rdp-preset-days { font-size:14px; color:#0ea5a4; }
-        .rdp-preset-btn:hover { background:rgba(2,6,23,0.04); }
-        .rdp-footer { display:flex; justify-content:space-between; gap:8px; margin-top:10px; }
-        .rdp-btn { padding:8px 12px; border-radius:10px; border:1px solid rgba(2,6,23,0.06); background:#fff; cursor:pointer; }
-        .rdp-btn--primary { background:linear-gradient(180deg,#06b6d4,#0891b2); color:#fff; border: none; }
-        .rdp-day--inrange { background: linear-gradient(90deg, rgba(6,182,212,0.12), rgba(8,145,178,0.12)); border-radius:0 !important; }
-        .rdp-day--endpoint { background: #06b6d4; color: white !important; border-radius:6px !important; }
-        .rdp-wrapper .react-datepicker__day--in-range { background: transparent; }
-        /* popper wrapper force background if parent theme dark */
-        .rdp-popper, .rdp-container--bg { background: #ffffff !important; }
-      `}</style>
     </div>
   );
 
+  const presets = [
+    { days: 7, label: '7d' },
+    { days: 15, label: '15d' },
+    { days: 30, label: '30d' },
+    { days: 60, label: '60d' }
+  ];
+
   return (
-    <div className="inline-flex">
+    <div className="date-range-wrapper">
+      {presets.map(({ days, label }) => {
+        const isActive = startDate && endDate &&
+          Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1 === days;
+        return (
+          <button
+            key={days}
+            type="button"
+            className={`date-range-preset ${isActive ? 'date-range-preset--active' : ''}`}
+            onClick={() => {
+              const s = startOfDay(addDays(defaultEnd, -(days - 1)));
+              const e = defaultEnd;
+              setRange([s, e]);
+              updateQuery(s, e);
+            }}
+          >
+            {label}
+          </button>
+        );
+      })}
       <DatePicker
         ref={datePickerRef}
         locale={ptBR}
@@ -192,11 +176,9 @@ export default function DateRangePicker() {
         selectsRange
         monthsShown={1}
         shouldCloseOnSelect={false}
-        calendarStartDay={1}
-        fixedHeight
+        calendarStartDay={0}
         dateFormat="dd/MM/yyyy"
         showPopperArrow={false}
-        wrapperClassName="rdp-wrapper"
         popperClassName="rdp-popper"
         calendarContainer={CalendarFrame}
         renderCustomHeader={({

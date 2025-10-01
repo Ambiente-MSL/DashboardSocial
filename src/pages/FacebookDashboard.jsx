@@ -1,7 +1,7 @@
 // pages/FacebookDashboard.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { ExternalLink, MessageCircle, Share2, ThumbsUp, Trophy } from "lucide-react";
+import { ArrowDown, ArrowUp, ExternalLink, MessageCircle, Share2, ThumbsUp, Trophy } from "lucide-react";
 import {
   ResponsiveContainer,
   PieChart,
@@ -15,7 +15,7 @@ import {
   YAxis,
   CartesianGrid,
   LineChart,
-  Line,
+  Line
 } from "recharts";
 import Topbar from "../components/Topbar";
 import Section from "../components/Section";
@@ -26,7 +26,7 @@ import { accounts } from "../data/accounts";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const DEFAULT_ACCOUNT_ID = accounts[0]?.id || "";
-const PIE_COLORS = ["#2af0a3", "#8b9dff", "#f59e0b", "#f472b6", "#38bdf8", "#a855f7"];
+const PIE_COLORS = ["#06b6d4", "#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981"];
 
 const toNumber = (value) => {
   if (value == null) return null;
@@ -73,11 +73,67 @@ const formatShortNumber = (value) => {
   return value.toLocaleString("pt-BR");
 };
 
-const PAGE_SUMMARY_CARDS = [
-  { key: "reach", title: "Alcance do período", hint: "Pessoas alcançadas (orgânico + pago)." },
-  { key: "impressions", title: "Impressões", hint: "Visualizações dos posts (orgânico + pago)." },
-  { key: "post_engagement", title: "Interações", hint: "Reações + comentários + compartilhamentos." },
-  { key: "profile_link_clicks", title: "Cliques em links", hint: "Cliques em links nos posts (proxy)." },
+const FACEBOOK_CARD_CONFIG = [
+  {
+    key: "reach",
+    title: "Alcance orgânico",
+    hint: "Pessoas alcançadas no período.",
+  },
+  {
+    key: "post_engagement_total",
+    title: "Engajamento Post",
+    hint: "Reações + comentários + compartilhamentos.",
+    type: "engagement",
+  },
+  {
+    key: "video_views_10s",
+    title: 'Views de 10+ seg - "ficou interessado"',
+    hint: "Quantidade de pessoas que assistiram pelo menos 10 segundos.",
+  },
+  {
+    key: "video_views_1m",
+    title: 'Views de 1+ min - "realmente assistiu"',
+    hint: "Visualizações acima de um minuto.",
+  },
+  {
+    key: "video_avg_watch_time",
+    title: "Tempo médio de visualização",
+    hint: "Duração média assistida por pessoa.",
+    format: "duration",
+  },
+  {
+    key: "video_watch_time_total",
+    title: "Soma total de tempo assistido",
+    hint: "Tempo acumulado de visualização dos vídeos.",
+    format: "duration",
+  },
+];
+
+const POST_HIGHLIGHT_CONFIG = [
+  {
+    key: "post_top_engagement",
+    label: "Post campeão absoluto de engajamento",
+    metricKey: "engagementTotal",
+    metricLabel: "Engajamento total",
+  },
+  {
+    key: "post_top_reach",
+    label: "Post que alcançou mais pessoas",
+    metricKey: "reach",
+    metricLabel: "Alcance",
+  },
+  {
+    key: "post_top_shares",
+    label: "Post mais compartilhado (potencial viral)",
+    metricKey: "shares",
+    metricLabel: "Compartilhamentos",
+  },
+  {
+    key: "post_top_comments",
+    label: "Post que gerou mais discussão",
+    metricKey: "comments",
+    metricLabel: "Comentários",
+  },
 ];
 
 const formatDate = (iso) => {
@@ -96,6 +152,24 @@ const truncate = (text, length = 180) => {
 const formatNumber = (value) => {
   if (!Number.isFinite(value)) return "-";
   return Math.trunc(value).toLocaleString("pt-BR");
+};
+
+const formatDuration = (value) => {
+  if (!Number.isFinite(value)) return "-";
+  let seconds = Math.round(Math.max(0, Number(value)));
+  if (seconds > 1_000_000) {
+    seconds = Math.round(seconds / 1000);
+  }
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remaining = seconds % 60;
+  if (hours > 0) {
+    return `${hours}h ${minutes}min`;
+  }
+  if (minutes > 0) {
+    return `${minutes}min ${remaining}s`;
+  }
+  return `${remaining}s`;
 };
 
 const formatPercent = (value) => {
@@ -123,10 +197,9 @@ export default function FacebookDashboard() {
   const [pageMetrics, setPageMetrics] = useState([]);
   const [pageError, setPageError] = useState("");
   const [loadingPage, setLoadingPage] = useState(false);
-  const [pageSeries, setPageSeries] = useState([]);
-  const [pageSplits, setPageSplits] = useState({ impressions: {}, reach: {}, engagement: {} });
+  const [pageBreakdowns, setPageBreakdowns] = useState({ engagement: {}, video: {} });
 
-  const [posts, setPosts] = useState([]);
+  const [postHighlights, setPostHighlights] = useState({});
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [postsError, setPostsError] = useState("");
 
@@ -144,9 +217,8 @@ export default function FacebookDashboard() {
   useEffect(() => {
     if (!accountConfig?.facebookPageId) {
       setPageMetrics([]);
-      setPageSeries([]);
-      setPageSplits({ impressions: {}, reach: {}, engagement: {} });
-      setPageError("Pagina do Facebook nao configurada.");
+      setPageBreakdowns({ engagement: {}, video: {} });
+      setPageError("Página do Facebook não configurada.");
       return;
     }
 
@@ -166,15 +238,16 @@ export default function FacebookDashboard() {
         const raw = await response.text();
         const json = safeParseJson(raw) || {};
         if (!response.ok) {
-          throw new Error(describeApiError(json, "Falha ao carregar metricas de pagina."));
+          throw new Error(describeApiError(json, "Falha ao carregar métricas de página."));
         }
         setPageMetrics(json.metrics || []);
-        setPageSeries(Array.isArray(json.series) ? json.series : []);
-        setPageSplits(json.splits || { impressions: {}, reach: {}, engagement: {} });
+        setPageBreakdowns(json.breakdowns || { engagement: {}, video: {} });
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error(err);
-          setPageError(err.message || "Nao foi possivel carregar as metricas de pagina.");
+          setPageMetrics([]);
+          setPageBreakdowns({ engagement: {}, video: {} });
+          setPageError(err.message || "Não foi possível carregar as métricas de página.");
         }
       } finally {
         setLoadingPage(false);
@@ -187,8 +260,8 @@ export default function FacebookDashboard() {
 
   useEffect(() => {
     if (!accountConfig?.facebookPageId) {
-      setPosts([]);
-      setPostsError("Pagina do Facebook nao configurada.");
+      setPostHighlights({});
+      setPostsError("Página do Facebook não configurada.");
       return;
     }
 
@@ -200,7 +273,7 @@ export default function FacebookDashboard() {
       try {
         const params = new URLSearchParams({
           pageId: accountConfig.facebookPageId,
-          limit: "6",
+          limit: "10",
         });
         const url = `${API_BASE_URL}/api/facebook/posts?${params.toString()}`;
         const response = await fetch(url, { signal: controller.signal });
@@ -209,11 +282,12 @@ export default function FacebookDashboard() {
         if (!response.ok) {
           throw new Error(describeApiError(json, "Falha ao carregar posts do Facebook."));
         }
-        setPosts(json.posts || []);
+        setPostHighlights(json.highlights || {});
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error(err);
-          setPostsError(err.message || "Nao foi possivel carregar os posts recentes.");
+          setPostHighlights({});
+          setPostsError(err.message || "Não foi possível carregar os posts recentes.");
         }
       } finally {
         setLoadingPosts(false);
@@ -234,7 +308,7 @@ export default function FacebookDashboard() {
         demographics: {},
         ads_breakdown: [],
       });
-      setAdsError("Conta de anuncios nao configurada.");
+      setAdsError("Conta de anúncios não configurada.");
       return;
     }
 
@@ -257,7 +331,7 @@ export default function FacebookDashboard() {
         const raw = await response.text();
         const json = safeParseJson(raw) || {};
         if (!response.ok) {
-          throw new Error(describeApiError(json, "Falha ao carregar metricas de anuncios."));
+          throw new Error(describeApiError(json, "Falha ao carregar métricas de anúncios."));
         }
         setAdsData({
           best_ad: null,
@@ -271,7 +345,7 @@ export default function FacebookDashboard() {
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error(err);
-          setAdsError(err.message || "Nao foi possivel carregar os destaques de anuncios.");
+          setAdsError(err.message || "Não foi possível carregar os destaques de anúncios.");
         }
       } finally {
         setLoadingAds(false);
@@ -290,125 +364,193 @@ export default function FacebookDashboard() {
     return map;
   }, [pageMetrics]);
 
-  const formatMetric = (metric) => {
-    if (loadingPage) return "...";
+  const formatMetricValue = (metric, config) => {
     if (!metric) return "-";
-    const { value } = metric;
-    if (value == null) return "-";
-    return typeof value === "number" ? value.toLocaleString("pt-BR") : String(value);
+    const raw = metric.value;
+    if (raw == null) return "-";
+    if (config?.format === "duration") {
+      return formatDuration(raw);
+    }
+    if (Number.isFinite(raw)) {
+      return formatNumber(raw);
+    }
+    return String(raw);
   };
 
-  const renderFbPostCard = (post) => (
-    <article key={post.id} className="media-card">
-      <a
-        href={post.permalink || "#"}
-        target="_blank"
-        rel="noreferrer"
-        className="media-card__preview"
-        aria-label="Abrir publicacao no Facebook"
-      >
-        {post.previewUrl ? (
-          <img src={post.previewUrl} alt={truncate(post.message || "Publicacao do Facebook", 80)} loading="lazy" />
-        ) : (
-          <div className="media-card__placeholder">Previa indisponivel</div>
-        )}
-      </a>
-      <div className="media-card__body">
-        <header className="media-card__meta">
-          <span>{formatDate(post.timestamp) || "Data indisponivel"}</span>
-        </header>
-        <p className="media-card__caption">{truncate(post.message, 200) || "Sem descricao."}</p>
-        <footer className="media-card__footer">
-          <div className="media-card__stats">
-            {Number.isFinite(post.reactions) && (
-              <span>
-                <ThumbsUp size={14} /> {formatNumber(post.reactions)}
-              </span>
-            )}
-            {Number.isFinite(post.comments) && (
-              <span>
-                <MessageCircle size={14} /> {formatNumber(post.comments)}
-              </span>
-            )}
-            {Number.isFinite(post.shares) && (
-              <span>
-                <Share2 size={14} /> {formatNumber(post.shares)}
-              </span>
-            )}
-          </div>
-          {post.permalink && (
-            <a href={post.permalink} target="_blank" rel="noreferrer" className="media-card__link">
-              Ver no Facebook <ExternalLink size={14} />
-            </a>
-          )}
-        </footer>
-      </div>
-    </article>
+  const renderEngagementBreakdown = (metric) => {
+    const breakdown = metric?.breakdown || {};
+    const items = [
+      { key: "reactions", label: "Reações" },
+      { key: "comments", label: "Comentários" },
+      { key: "shares", label: "Compart." },
+    ]
+      .map((item) => ({ ...item, value: Number(breakdown[item.key] || 0) }))
+      .filter((item) => item.value > 0);
+    if (!items.length) return null;
+    return (
+      <ul className="metric-card__list">
+        {items.map((item) => (
+          <li key={item.key}>
+            {item.label}: {formatNumber(item.value)}
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  const cardItems = useMemo(
+    () =>
+      FACEBOOK_CARD_CONFIG.map((config) => {
+        const metric = pageMetricsByKey[config.key];
+        return {
+          ...config,
+          value: loadingPage ? "..." : formatMetricValue(metric, config),
+          delta: loadingPage ? null : metric?.deltaPct ?? null,
+          extra: !loadingPage && config.type === "engagement" ? renderEngagementBreakdown(metric) : null,
+        };
+      }),
+    [pageMetricsByKey, loadingPage],
   );
 
   // ======= Dados para gráficos da seção Orgânico =======
-  const impressionsSplitData = useMemo(() => {
-    const paid = Number(pageSplits?.impressions?.paid || 0);
-    const organic = Number(pageSplits?.impressions?.organic || 0);
-    return [
-      { name: "Pago", value: paid },
-      { name: "Orgânico", value: organic },
-    ].filter((x) => x.value > 0);
-  }, [pageSplits]);
-
+  const pageEngagementBreakdown = pageBreakdowns?.engagement || {};
   const engagementPieData = useMemo(() => {
-    const e = pageSplits?.engagement || {};
+    const reactions = Number(pageEngagementBreakdown.reactions || 0);
+    const comments = Number(pageEngagementBreakdown.comments || 0);
+    const shares = Number(pageEngagementBreakdown.shares || 0);
     return [
-      { name: "Curtidas", value: Number(e.reactions || 0) },
-      { name: "Comentários", value: Number(e.comments || 0) },
-      { name: "Compart.", value: Number(e.shares || 0) },
-    ].filter((x) => x.value > 0);
-  }, [pageSplits]);
+      { name: "Curtidas", value: reactions },
+      { name: "Comentários", value: comments },
+      { name: "Compart.", value: shares },
+    ].filter((item) => item.value > 0);
+  }, [pageBreakdowns]);
 
-  const hasImpressionsSplit = impressionsSplitData.reduce((a, b) => a + b.value, 0) > 0;
-  const hasEngagementSplit = engagementPieData.reduce((a, b) => a + b.value, 0) > 0;
+  const pageVideoBreakdown = pageBreakdowns?.video || {};
+  const videoPieData = useMemo(() => {
+    const watchers10s = Number(pageVideoBreakdown.views_10s || 0);
+    const watchers1m = Number(pageVideoBreakdown.views_1m || 0);
+    return [
+      { name: "10s+", value: watchers10s },
+      { name: "1min+", value: watchers1m },
+    ].filter((item) => item.value > 0);
+  }, [pageBreakdowns]);
 
-  // Série para linha (alcance orgânico x pago + impressões totais)
-  const lineSeries = useMemo(() => {
-    return (pageSeries || []).map((d) => ({
-      date: d.date,
-      reach_org: Number(d.reach_organic || 0),
-      reach_paid: Number(d.reach_paid || 0),
-      impressions: Number(d.impressions || 0),
-    }));
-  }, [pageSeries]);
+  const hasEngagementSplit = engagementPieData.reduce((total, item) => total + item.value, 0) > 0;
+  const hasVideoSplit = videoPieData.reduce((total, item) => total + item.value, 0) > 0;
 
-  // ======= Métricas de ADS (já existiam) =======
-  const adsTotalsCards = [
-    { key: "spend", title: "Investimento", value: formatCurrency(Number(adsData.totals?.spend)) },
-    { key: "impressions", title: "Impressões", value: formatNumber(Number(adsData.totals?.impressions)) },
-    { key: "reach", title: "Alcance", value: formatNumber(Number(adsData.totals?.reach)) },
-    { key: "clicks", title: "Cliques", value: formatNumber(Number(adsData.totals?.clicks)) },
-  ];
+  const hasHighlights = useMemo(
+    () => Object.values(postHighlights || {}).some((item) => item && (item.id || item.metricValue != null)),
+    [postHighlights],
+  );
 
-  const adsAverageCards = [
-    { key: "cpc", title: "CPC médio", value: formatCurrency(Number(adsData.averages?.cpc)) },
-    { key: "cpm", title: "CPM médio", value: formatCurrency(Number(adsData.averages?.cpm)) },
-    { key: "ctr", title: "CTR médio", value: formatPercent(Number(adsData.averages?.ctr)) },
-    {
-      key: "frequency",
-      title: "Frequência",
-      value: Number.isFinite(adsData.averages?.frequency) ? adsData.averages.frequency.toFixed(2) : "-",
-    },
-  ];
+  // ======= Métricas de ADS com porcentagens e setas =======
+  const adsTotalsCards = useMemo(() => {
+    const totals = adsData.totals || {};
+    return [
+      {
+        key: "spend",
+        title: "Investimento",
+        value: formatCurrency(Number(totals.spend)),
+        change: totals.spend_change_pct
+      },
+      {
+        key: "impressions",
+        title: "Impressões",
+        value: formatNumber(Number(totals.impressions)),
+        change: totals.impressions_change_pct
+      },
+      {
+        key: "reach",
+        title: "Alcance",
+        value: formatNumber(Number(totals.reach)),
+        change: totals.reach_change_pct
+      },
+      {
+        key: "clicks",
+        title: "Cliques",
+        value: formatNumber(Number(totals.clicks)),
+        change: totals.clicks_change_pct
+      },
+    ];
+  }, [adsData.totals]);
+
+  const adsAverageCards = useMemo(() => {
+    const averages = adsData.averages || {};
+    return [
+      {
+        key: "cpc",
+        title: "CPC médio",
+        value: formatCurrency(Number(averages.cpc)),
+        change: averages.cpc_change_pct
+      },
+      {
+        key: "cpm",
+        title: "CPM médio",
+        value: formatCurrency(Number(averages.cpm)),
+        change: averages.cpm_change_pct
+      },
+      {
+        key: "ctr",
+        title: "CTR médio",
+        value: formatPercent(Number(averages.ctr)),
+        change: averages.ctr_change_pct
+      },
+      {
+        key: "frequency",
+        title: "Frequência",
+        value: Number.isFinite(averages.frequency) ? averages.frequency.toFixed(2) : "-",
+        change: averages.frequency_change_pct
+      },
+    ];
+  }, [adsData.averages]);
+
+  const renderChangeIndicator = (change) => {
+    if (!Number.isFinite(change)) return null;
+    const isPositive = change >= 0;
+    return (
+      <div style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        fontSize: '12px',
+        fontWeight: '600',
+        color: isPositive ? 'var(--success-bright)' : 'var(--danger)',
+        marginTop: '4px'
+      }}>
+        {isPositive ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+        {Math.abs(change).toFixed(1)}%
+      </div>
+    );
+  };
 
   const bestAd = adsData.best_ad;
 
-  const totalsBarData = useMemo(() => {
+  // Gráfico horizontal de barras (Impressões, Alcance, Cliques)
+  const volumeBarData = useMemo(() => {
     const totals = adsData?.totals || {};
     return [
-      { name: "Impressões", value: Number(totals.impressions) || 0 },
-      { name: "Alcance", value: Number(totals.reach) || 0 },
-      { name: "Cliques", value: Number(totals.clicks) || 0 },
+      { name: "Impressões", value: Number(totals.impressions) || 0, color: "#06b6d4" },
+      { name: "Alcance", value: Number(totals.reach) || 0, color: "#6366f1" },
+      { name: "Cliques", value: Number(totals.clicks) || 0, color: "#8b5cf6" },
     ];
   }, [adsData?.totals]);
 
-  const hasBarData = totalsBarData.some((item) => item.value > 0);
+  const hasVolumeData = volumeBarData.some((item) => item.value > 0);
+
+  // Comparação Orgânico x Pago
+  const organicVsPaidData = useMemo(() => {
+    const organicReach = Number(pageMetricsByKey.reach?.value || 0);
+    const organicEngagement = Number(pageMetricsByKey.post_engagement_total?.value || 0);
+    const paidReach = Number(adsData.totals?.reach || 0);
+    const paidClicks = Number(adsData.totals?.clicks || 0);
+
+    return [
+      { name: "Alcance", Orgânico: organicReach, Pago: paidReach },
+      { name: "Engajamento/Cliques", Orgânico: organicEngagement, Pago: paidClicks },
+    ];
+  }, [pageMetricsByKey, adsData.totals]);
+
+  const hasOrgVsPaidData = organicVsPaidData.some(item => item.Orgânico > 0 || item.Pago > 0);
 
   const bestAdMetrics = useMemo(() => {
     if (!bestAd) return [];
@@ -431,116 +573,87 @@ export default function FacebookDashboard() {
         description="Indicadores principais da página (intervalo selecionado)."
       >
         <KpiGrid>
-          {PAGE_SUMMARY_CARDS.map(({ key, title, hint }) => (
-            <MetricCard
-              key={key}
-              title={title}
-              value={formatMetric(pageMetricsByKey[key])}
-              delta={loadingPage ? null : pageMetricsByKey[key]?.deltaPct}
-              hint={hint}
-            />
+          {cardItems.map(({ key, title, hint, value, delta, extra }) => (
+            <MetricCard key={key} title={title} value={value} delta={delta} hint={hint}>
+              {extra}
+            </MetricCard>
           ))}
         </KpiGrid>
 
-        {/* Linha: Alcance Orgânico x Pago + Impressões */}
-        <div className="card chart-card">
-          <div>
-            <h3 className="chart-card__title">Evolução do alcance e impressões</h3>
-            <p className="chart-card__subtitle">Orgânico x Pago (alcance) e total de impressões</p>
-          </div>
-          <div className="chart-card__viz">
-            {loadingPage ? (
-              <div className="chart-card__empty">Carregando dados...</div>
-            ) : lineSeries.length > 0 ? (
-              <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={lineSeries}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--stroke-40)" />
-                  <XAxis dataKey="date" stroke="var(--text-muted)" />
-                  <YAxis tickFormatter={formatShortNumber} stroke="var(--text-muted)" />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="reach_org" name="Alcance (Orgânico)" dot={false} stroke="#2af0a3" />
-                  <Line type="monotone" dataKey="reach_paid" name="Alcance (Pago)" dot={false} stroke="#8b9dff" />
-                  <Line type="monotone" dataKey="impressions" name="Impressões (total)" dot={false} stroke="#f59e0b" />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="chart-card__empty">Sem dados suficientes no período.</div>
-            )}
-          </div>
-        </div>
+      </Section>
 
-        {/* Pizza: Distribuição de Engajamento */}
-        <div className="ads-insights-grid">
-          <div className="card chart-card">
-            <div>
-              <h3 className="chart-card__title">Distribuição de engajamento</h3>
-              <p className="chart-card__subtitle">Curtidas, comentários e compartilhamentos</p>
-            </div>
-            <div className="chart-card__viz">
-              {loadingPage ? (
-                <div className="chart-card__empty">Carregando dados...</div>
-              ) : hasEngagementSplit ? (
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie
-                      data={engagementPieData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={90}
-                      label
-                    >
-                      {engagementPieData.map((_, index) => (
-                        <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="chart-card__empty">Sem dados de engajamento.</div>
-              )}
-            </div>
+      <Section
+        title="Últimos posts"
+        description="Destaques recentes da página do Facebook."
+      >
+        {postsError && <div className="alert alert--error">{postsError}</div>}
+        {loadingPosts && !hasHighlights && (
+          <div className="media-grid">
+            {Array.from({ length: 2 }).map((_, index) => (
+              <div key={index} className="media-card media-card--loading" />
+            ))}
           </div>
-
-          {/* Pizza: Impressões – Orgânico x Pago */}
-          <div className="card chart-card">
-            <div>
-              <h3 className="chart-card__title">Impressões por origem</h3>
-              <p className="chart-card__subtitle">Orgânico x Pago</p>
-            </div>
-            <div className="chart-card__viz">
-              {loadingPage ? (
-                <div className="chart-card__empty">Carregando dados...</div>
-              ) : hasImpressionsSplit ? (
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie
-                      data={impressionsSplitData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={90}
-                      label
-                    >
-                      {impressionsSplitData.map((_, index) => (
-                        <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="chart-card__empty">Sem dados de origem de impressões.</div>
-              )}
-            </div>
+        )}
+        {hasHighlights ? (
+          <div className="card post-highlights-card">
+            <table className="post-highlights-table">
+              <thead>
+                <tr>
+                  <th className="post-highlights-table__label">Destaque</th>
+                  <th className="post-highlights-table__preview">Preview</th>
+                  <th className="post-highlights-table__metrics">Indicadores</th>
+                  <th className="post-highlights-table__action">Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {POST_HIGHLIGHT_CONFIG.map((item) => {
+                  const post = postHighlights?.[item.key];
+                  const rawValue = post?.[item.metricKey];
+                  const primaryValue = Number.isFinite(rawValue) ? formatNumber(rawValue) : '-';
+                  return (
+                    <tr key={item.key}>
+                      <td className="post-highlights-table__label">{item.label}</td>
+                      <td className="post-highlights-table__preview">
+                        {post?.previewUrl ? (
+                          <img src={post.previewUrl} alt={truncate(post.message || 'Publicação do Facebook', 80)} />
+                        ) : (
+                          <div className="post-highlights-table__placeholder">Sem imagem</div>
+                        )}
+                      </td>
+                      <td className="post-highlights-table__metrics">
+                        <div className="post-highlights-table__metric">
+                          <strong>{item.metricLabel}:</strong> {primaryValue}
+                        </div>
+                        {item.key === 'post_top_engagement' && post ? (
+                          <div className="post-highlights-table__metric-group">
+                            <span><ThumbsUp size={14} /> {formatNumber(post.reactions)} curtidas</span>
+                            <span><MessageCircle size={14} /> {formatNumber(post.comments)} comentários</span>
+                            <span><Share2 size={14} /> {formatNumber(post.shares)} compartilhamentos</span>
+                          </div>
+                        ) : (
+                          <div className="post-highlights-table__metric-secondary">
+                            {post?.timestamp ? `Publicado em ${formatDate(post.timestamp)}` : 'Data indisponível'}
+                          </div>
+                        )}
+                      </td>
+                      <td className="post-highlights-table__action">
+                        {post?.permalink ? (
+                          <a href={post.permalink} target="_blank" rel="noreferrer">
+                            Ver <ExternalLink size={14} />
+                          </a>
+                        ) : (
+                          <span className="muted">Sem link</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </div>
+        ) : !loadingPosts ? (
+          <p className="muted">Nenhum post encontrado para o intervalo selecionado.</p>
+        ) : null}
       </Section>
 
       <Section
@@ -548,43 +661,63 @@ export default function FacebookDashboard() {
         description="Resumo das campanhas no período selecionado."
       >
         {adsError && <div className="alert alert--error">{adsError}</div>}
+
         <KpiGrid>
-          {adsTotalsCards.map(({ key, title, value }) => (
-            <MetricCard key={key} title={title} value={loadingAds ? "..." : value} />
-          ))}
-        </KpiGrid>
-        <KpiGrid>
-          {adsAverageCards.map(({ key, title, value }) => (
-            <MetricCard key={key} title={title} value={loadingAds ? "..." : value} />
+          {adsTotalsCards.map(({ key, title, value, change }) => (
+            <MetricCard key={key} title={title} value={loadingAds ? "..." : value}>
+              {!loadingAds && renderChangeIndicator(change)}
+            </MetricCard>
           ))}
         </KpiGrid>
 
-        <div className="card chart-card">
-          <div>
-            <h3 className="chart-card__title">Volume por indicador</h3>
-            <p className="chart-card__subtitle">Comparativo de impressões, alcance e cliques</p>
-          </div>
-          <div className="chart-card__viz">
-            {loadingAds ? (
-              <div className="chart-card__empty">Carregando dados...</div>
-            ) : hasBarData ? (
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={totalsBarData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--stroke-40)" />
-                  <XAxis dataKey="name" stroke="var(--text-muted)" />
-                  <YAxis tickFormatter={formatShortNumber} stroke="var(--text-muted)" />
-                  <Tooltip formatter={(value) => formatNumber(Number(value))} />
-                  <Bar dataKey="value" radius={[10, 10, 0, 0]} fill="var(--accent2)" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="chart-card__empty">Sem dados suficientes no período.</div>
-            )}
-          </div>
-        </div>
+        <KpiGrid>
+          {adsAverageCards.map(({ key, title, value, change }) => (
+            <MetricCard key={key} title={title} value={loadingAds ? "..." : value}>
+              {!loadingAds && renderChangeIndicator(change)}
+            </MetricCard>
+          ))}
+        </KpiGrid>
 
-        <div className="ads-insights-grid ads-insights-grid--compact">
-          <div className="card best-ad-card">
+        <div className="ads-insights-grid">
+          <div className="card chart-card" style={{ minHeight: '280px' }}>
+            <div>
+              <h3 className="chart-card__title">Volume por indicador</h3>
+              <p className="chart-card__subtitle">Comparativo de impressões, alcance e cliques</p>
+            </div>
+            <div className="chart-card__viz" style={{ minHeight: '200px' }}>
+              {loadingAds ? (
+                <div className="chart-card__empty">Carregando dados...</div>
+              ) : hasVolumeData ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={volumeBarData} layout="vertical" margin={{ left: 20, right: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" horizontal={false} />
+                    <XAxis type="number" tickFormatter={formatShortNumber} stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                    <YAxis type="category" dataKey="name" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} width={100} />
+                    <Tooltip
+                      formatter={(value) => formatNumber(Number(value))}
+                      contentStyle={{
+                        backgroundColor: 'var(--panel)',
+                        border: '1px solid var(--stroke)',
+                        borderRadius: '12px',
+                        padding: '8px 12px',
+                        boxShadow: 'var(--shadow-lg)'
+                      }}
+                      cursor={{ fill: 'var(--panel-hover)' }}
+                    />
+                    <Bar dataKey="value" radius={[0, 12, 12, 0]}>
+                      {volumeBarData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="chart-card__empty">Sem dados suficientes no período.</div>
+              )}
+            </div>
+          </div>
+
+          <div className="card best-ad-card" style={{ minHeight: '280px' }}>
             <div className="best-ad-card__header">
               <span className="best-ad-card__title">
                 <Trophy size={18} />
@@ -595,7 +728,7 @@ export default function FacebookDashboard() {
               </span>
             </div>
             {loadingAds ? (
-              <p className="muted">Carregando dados do Gerenciador de Anuncios...</p>
+              <p className="muted">Carregando dados do Gerenciador de Anúncios...</p>
             ) : bestAd ? (
               <div className="best-ad-card__metrics">
                 {bestAdMetrics.map((metric) => (
@@ -613,23 +746,52 @@ export default function FacebookDashboard() {
       </Section>
 
       <Section
-        title="Últimos posts"
-        description="Publicações recentes da página do Facebook."
+        title="Orgânico x Pago"
+        description="Comparativo de desempenho entre conteúdo orgânico e anúncios pagos."
       >
-        {postsError && <div className="alert alert--error">{postsError}</div>}
-        {loadingPosts && posts.length === 0 ? (
-          <div className="media-grid">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="media-card media-card--loading" />
-            ))}
+        <div className="card chart-card">
+          <div>
+            <h3 className="chart-card__title">Alcance e Engajamento</h3>
+            <p className="chart-card__subtitle">Comparação entre orgânico e pago</p>
           </div>
-        ) : posts.length > 0 ? (
-          <div className="media-grid">
-            {posts.map((post) => renderFbPostCard(post))}
+          <div className="chart-card__viz">
+            {(loadingPage || loadingAds) ? (
+              <div className="chart-card__empty">Carregando dados...</div>
+            ) : hasOrgVsPaidData ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={organicVsPaidData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                  <XAxis
+                    dataKey="name"
+                    stroke="var(--text-muted)"
+                    tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+                  />
+                  <YAxis
+                    tickFormatter={formatShortNumber}
+                    stroke="var(--text-muted)"
+                    tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+                  />
+                  <Tooltip
+                    formatter={(value) => formatNumber(Number(value))}
+                    contentStyle={{
+                      backgroundColor: 'var(--panel)',
+                      border: '1px solid var(--stroke)',
+                      borderRadius: '12px',
+                      padding: '8px 12px',
+                      boxShadow: 'var(--shadow-lg)'
+                    }}
+                    cursor={{ fill: 'var(--panel-hover)' }}
+                  />
+                  <Legend />
+                  <Bar dataKey="Orgânico" fill="#10b981" radius={[12, 12, 0, 0]} />
+                  <Bar dataKey="Pago" fill="#6366f1" radius={[12, 12, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="chart-card__empty">Sem dados suficientes no período.</div>
+            )}
           </div>
-        ) : (
-          <p className="muted">Nenhum post encontrado para o intervalo selecionado.</p>
-        )}
+        </div>
       </Section>
     </>
   );

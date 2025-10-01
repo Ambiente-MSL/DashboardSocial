@@ -58,13 +58,68 @@ def facebook_metrics():
     def pct(current, previous):
         return round(((current - previous) / previous) * 100, 2) if previous and previous > 0 and current is not None else None
 
+    engagement_cur = cur.get("engagement") or {}
+    engagement_prev = prev.get("engagement") or {}
+    video_cur = cur.get("video") or {}
+    video_prev = prev.get("video") or {}
+
     metrics = [
-        {"key": "reach", "label": "Alcance organico", "value": cur["reach"], "deltaPct": pct(cur["reach"], prev["reach"])},
-        {"key": "post_engagement", "label": "Engajamento post", "value": cur["interactions"], "deltaPct": pct(cur["interactions"], prev["interactions"])},
-        {"key": "impressions", "label": "Impressoes", "value": cur["impressions"], "deltaPct": pct(cur["impressions"], prev["impressions"])},
-        {"key": "profile_link_clicks", "label": "Cliques de perfil (proxy)", "value": cur["post_clicks"], "deltaPct": pct(cur["post_clicks"], prev["post_clicks"])},
+        {
+            "key": "reach",
+            "label": "Alcance organico",
+            "value": cur.get("reach"),
+            "deltaPct": pct(cur.get("reach"), prev.get("reach")),
+        },
+        {
+            "key": "post_engagement_total",
+            "label": "Engajamento post",
+            "value": engagement_cur.get("total"),
+            "deltaPct": pct(engagement_cur.get("total"), engagement_prev.get("total")),
+            "breakdown": {
+                "reactions": engagement_cur.get("reactions"),
+                "comments": engagement_cur.get("comments"),
+                "shares": engagement_cur.get("shares"),
+            },
+        },
+        {
+            "key": "video_views_10s",
+            "label": "Views de 10+ seg",
+            "value": video_cur.get("views_10s"),
+            "deltaPct": pct(video_cur.get("views_10s"), video_prev.get("views_10s")),
+        },
+        {
+            "key": "video_views_1m",
+            "label": "Views de 1+ min",
+            "value": video_cur.get("views_1m"),
+            "deltaPct": pct(video_cur.get("views_1m"), video_prev.get("views_1m")),
+        },
+        {
+            "key": "video_avg_watch_time",
+            "label": "Tempo medio de visualizacao",
+            "value": video_cur.get("avg_watch_time"),
+            "deltaPct": pct(video_cur.get("avg_watch_time"), video_prev.get("avg_watch_time")),
+        },
+        {
+            "key": "video_watch_time_total",
+            "label": "Tempo total assistido",
+            "value": video_cur.get("watch_time_total"),
+            "deltaPct": pct(video_cur.get("watch_time_total"), video_prev.get("watch_time_total")),
+        },
     ]
-    return jsonify({"since": since, "until": until, "metrics": metrics})
+
+    breakdowns = {
+        "engagement": {
+            "reactions": engagement_cur.get("reactions"),
+            "comments": engagement_cur.get("comments"),
+            "shares": engagement_cur.get("shares"),
+        },
+        "video": {
+            "views_10s": video_cur.get("views_10s"),
+            "views_1m": video_cur.get("views_1m"),
+        },
+    }
+
+    return jsonify({"since": since, "until": until, "metrics": metrics, "breakdowns": breakdowns})
 
 
 @app.get("/api/facebook/posts")
