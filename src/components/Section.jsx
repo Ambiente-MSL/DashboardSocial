@@ -1,6 +1,8 @@
-export default function Section({ title, right = null, description = null, children }) {
+export default function Section({ title, right = null, description = null, children, surface = true }) {
+  const sectionClass = surface ? 'section section--surface' : 'section';
+
   return (
-    <section className="section">
+    <section className={sectionClass}>
       <div className="section__header">
         <div className="section__titles">
           <h2 className="section__title">{title}</h2>
@@ -8,7 +10,9 @@ export default function Section({ title, right = null, description = null, child
         </div>
         {right}
       </div>
-      {children}
+      <div className="section__body">
+        {children}
+      </div>
     </section>
   );
 }

@@ -119,7 +119,15 @@ def facebook_metrics():
         },
     }
 
-    return jsonify({"since": since, "until": until, "metrics": metrics, "breakdowns": breakdowns})
+    page_overview = cur.get("page_overview") or {}
+
+    return jsonify({
+        "since": since,
+        "until": until,
+        "metrics": metrics,
+        "breakdowns": breakdowns,
+        "page_overview": page_overview,
+    })
 
 
 @app.get("/api/facebook/posts")

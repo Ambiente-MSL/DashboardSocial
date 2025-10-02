@@ -16,6 +16,7 @@ import Topbar from "../components/Topbar";
 import Section from "../components/Section";
 import KpiGrid from "../components/KpiGrid";
 import MetricCard from "../components/MetricCard";
+import DateRangeIndicator from "../components/DateRangeIndicator";
 import useQueryState from "../hooks/useQueryState";
 import { accounts } from "../data/accounts";
 
@@ -375,11 +376,15 @@ export default function InstagramDashboard() {
 
   return (
     <>
-      <Topbar title="Instagram" sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
+      <Topbar title="Instagram" sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} showFilters={true} />
 
-      {metricsError && <div className="alert alert--error">{metricsError}</div>}
+      <div className="page-content">
+        <DateRangeIndicator />
+      
 
-      <Section
+        {metricsError && <div className="alert alert--error">{metricsError}</div>}
+
+        <Section
         title="Insights do perfil (orgânico)"
         description="Principais indicadores orgânicos do período selecionado."
       >
@@ -691,6 +696,7 @@ export default function InstagramDashboard() {
           </div>
         </div>
       </Section>
+      </div>
     </>
   );
 }

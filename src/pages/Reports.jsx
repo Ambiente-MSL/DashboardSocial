@@ -100,8 +100,9 @@ export default function Reports(){
     <>
       <Topbar title="Relatórios" sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
 
-      <Section title="Origem dos dados">
-        <div className="flex flex-wrap gap-3">
+      <div className="page-content">
+        <Section title="Origem dos dados">
+        <div className="report-filters">
           <label className="btn"><input type="radio" name="scope" defaultChecked /> Facebook</label>
           <label className="btn"><input type="radio" name="scope" /> Instagram</label>
           <label className="btn"><input type="radio" name="scope" /> Ambos</label>
@@ -123,6 +124,7 @@ export default function Reports(){
           onExport={onExport}
         />
       </Section>
+      </div>
     </>
   );
 }

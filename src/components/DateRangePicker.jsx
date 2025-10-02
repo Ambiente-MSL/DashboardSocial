@@ -1,9 +1,7 @@
-import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { addDays, endOfDay, format, isSameDay, isWithinInterval, startOfDay } from "date-fns";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { addDays, endOfDay, format, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Filter } from "lucide-react";
+import { Filter, X } from "lucide-react";
 import useQueryState from "../hooks/useQueryState";
 
 const parseDateParam = (value) => {
@@ -16,27 +14,10 @@ const parseDateParam = (value) => {
 };
 
 const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
-const fmt = (d) => (d ? format(d, "MMM dd, yy", { locale: ptBR }).toUpperCase() : "");
-
-const RangeInput = forwardRef(({ startText, endText, placeholder, onClick, onKeyDown, isOpen }, ref) => (
-  <button
-    ref={ref}
-    type="button"
-    onClick={onClick}
-    onKeyDown={onKeyDown}
-    className="date-range-btn"
-    data-open={isOpen || undefined}
-  >
-    <span className="date-range-btn__text">
-      {startText && endText ? `${startText} — ${endText}` : placeholder}
-    </span>
-    <Filter size={16} className="date-range-btn__icon" />
-  </button>
-));
-RangeInput.displayName = "RangeInput";
+const fmt = (d) => (d ? format(d, "dd MMM yy", { locale: ptBR }).toUpperCase() : "");
+const toInputValue = (d) => (d ? format(d, "yyyy-MM-dd") : "");
 
 export default function DateRangePicker() {
-  // últimos 7 dias
   const now = useMemo(() => new Date(), []);
   const defaultEnd = useMemo(() => endOfDay(now), [now]);
   const defaultStart = useMemo(() => startOfDay(addDays(defaultEnd, -6)), [defaultEnd]);
@@ -48,11 +29,15 @@ export default function DateRangePicker() {
   const initialStart = startOfDay(parseDateParam(qSince) ?? defaultStart);
   const initialEnd = endOfDay(parseDateParam(qUntil) ?? defaultEnd);
 
-  const [[startDate, endDate], setRange] = useState([initialStart, initialEnd]);
+  const [startDate, setStartDate] = useState(initialStart);
+  const [endDate, setEndDate] = useState(initialEnd);
   const [isOpen, setIsOpen] = useState(false);
-  const datePickerRef = useRef(null);
+  const [tempStart, setTempStart] = useState(toInputValue(initialStart));
+  const [tempEnd, setTempEnd] = useState(toInputValue(initialEnd));
+  const dropdownRef = useRef(null);
   const firstSync = useRef(false);
 
+  // Sincronização inicial com URL
   useEffect(() => {
     if (firstSync.current) return;
     if (!qSince && !qUntil && startDate && endDate) {
@@ -61,82 +46,75 @@ export default function DateRangePicker() {
     firstSync.current = true;
   }, [qSince, qUntil, startDate, endDate, set]);
 
+  // Atualizar datas quando query params mudam
   useEffect(() => {
     const ns = parseDateParam(qSince);
     const ne = parseDateParam(qUntil);
     if (ns && ne) {
       const s = startOfDay(ns);
       const e = endOfDay(ne);
-      if (!isSameDay(s, startDate) || !isSameDay(e, endDate)) setRange([s, e]);
-      return;
+      setStartDate(s);
+      setEndDate(e);
+      setTempStart(toInputValue(s));
+      setTempEnd(toInputValue(e));
+    } else if (!qSince && !qUntil) {
+      setStartDate(defaultStart);
+      setEndDate(defaultEnd);
+      setTempStart(toInputValue(defaultStart));
+      setTempEnd(toInputValue(defaultEnd));
     }
-    if (!qSince && !qUntil) setRange([defaultStart, defaultEnd]);
-  }, [qSince, qUntil, defaultStart, defaultEnd, startDate, endDate]);
+  }, [qSince, qUntil, defaultStart, defaultEnd]);
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
 
   const updateQuery = (s, e) => {
-    if (s && e) set({ since: String(toUnixSeconds(s)), until: String(toUnixSeconds(e)) });
-    else set({ since: null, until: null });
-  };
-
-  const onChangeRange = (dates) => {
-    const [s, e] = dates || [];
-    if (!s) {
-      setRange([null, null]);
-      updateQuery(null, null);
-      return;
+    if (s && e) {
+      set({ since: String(toUnixSeconds(s)), until: String(toUnixSeconds(e)) });
+    } else {
+      set({ since: null, until: null });
     }
-    const ns = startOfDay(s);
-    const ne = e ? endOfDay(e) : null;
-    setRange([ns, ne]);
-    if (ne) updateQuery(ns, ne);
   };
 
-  // destaque de dias
-  const dayClassName = (d) => {
-    if (!startDate || !endDate) return undefined;
-    const isStart = isSameDay(d, startDate);
-    const isEnd = isSameDay(d, endDate);
-    const inRange =
-      !isStart &&
-      !isEnd &&
-      isWithinInterval(d, {
-        start: startOfDay(startDate),
-        end: endOfDay(endDate),
-      });
-
-    if (isStart || isEnd) return "rdp-day--endpoint";
-    if (inRange) return "rdp-day--inrange";
-    return undefined;
+  const applyDates = () => {
+    if (tempStart && tempEnd) {
+      const s = startOfDay(new Date(tempStart));
+      const e = endOfDay(new Date(tempEnd));
+      setStartDate(s);
+      setEndDate(e);
+      updateQuery(s, e);
+    }
+    setIsOpen(false);
   };
 
-  const CalendarFrame = ({ className, children }) => (
-    <div className={`rdp-container ${className || ""}`}>
-      {children}
-      <div className="rdp-footer">
-        <button
-          type="button"
-          className="rdp-btn rdp-btn--secondary"
-          onClick={() => {
-            setRange([null, null]);
-            updateQuery(null, null);
-            datePickerRef.current?.setOpen(false);
-          }}
-        >
-          Limpar
-        </button>
-        <button
-          type="button"
-          className="rdp-btn rdp-btn--primary"
-          onClick={() => {
-            if (startDate && endDate) updateQuery(startDate, endDate);
-            datePickerRef.current?.setOpen(false);
-          }}
-        >
-          Aplicar período
-        </button>
-      </div>
-    </div>
-  );
+  const clearDates = () => {
+    setStartDate(defaultStart);
+    setEndDate(defaultEnd);
+    setTempStart(toInputValue(defaultStart));
+    setTempEnd(toInputValue(defaultEnd));
+    updateQuery(defaultStart, defaultEnd);
+    setIsOpen(false);
+  };
+
+  const selectPreset = (days) => {
+    const s = startOfDay(addDays(defaultEnd, -(days - 1)));
+    const e = defaultEnd;
+    setStartDate(s);
+    setEndDate(e);
+    setTempStart(toInputValue(s));
+    setTempEnd(toInputValue(e));
+    updateQuery(s, e);
+  };
 
   const presets = [
     { days: 7, label: '7d' },
@@ -145,88 +123,92 @@ export default function DateRangePicker() {
     { days: 60, label: '60d' }
   ];
 
+  const activeDays = startDate && endDate
+    ? Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1
+    : null;
+
   return (
     <div className="date-range-wrapper">
-      {presets.map(({ days, label }) => {
-        const isActive = startDate && endDate &&
-          Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1 === days;
-        return (
-          <button
-            key={days}
-            type="button"
-            className={`date-range-preset ${isActive ? 'date-range-preset--active' : ''}`}
-            onClick={() => {
-              const s = startOfDay(addDays(defaultEnd, -(days - 1)));
-              const e = defaultEnd;
-              setRange([s, e]);
-              updateQuery(s, e);
-            }}
-          >
-            {label}
-          </button>
-        );
-      })}
-      <DatePicker
-        ref={datePickerRef}
-        locale={ptBR}
-        selected={startDate ?? null}
-        onChange={onChangeRange}
-        startDate={startDate ?? null}
-        endDate={endDate ?? null}
-        selectsRange
-        monthsShown={1}
-        shouldCloseOnSelect={false}
-        calendarStartDay={0}
-        dateFormat="dd/MM/yyyy"
-        showPopperArrow={false}
-        popperClassName="rdp-popper"
-        calendarContainer={CalendarFrame}
-        renderCustomHeader={({
-          date,
-          decreaseMonth,
-          increaseMonth,
-          prevMonthButtonDisabled,
-          nextMonthButtonDisabled,
-        }) => (
-          <div className="rdp-header">
-            <button
-              type="button"
-              className="rdp-nav"
-              onClick={decreaseMonth}
-              disabled={prevMonthButtonDisabled}
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <span className="rdp-title">{format(date, "MMMM yyyy", { locale: ptBR })}</span>
-            <button
-              type="button"
-              className="rdp-nav"
-              onClick={increaseMonth}
-              disabled={nextMonthButtonDisabled}
-            >
-              <ChevronRight size={16} />
-            </button>
+      {presets.map(({ days, label }) => (
+        <button
+          key={days}
+          type="button"
+          className={`date-range-preset ${activeDays === days ? 'date-range-preset--active' : ''}`}
+          onClick={() => selectPreset(days)}
+        >
+          {label}
+        </button>
+      ))}
+
+      <div className="date-range-custom" ref={dropdownRef}>
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="date-range-btn"
+          data-open={isOpen || undefined}
+        >
+          <span className="date-range-btn__text">
+            {startDate && endDate ? `${fmt(startDate)} — ${fmt(endDate)}` : "Selecione o período"}
+          </span>
+          <Filter size={16} className="date-range-btn__icon" />
+        </button>
+
+        {isOpen && (
+          <div className="date-range-dropdown">
+            <div className="date-range-dropdown__header">
+              <span>Selecionar período</span>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="date-range-dropdown__close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="date-range-dropdown__body">
+              <div className="date-input-group">
+                <label htmlFor="start-date">Data inicial</label>
+                <input
+                  id="start-date"
+                  type="date"
+                  value={tempStart}
+                  onChange={(e) => setTempStart(e.target.value)}
+                  className="date-input"
+                />
+              </div>
+
+              <div className="date-input-group">
+                <label htmlFor="end-date">Data final</label>
+                <input
+                  id="end-date"
+                  type="date"
+                  value={tempEnd}
+                  onChange={(e) => setTempEnd(e.target.value)}
+                  className="date-input"
+                />
+              </div>
+            </div>
+
+            <div className="date-range-dropdown__footer">
+              <button
+                type="button"
+                className="date-range-dropdown__btn date-range-dropdown__btn--secondary"
+                onClick={clearDates}
+              >
+                Limpar
+              </button>
+              <button
+                type="button"
+                className="date-range-dropdown__btn date-range-dropdown__btn--primary"
+                onClick={applyDates}
+              >
+                Aplicar período
+              </button>
+            </div>
           </div>
         )}
-        formatWeekDay={(d) => {
-          try {
-            return format(d, "EEE", { locale: ptBR }).replace(".", "").slice(0, 3).toUpperCase();
-          } catch {
-            return "";
-          }
-        }}
-        dayClassName={dayClassName}
-        customInput={
-          <RangeInput
-            startText={fmt(startDate)}
-            endText={fmt(endDate)}
-            placeholder="Selecione o período"
-            isOpen={isOpen}
-          />
-        }
-        onCalendarOpen={() => setIsOpen(true)}
-        onCalendarClose={() => setIsOpen(false)}
-      />
+      </div>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import DateRangePicker from './DateRangePicker';
 import AccountSelect from './AccountSelect';
 import { useTheme } from '../context/ThemeContext';
 
-export default function Topbar({ title, sidebarOpen, onToggleSidebar }) {
+export default function Topbar({ title, sidebarOpen, onToggleSidebar, showFilters = false }) {
   const { theme, toggleTheme } = useTheme();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -126,11 +126,13 @@ export default function Topbar({ title, sidebarOpen, onToggleSidebar }) {
         </div>
       </div>
 
-      {/* Barra de filtros */}
-      <div className="filter-bar">
-        <AccountSelect />
-        <DateRangePicker />
-      </div>
+      {/* Barra de filtros - apenas em páginas específicas */}
+      {showFilters && (
+        <div className="filter-bar">
+          <AccountSelect />
+          <DateRangePicker />
+        </div>
+      )}
     </>
   );
 }

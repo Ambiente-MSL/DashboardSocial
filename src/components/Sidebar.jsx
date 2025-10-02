@@ -51,7 +51,7 @@ export default function Sidebar({ open, onToggleSidebar }) {
         <div className="sidebar__brand">
           <img src={logo} alt="Logotipo MSL" className="sidebar__logo" />
           <div className="sidebar__brand-text">
-            <span className="sidebar__brand-name">MSL Monitor</span>
+            <span className="sidebar__brand-name">MSL Estratégia</span>
             <span className="sidebar__brand-tag">Insights sociais</span>
           </div>
         </div>

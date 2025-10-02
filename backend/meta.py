@@ -144,8 +144,10 @@ def insight_value_from_list(items: List[Dict[str, Any]], name: str) -> Optional[
 
 def fb_page_window(page_id: str, since: int, until: int):
     page_token = get_page_access_token(page_id)
-    metrics = "page_impressions,page_impressions_unique,page_post_engagements,page_fan_adds_unique"
-    insight_params = {"metric": metrics, "period": "day", "since": since, "until": until}
+
+    # Métricas básicas que sempre funcionam
+    basic_metrics = "page_impressions,page_impressions_unique,page_post_engagements,page_fan_adds_unique"
+    insight_params = {"metric": basic_metrics, "period": "day", "since": since, "until": until}
     ins = gget(
         f"/{page_id}/insights",
         insight_params,
@@ -160,6 +162,53 @@ def fb_page_window(page_id: str, since: int, until: int):
     reach = sum_series("page_impressions_unique")
     engaged = sum_series("page_post_engagements")
     likes_add = sum_series("page_fan_adds_unique")
+
+    # Função auxiliar para buscar métricas opcionais com fallback
+    def fetch_optional_metrics(metric_list):
+        results = {}
+        for metric_name in metric_list:
+            try:
+                payload = gget(
+                    f"/{page_id}/insights",
+                    {"metric": metric_name, "period": "day", "since": since, "until": until},
+                    token=page_token,
+                )
+                values = extract_insight_values(payload, metric_name)
+                results[metric_name] = int(round(sum(values))) if values else 0
+            except MetaAPIError:
+                # Métrica não disponível, ignorar
+                results[metric_name] = 0
+        return results
+
+    # Buscar métricas opcionais de visão geral
+    optional_metrics = fetch_optional_metrics([
+        "page_views_total",
+        "page_video_views",
+        "page_video_views_3s",
+        "page_video_views_60s",
+        "page_video_view_time",
+        "page_actions_post_reactions_total",
+        "page_consumptions",
+        "page_cta_clicks_logged_in_total",
+        "page_fan_adds",
+        "page_fan_removes",
+    ])
+
+    page_views = optional_metrics.get("page_views_total", 0)
+    video_views = optional_metrics.get("page_video_views", 0)
+    video_views_3s = optional_metrics.get("page_video_views_3s", 0)
+    video_views_60s = optional_metrics.get("page_video_views_60s", 0)
+    video_view_time = optional_metrics.get("page_video_view_time", 0)
+    content_activity = optional_metrics.get("page_consumptions", 0)  # Consumptions é mais confiável
+    cta_clicks = optional_metrics.get("page_cta_clicks_logged_in_total", 0)
+    followers_gained = optional_metrics.get("page_fan_adds", 0) or likes_add
+    followers_lost = optional_metrics.get("page_fan_removes", 0)
+    net_followers = followers_gained - followers_lost
+
+    # Calcular tempo médio de visualização se houver visualizações
+    avg_watch_time = 0
+    if video_views > 0 and video_view_time > 0:
+        avg_watch_time = int(video_view_time / video_views)
 
     total_reac = 0
     total_com = 0
@@ -210,6 +259,18 @@ def fb_page_window(page_id: str, since: int, until: int):
         },
         "video": video_metrics,
         "post_clicks": total_clicks,
+        "page_overview": {
+            "page_views": page_views,
+            "video_views": video_views,
+            "video_views_3s": video_views_3s,
+            "video_views_1m": video_views_60s,
+            "avg_watch_time": avg_watch_time,
+            "content_activity": content_activity,
+            "cta_clicks": cta_clicks,
+            "followers_gained": followers_gained,
+            "followers_lost": followers_lost,
+            "net_followers": net_followers,
+        },
     }
 
 

@@ -7,9 +7,11 @@ export default function Settings(){
   return (
     <>
       <Topbar title="Configurações" sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
-      <div className="card">
-        <div className="text-lg font-semibold">Preferências gerais do painel</div>
-        <p className="muted mt-2">Painel de controle para tema, idioma e integrações.</p>
+      <div className="page-content">
+        <div className="card">
+          <div className="text-lg font-semibold">Preferências gerais do painel</div>
+          <p className="muted mt-2">Painel de controle para tema, idioma e integrações.</p>
+        </div>
       </div>
     </>
   );
