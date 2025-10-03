@@ -18,8 +18,17 @@ const fmt = (d) => (d ? format(d, "dd MMM yy", { locale: ptBR }).toUpperCase() :
 const toInputValue = (d) => (d ? format(d, "yyyy-MM-dd") : "");
 
 export default function DateRangePicker() {
+  // Usar momento atual
   const now = useMemo(() => new Date(), []);
-  const defaultEnd = useMemo(() => endOfDay(now), [now]);
+
+  // Calcular o final padrão: momento atual (para ter dados do dia de hoje)
+  // Não usamos endOfDay porque causaria timestamp futuro (próxima meia-noite)
+  const defaultEnd = useMemo(() => {
+    // Usar o momento atual, que sempre será <= agora
+    return now;
+  }, [now]);
+
+  // 7 dias antes (incluindo hoje)
   const defaultStart = useMemo(() => startOfDay(addDays(defaultEnd, -6)), [defaultEnd]);
 
   const [get, set] = useQueryState({});

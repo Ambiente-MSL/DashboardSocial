@@ -1,14 +1,20 @@
-export default function ExportButtons({ onExport }) {
+// src/components/ExportButtons.jsx
+import { Download, FileSpreadsheet, FileText, Printer } from "lucide-react";
+
+export default function ExportButtons({ onExport, disabled }) {
   return (
-    <div className="report-exports">
-      <button type="button" className="btn btn--ghost" onClick={() => onExport?.('csv')}>
-        Exportar CSV
+    <div className="export-buttons">
+      <button className="btn btn--pill" onClick={() => onExport('csv')} disabled={disabled}>
+        <Download size={16} /> Exportar CSV
       </button>
-      <button type="button" className="btn btn--primary" onClick={() => onExport?.('pdf')}>
-        Exportar PDF
+      <button className="btn btn--pill" onClick={() => onExport('pdf')} disabled={disabled}>
+        <FileText size={16} /> Exportar PDF
       </button>
-      <button type="button" className="btn btn--ghost" onClick={() => onExport?.('xlsx')}>
-        Exportar Excel
+      <button className="btn btn--pill" onClick={() => onExport('xlsx')} disabled={disabled}>
+        <FileSpreadsheet size={16} /> Exportar Excel
+      </button>
+      <button className="btn btn--pill" onClick={() => onExport('print')} disabled={disabled}>
+        <Printer size={16} /> Imprimir
       </button>
     </div>
   );

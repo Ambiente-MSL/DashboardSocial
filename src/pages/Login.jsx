@@ -63,7 +63,7 @@ export default function Login() {
             id="email"
             type="email"
             autoComplete="email"
-            placeholder="nome@empresa.com"
+            placeholder="Digite seu email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required

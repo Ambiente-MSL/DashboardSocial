@@ -1,6 +1,7 @@
 # backend/server.py
 import os
 import time
+import logging
 from datetime import datetime, timedelta, timezone
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -10,10 +11,19 @@ from meta import (
     fb_recent_posts,
     ig_window,
     ig_recent_posts,
-    ig_organic_summary,   # NOVO
+    ig_organic_summary,
+    ig_audience,
     ads_highlights,
     MetaAPIError,
+    gget,
 )
+
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
@@ -22,12 +32,94 @@ PAGE_ID = os.getenv("META_PAGE_ID")
 IG_ID = os.getenv("META_IG_USER_ID")
 ACT_ID = os.getenv("META_AD_ACCOUNT_ID")
 
+# Constantes
+MAX_DAYS_RANGE = 90  # Máximo de 90 dias
+MIN_TIMESTAMP = 946684800  # 1 Jan 2000
+DEFAULT_DAYS = 7
 
-def unix_range(args, default_days=7):
+
+def validate_timestamp(ts: int, param_name: str = "timestamp") -> int:
+    """
+    Valida se um timestamp Unix está em um range válido.
+
+    Args:
+        ts: Timestamp Unix em segundos
+        param_name: Nome do parâmetro (para mensagem de erro)
+
+    Returns:
+        int: Timestamp validado
+
+    Raises:
+        ValueError: Se timestamp for inválido
+    """
     now = int(time.time())
-    days = int(args.get("days", default_days))
-    until = int(args.get("until", now))
-    since = int(args.get("since", until - days * 86_400))
+
+    if ts < MIN_TIMESTAMP:
+        raise ValueError(f"{param_name} muito antigo (antes de 2000)")
+
+    if ts > now:
+        raise ValueError(f"{param_name} não pode estar no futuro")
+
+    return ts
+
+
+def unix_range(args, default_days=DEFAULT_DAYS):
+    """
+    Extrai e valida range de datas dos parâmetros da request.
+
+    Args:
+        args: Request args (request.args)
+        default_days: Número de dias padrão se não especificado
+
+    Returns:
+        tuple: (since, until) em Unix timestamp
+
+    Raises:
+        ValueError: Se range for inválido
+    """
+    now = int(time.time())
+
+    # Obter until (padrão: agora)
+    until_param = args.get("until")
+    if until_param:
+        try:
+            until = int(until_param)
+            until = validate_timestamp(until, "until")
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Invalid until parameter: {until_param}, using now. Error: {e}")
+            until = now
+    else:
+        until = now
+
+    # Obter since
+    since_param = args.get("since")
+    if since_param:
+        try:
+            since = int(since_param)
+            since = validate_timestamp(since, "since")
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Invalid since parameter: {since_param}, using default. Error: {e}")
+            since = until - (default_days * 86_400)
+    else:
+        since = until - (default_days * 86_400)
+
+    # Validar ordem
+    if since >= until:
+        logger.warning(f"since ({since}) >= until ({until}), adjusting")
+        since = until - (default_days * 86_400)
+
+    # Validar range máximo (90 dias)
+    range_days = (until - since) / 86_400
+    if range_days > MAX_DAYS_RANGE:
+        logger.warning(f"Range too large ({range_days:.1f} days), limiting to {MAX_DAYS_RANGE} days")
+        since = until - (MAX_DAYS_RANGE * 86_400)
+
+    # Garantir que since não seja negativo
+    if since < MIN_TIMESTAMP:
+        since = MIN_TIMESTAMP
+
+    logger.info(f"Date range: {datetime.fromtimestamp(since)} to {datetime.fromtimestamp(until)} ({range_days:.1f} days)")
+
     return since, until
 
 
@@ -153,6 +245,7 @@ def facebook_posts():
 def instagram_metrics():
     """
     Cards orgânicos (conta) – sem 'accounts_engaged' (removido a pedido).
+    Calcula taxa de engajamento baseada nos últimos posts do período.
     """
     ig = request.args.get("igUserId", IG_ID)
     if not ig:
@@ -166,6 +259,114 @@ def instagram_metrics():
 
     def pct(current, previous):
         return round(((current - previous) / previous) * 100, 2) if previous and previous > 0 and current is not None else None
+
+    # Calcular taxa de engajamento dos últimos posts com breakdown detalhado
+    engagement_rate_from_posts = None
+    engagement_breakdown = {
+        "likes": 0,
+        "comments": 0,
+        "shares": 0,
+        "saves": 0,
+        "total": 0,
+        "reach": 0,
+    }
+
+    try:
+        # Buscar últimos 10 posts do período para calcular taxa de engajamento
+        posts_data = ig_recent_posts(ig, limit=10)
+        posts = posts_data.get("posts", [])
+
+        # Filtrar posts do período
+        posts_in_period = []
+        for post in posts:
+            if post.get("timestamp"):
+                try:
+                    # Tentar converter timestamp ISO para Unix
+                    timestamp_str = post["timestamp"].replace("Z", "+00:00")
+                    post_time = datetime.fromisoformat(timestamp_str)
+                    post_unix = int(post_time.timestamp())
+
+                    if since <= post_unix <= until:
+                        posts_in_period.append(post)
+                except (ValueError, AttributeError) as e:
+                    logger.warning(f"Failed to parse timestamp for post {post.get('id')}: {e}")
+                    # Se falhar, incluir post mesmo assim (melhor ter dados que não ter)
+                    posts_in_period.append(post)
+
+        # Se não houver posts no período, usar todos os últimos posts
+        if not posts_in_period:
+            posts_in_period = posts
+
+        if posts_in_period:
+            # Calcular engajamento médio dos posts
+            total_likes = 0
+            total_comments = 0
+            total_shares = 0
+            total_saves = 0
+            total_reach = 0
+
+            for post in posts_in_period:
+                likes = post.get("likeCount") or 0
+                comments = post.get("commentsCount") or 0
+                total_likes += likes
+                total_comments += comments
+
+                # Para cada post, buscar shares e saves dos insights
+                try:
+                    post_insights = gget(
+                        f"/{post['id']}/insights",
+                        {"metric": "shares,saved,reach"}
+                    )
+                    shares = 0
+                    saves = 0
+                    reach = 0
+                    for insight in post_insights.get("data", []):
+                        name = insight.get("name")
+                        value = (insight.get("values") or [{}])[0].get("value", 0) or 0
+                        if name == "shares":
+                            shares = value
+                        elif name in ("saved", "saves"):
+                            saves = value
+                        elif name == "reach":
+                            reach = value
+
+                    total_shares += shares
+                    total_saves += saves
+                    total_reach += reach
+                except:
+                    # Se falhar, continuar sem shares/saves/reach deste post
+                    pass
+
+            # Preencher breakdown
+            engagement_breakdown["likes"] = total_likes
+            engagement_breakdown["comments"] = total_comments
+            engagement_breakdown["shares"] = total_shares
+            engagement_breakdown["saves"] = total_saves
+            engagement_breakdown["total"] = total_likes + total_comments + total_shares + total_saves
+            engagement_breakdown["reach"] = total_reach
+
+            # Calcular taxa de engajamento média
+            if total_reach > 0:
+                engagement_rate_from_posts = round((engagement_breakdown["total"] / total_reach) * 100, 2)
+            elif posts_in_period and cur["reach"] > 0:
+                # Fallback: usar alcance da conta se não conseguir dos posts
+                engagement_breakdown["reach"] = cur["reach"]
+                engagement_rate_from_posts = round((engagement_breakdown["total"] / cur["reach"]) * 100, 2)
+    except Exception as e:
+        logger.error(f"Erro ao calcular taxa de engajamento dos posts: {e}", exc_info=True)
+        engagement_rate_from_posts = None
+
+    # Se não conseguiu calcular dos posts, usar o método antigo como fallback
+    if engagement_rate_from_posts is None:
+        engagement_rate_from_posts = round((cur["interactions"] / cur["reach"]) * 100, 2) if cur["reach"] else None
+        engagement_breakdown = {
+            "likes": cur.get("likes", 0),
+            "comments": cur.get("comments", 0),
+            "shares": cur.get("shares", 0),
+            "saves": cur.get("saves", 0),
+            "total": cur.get("interactions", 0),
+            "reach": cur.get("reach", 0),
+        }
 
     # Mantemos as métricas pedidas (sem accounts_engaged)
     metrics = [
@@ -181,11 +382,30 @@ def instagram_metrics():
         {
             "key": "engagement_rate",
             "label": "TAXA ENGAJAMENTO",
-            "value": round((cur["interactions"] / cur["reach"]) * 100, 2) if cur["reach"] else None,
+            "value": engagement_rate_from_posts,
+            "deltaPct": None,
+            "breakdown": engagement_breakdown,
+        },
+        {
+            "key": "follower_growth",
+            "label": "CRESCIMENTO DE SEGUIDORES",
+            "value": cur.get("follower_growth"),
             "deltaPct": None,
         },
     ]
-    return jsonify({"since": since, "until": until, "metrics": metrics})
+    follower_counts = {
+        "start": cur.get("follower_count_start"),
+        "end": cur.get("follower_count_end"),
+        "follows": cur.get("follows"),
+        "unfollows": cur.get("unfollows"),
+    }
+    return jsonify({
+        "since": since,
+        "until": until,
+        "metrics": metrics,
+        "profile_visitors_breakdown": cur.get("profile_visitors_breakdown"),
+        "follower_counts": follower_counts,
+    })
 
 
 @app.get("/api/instagram/organic")
@@ -203,6 +423,18 @@ def instagram_organic():
     except MetaAPIError as err:
         return meta_error_response(err)
     data.update({"since": since, "until": until})
+    return jsonify(data)
+
+
+@app.get("/api/instagram/audience")
+def instagram_audience():
+    ig = request.args.get("igUserId", IG_ID)
+    if not ig:
+        return jsonify({"error": "META_IG_USER_ID is not configured"}), 500
+    try:
+        data = ig_audience(ig)
+    except MetaAPIError as err:
+        return meta_error_response(err)
     return jsonify(data)
 
 

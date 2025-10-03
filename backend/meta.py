@@ -3,6 +3,7 @@ import os
 import time
 import hmac
 import hashlib
+import logging
 import requests
 from typing import Optional, List, Dict, Any
 from urllib.parse import urlencode
@@ -11,10 +12,21 @@ from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"), override=False)
 
+# Configurar logging estruturado
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 VERSION = os.getenv("META_GRAPH_VERSION", "v23.0")
 TOKEN = os.getenv("META_SYSTEM_USER_TOKEN")
 SECRET = os.getenv("META_APP_SECRET")
 BASE = f"https://graph.facebook.com/{VERSION}"
+
+# Configurações
+REQUEST_TIMEOUT = 30  # segundos
+MAX_RETRIES = 3
 
 
 class MetaAPIError(Exception):
@@ -34,52 +46,132 @@ def appsecret_proof(token: Optional[str]) -> Optional[str]:
 
 
 def gget(path: str, params: Optional[dict] = None, token: Optional[str] = None):
+    """
+    Faz requisição GET à Meta Graph API com retry exponencial e timeout configurável.
+
+    Args:
+        path: Caminho da API (ex: "/me")
+        params: Parâmetros da query string
+        token: Token de acesso (usa TOKEN global se não fornecido)
+
+    Returns:
+        dict: Resposta JSON da API
+
+    Raises:
+        MetaAPIError: Se a requisição falhar após todos os retries
+    """
     request_token = token or TOKEN
     if not request_token:
         raise RuntimeError("META_SYSTEM_USER_TOKEN is not configured")
+
     query = {"access_token": request_token}
     proof = appsecret_proof(request_token)
     if proof:
         query["appsecret_proof"] = proof
     if params:
         query.update(params)
+
     url = f"{BASE}{path}?{urlencode(query, doseq=True)}"
-    for i in range(3):  # retry simples
-        r = requests.get(url, timeout=15)
-        if r.status_code in (429, 500, 502, 503) and i < 2:
-            time.sleep(1.5 * (i + 1))
-            continue
-        if r.ok:
-            return r.json()
+
+    # Retry com exponential backoff
+    for attempt in range(MAX_RETRIES):
         try:
-            payload = r.json()
-        except ValueError:
-            payload = {}
-        err = payload.get("error") if isinstance(payload, dict) else None
-        message = (err or {}).get("message") if isinstance(err, dict) else None
-        raise MetaAPIError(
-            status=r.status_code,
-            message=message or r.text or "Meta Graph API request failed",
-            code=(err or {}).get("code") if isinstance(err, dict) else None,
-            error_type=(err or {}).get("type") if isinstance(err, dict) else None,
-            raw=payload if isinstance(payload, dict) else {"raw": r.text},
-        )
+            logger.debug(f"Request attempt {attempt + 1}/{MAX_RETRIES}: {path}")
+            r = requests.get(url, timeout=REQUEST_TIMEOUT)
+
+            # Se sucesso, retornar
+            if r.ok:
+                return r.json()
+
+            # Se for erro temporário e ainda temos tentativas, fazer retry
+            if r.status_code in (429, 500, 502, 503, 504) and attempt < MAX_RETRIES - 1:
+                # Exponential backoff: 2^attempt segundos (1s, 2s, 4s, 8s...)
+                wait_time = 2 ** attempt
+                logger.warning(
+                    f"Request failed with status {r.status_code}. "
+                    f"Retrying in {wait_time}s... (attempt {attempt + 1}/{MAX_RETRIES})"
+                )
+                time.sleep(wait_time)
+                continue
+
+            # Erro definitivo ou última tentativa
+            try:
+                payload = r.json()
+            except ValueError:
+                payload = {}
+
+            err = payload.get("error") if isinstance(payload, dict) else None
+            message = (err or {}).get("message") if isinstance(err, dict) else None
+
+            logger.error(f"Meta API error: {message or r.text}")
+
+            raise MetaAPIError(
+                status=r.status_code,
+                message=message or r.text or "Meta Graph API request failed",
+                code=(err or {}).get("code") if isinstance(err, dict) else None,
+                error_type=(err or {}).get("type") if isinstance(err, dict) else None,
+                raw=payload if isinstance(payload, dict) else {"raw": r.text},
+            )
+
+        except requests.exceptions.Timeout:
+            if attempt < MAX_RETRIES - 1:
+                wait_time = 2 ** attempt
+                logger.warning(f"Request timeout. Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+                continue
+            logger.error(f"Request timeout after {MAX_RETRIES} attempts")
+            raise MetaAPIError(
+                status=504,
+                message=f"Request timeout after {REQUEST_TIMEOUT}s",
+                code=None,
+                error_type="timeout"
+            )
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request exception: {e}")
+            raise MetaAPIError(
+                status=500,
+                message=f"Request failed: {str(e)}",
+                code=None,
+                error_type="request_exception"
+            )
+
+    # Fallback (não deve chegar aqui)
+    logger.warning("Max retries reached, returning empty data")
     return {"data": []}
 
 
-PAGE_TOKEN_CACHE: Dict[str, Dict[str, Any]] = {}
-PAGE_TOKEN_TTL = int(os.getenv("META_PAGE_TOKEN_TTL", "3300"))
+# Cache simples para page tokens (System User token não expira)
+PAGE_TOKEN_CACHE: Dict[str, str] = {}
 
 def get_page_access_token(page_id: str) -> str:
-    now = time.time()
-    cached = PAGE_TOKEN_CACHE.get(page_id)
-    if cached and cached.get("expires_at", 0) > now:
-        return cached["token"]
+    """
+    Obtém page access token para uma página específica.
+    System User token não expira, então mantemos cache indefinidamente.
+
+    Args:
+        page_id: ID da página do Facebook
+
+    Returns:
+        str: Page access token
+    """
+    # Verificar cache primeiro
+    if page_id in PAGE_TOKEN_CACHE:
+        logger.debug(f"Using cached page token for {page_id}")
+        return PAGE_TOKEN_CACHE[page_id]
+
+    # Buscar token da API
+    logger.info(f"Fetching page access token for {page_id}")
     data = gget(f"/{page_id}", {"fields": "access_token"})
     token_value = data.get("access_token") if isinstance(data, dict) else None
+
     if not token_value:
         raise RuntimeError(f"Could not fetch page access token for {page_id}")
-    PAGE_TOKEN_CACHE[page_id] = {"token": token_value, "expires_at": now + PAGE_TOKEN_TTL}
+
+    # Armazenar em cache
+    PAGE_TOKEN_CACHE[page_id] = token_value
+    logger.info(f"Page token cached for {page_id}")
+
     return token_value
 
 
@@ -138,6 +230,56 @@ def insight_value_from_list(items: List[Dict[str, Any]], name: str) -> Optional[
                 return _coerce_number(first.get('value'))
             return _coerce_number(first)
     return None
+
+
+def aggregate_dimension_values(payload: Dict[str, Any], target_name: str) -> Dict[str, float]:
+    """Agrupa valores de métricas com breakdown do Graph API."""
+    results: Dict[str, float] = {}
+    if not isinstance(payload, dict):
+        return results
+    for item in payload.get("data", []):
+        if item.get("name") != target_name:
+            continue
+        for entry in item.get("values") or []:
+            value = entry.get("value")
+            if isinstance(value, dict):
+                for key, raw in value.items():
+                    coerced = _coerce_number(raw)
+                    if coerced is None:
+                        continue
+                    results[key] = results.get(key, 0.0) + coerced
+            else:
+                coerced = _coerce_number(value)
+                if coerced is None:
+                    continue
+                results["total"] = results.get("total", 0.0) + coerced
+    return results
+
+
+def extract_time_series(payload: Dict[str, Any], target_name: str) -> List[Dict[str, Any]]:
+    """Extrai séries temporais ordenadas (ex.: follower_count)."""
+    series: List[Dict[str, Any]] = []
+    if not isinstance(payload, dict):
+        return series
+    for item in payload.get("data", []):
+        if item.get("name") != target_name:
+            continue
+        for entry in item.get("values") or []:
+            raw_val = entry.get("value")
+            coerced = None
+            if isinstance(raw_val, dict):
+                coerced = _coerce_number(raw_val.get("value"))
+            if coerced is None:
+                coerced = _coerce_number(raw_val)
+            if coerced is None:
+                continue
+            series.append({
+                "value": coerced,
+                "end_time": entry.get("end_time"),
+                "start_time": entry.get("start_time"),
+            })
+    series.sort(key=lambda row: (row.get("end_time") or row.get("start_time") or ""))
+    return series
 
 
 # ---- Facebook (organico) ----
@@ -387,6 +529,101 @@ def ig_window(ig_user_id: str, since: int, until: int):
         page = requests.get(nextp, timeout=15).json()
 
     interactions = total_interactions_metric or (sum_likes + sum_comments + sum_shares + sum_saves)
+
+    follower_series = []
+    follower_growth = None
+    follower_start = None
+    follower_end = None
+    follows_total = None
+    unfollows_total = None
+    try:
+        follower_payload = gget(
+            f"/{ig_user_id}/insights",
+            {
+                "metric": "follower_count",
+                "period": "day",
+                "since": since,
+                "until": until,
+            },
+        )
+        follower_series = extract_time_series(follower_payload, "follower_count")
+        if follower_series:
+            follower_start = follower_series[0]["value"]
+            follower_end = follower_series[-1]["value"]
+            follower_growth = follower_end - follower_start
+    except MetaAPIError:
+        pass
+
+    try:
+        follows_payload = gget(
+            f"/{ig_user_id}/insights",
+            {
+                "metric": "follows_and_unfollows",
+                "period": "day",
+                "since": since,
+                "until": until,
+                "metric_type": "total_value",
+            },
+        )
+        follows_map = aggregate_dimension_values(follows_payload, "follows_and_unfollows")
+        if follows_map:
+            follows_total = follows_map.get("follows")
+            unfollows_total = follows_map.get("unfollows")
+    except MetaAPIError:
+        pass
+
+    visitor_breakdown_source = None
+    visitors_breakdown = {"followers": 0.0, "non_followers": 0.0, "other": 0.0}
+    for metric_name in ("profile_views", "accounts_engaged"):
+        try:
+            payload = gget(
+                f"/{ig_user_id}/insights",
+                {
+                    "metric": metric_name,
+                    "period": "day",
+                    "since": since,
+                    "until": until,
+                    "metric_type": "total_value",
+                    "breakdown": "follower_status",
+                },
+            )
+            breakdown = aggregate_dimension_values(payload, metric_name)
+            if breakdown:
+                visitor_breakdown_source = metric_name
+                for key, value in breakdown.items():
+                    norm = (key or "").strip().lower()
+                    val = value or 0.0
+                    if "non" in norm and "follow" in norm:
+                        visitors_breakdown["non_followers"] += val
+                    elif "follow" in norm:
+                        visitors_breakdown["followers"] += val
+                    else:
+                        visitors_breakdown["other"] += val
+                break
+        except MetaAPIError:
+            continue
+
+    def _as_int(number):
+        if number is None:
+            return None
+        return int(round(number))
+
+    visitors_total = (
+        visitors_breakdown["followers"]
+        + visitors_breakdown["non_followers"]
+        + visitors_breakdown["other"]
+    )
+
+    profile_visitors_breakdown = None
+    if visitor_breakdown_source or visitors_total > 0:
+        profile_visitors_breakdown = {
+            "source": visitor_breakdown_source,
+            "followers": _as_int(visitors_breakdown["followers"]),
+            "non_followers": _as_int(visitors_breakdown["non_followers"]),
+            "other": _as_int(visitors_breakdown["other"]),
+            "total": _as_int(visitors_total),
+        }
+
     return {
         "impressions": sum_impressions,
         "reach": reach,
@@ -398,6 +635,12 @@ def ig_window(ig_user_id: str, since: int, until: int):
         "comments": sum_comments,
         "shares": sum_shares,
         "saves": sum_saves,
+        "follower_growth": _as_int(follower_growth),
+        "follower_count_start": _as_int(follower_start),
+        "follower_count_end": _as_int(follower_end),
+        "follows": _as_int(follows_total),
+        "unfollows": _as_int(unfollows_total),
+        "profile_visitors_breakdown": profile_visitors_breakdown,
     }
 
 
@@ -407,6 +650,110 @@ def _safe(val, cast=float):
     except Exception:
         return 0
 
+
+def ig_audience(ig_user_id: str) -> Dict[str, Any]:
+    """Retorna distribuição de audiência (cidades, idades, gênero)."""
+
+    def fetch_breakdown(breakdown: str):
+        metric_candidates = ("follower_demographics", "engaged_audience_demographics", "reached_audience_demographics")
+        for metric_name in metric_candidates:
+            params = {
+                "metric": metric_name,
+                "period": "lifetime",
+                "metric_type": "total_value",
+                "breakdown": breakdown,
+            }
+            try:
+                payload = gget(f"/{ig_user_id}/insights", params)
+            except MetaAPIError:
+                continue
+            data = aggregate_dimension_values(payload, metric_name)
+            if data:
+                return data, metric_name
+        return {}, None
+
+    def as_percentage(value: float, total: float) -> float:
+        if not total:
+            return 0.0
+        return round((value / total) * 100.0, 2)
+
+    city_counts, _ = fetch_breakdown("city")
+    top_cities = sorted(city_counts.items(), key=lambda kv: kv[1], reverse=True)[:8]
+    total_city = sum(city_counts.values()) or 0.0
+
+    cities = [
+        {
+            "name": name,
+            "value": int(round(count)),
+            "percentage": as_percentage(count, total_city),
+        }
+        for name, count in top_cities
+    ]
+
+    raw_age_counts, _ = fetch_breakdown("age")
+    age_buckets = {
+        "18-24": 0.0,
+        "25-34": 0.0,
+        "35-44": 0.0,
+        "45-54": 0.0,
+        "55+": 0.0,
+    }
+    for key, value in raw_age_counts.items():
+        label = str(key or "").replace('_', '-').strip().lower()
+        normalized = None
+        if label in ("18-24", "25-34", "35-44", "45-54"):
+            normalized = label
+        elif label in ("55-64", "65+", "65-plus", "55-plus", "55+"):
+            normalized = "55+"
+        elif label in ("13-17", "under-18"):
+            normalized = None
+        if normalized and value is not None:
+            age_buckets[normalized] += float(value or 0.0)
+
+    age_total = sum(age_buckets.values()) or 0.0
+    ages = [
+        {
+            "range": label,
+            "value": int(round(amount)),
+            "percentage": as_percentage(amount, age_total),
+        }
+        for label, amount in age_buckets.items()
+    ]
+
+    raw_gender_counts, _ = fetch_breakdown("gender")
+    gender_labels = {"female": "Feminino", "male": "Masculino", "unknown": "Nao informado"}
+    gender_totals = {"female": 0.0, "male": 0.0, "unknown": 0.0}
+
+    for key, value in raw_gender_counts.items():
+        token = str(key or "").strip().lower()
+        if token.startswith('f'):
+            gender_totals["female"] += float(value or 0.0)
+        elif token.startswith('m'):
+            gender_totals["male"] += float(value or 0.0)
+        else:
+            gender_totals["unknown"] += float(value or 0.0)
+
+    gender_total = sum(gender_totals.values()) or 0.0
+    gender = [
+        {
+            "key": key,
+            "label": gender_labels.get(key, key.title()),
+            "value": int(round(amount)),
+            "percentage": as_percentage(amount, gender_total),
+        }
+        for key, amount in gender_totals.items()
+    ]
+
+    return {
+        "cities": cities,
+        "ages": ages,
+        "gender": gender,
+        "totals": {
+            "cities": int(round(total_city)) if total_city else 0,
+            "ages": int(round(age_total)) if age_total else 0,
+            "gender": int(round(gender_total)) if gender_total else 0,
+        },
+    }
 
 def ig_organic_summary(ig_user_id: str, since: int, until: int) -> Dict[str, Any]:
     """
