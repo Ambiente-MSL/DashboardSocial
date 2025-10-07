@@ -3,38 +3,71 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 const STORAGE_KEY = 'ui-theme';
 
 const ThemeContext = createContext({
-  theme: 'dark',
+  theme: 'auto',
+  resolvedTheme: 'dark',
   setTheme: () => {},
   toggleTheme: () => {},
 });
 
-const getInitialTheme = () => {
+const getSystemTheme = () => {
   if (typeof window === 'undefined') return 'dark';
+  const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  return media && media.matches ? 'dark' : 'light';
+};
+
+const getInitialTheme = () => {
+  if (typeof window === 'undefined') return 'auto';
   const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (stored === 'light' || stored === 'dark') {
+  if (stored === 'light' || stored === 'dark' || stored === 'auto') {
     return stored;
   }
-  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  return prefersDark ? 'dark' : 'light';
+  return 'auto';
 };
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(getInitialTheme);
+  const initialTheme = getInitialTheme();
+  const [theme, setTheme] = useState(initialTheme);
+  const [resolvedTheme, setResolvedTheme] = useState(() => (initialTheme === 'auto' ? getSystemTheme() : initialTheme));
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return undefined;
     window.localStorage.setItem(STORAGE_KEY, theme);
     const root = document.documentElement;
-    root.setAttribute('data-theme', theme);
-    document.body.classList.toggle('theme-light', theme === 'light');
-    document.body.classList.toggle('theme-dark', theme === 'dark');
+
+    const applyTheme = (mode) => {
+      root.setAttribute('data-theme', mode);
+      document.body.classList.toggle('theme-light', mode === 'light');
+      document.body.classList.toggle('theme-dark', mode === 'dark');
+      setResolvedTheme(mode);
+    };
+
+    if (theme === 'auto') {
+      const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+      const updateFromSystem = () => applyTheme(media && media.matches ? 'dark' : 'light');
+      updateFromSystem();
+      if (media) {
+        if (media.addEventListener) {
+          media.addEventListener('change', updateFromSystem);
+          return () => media.removeEventListener('change', updateFromSystem);
+        }
+        if (media.addListener) {
+          media.addListener(updateFromSystem);
+          return () => media.removeListener(updateFromSystem);
+        }
+      }
+      return undefined;
+    }
+
+    applyTheme(theme);
+    return undefined;
   }, [theme]);
 
   const value = useMemo(() => ({
     theme,
+    resolvedTheme,
     setTheme,
     toggleTheme: () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark')),
-  }), [theme]);
+  }), [theme, resolvedTheme]);
 
   return (
     <ThemeContext.Provider value={value}>

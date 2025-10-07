@@ -5,12 +5,12 @@ import AccountSelect from './AccountSelect';
 import { useTheme } from '../context/ThemeContext';
 
 export default function Topbar({ title, sidebarOpen, onToggleSidebar, showFilters = false }) {
-  const { theme, toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const isDark = theme === 'dark';
+  const isDark = resolvedTheme === 'dark';
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -119,7 +119,7 @@ export default function Topbar({ title, sidebarOpen, onToggleSidebar, showFilter
             type="button"
             className="action-bar__icon-btn"
             onClick={toggleTheme}
-            aria-label={isDark ? 'Modo claro' : 'Modo escuro'}
+            aria-label='Alternar tema'
           >
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>

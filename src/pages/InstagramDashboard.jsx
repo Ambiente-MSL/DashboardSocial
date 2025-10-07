@@ -21,6 +21,8 @@ const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const DEFAULT_ACCOUNT_ID = accounts[0]?.id || "";
 const DONUT_COLORS = ["#6366f1", "#22d3ee", "#94a3b8"];
 
+const GENDER_COLORS = { male: '#6366f1', female: '#ec4899' };
+
 const mediaTypeLabel = {
   IMAGE: "Imagem",
   VIDEO: "Video",
@@ -282,10 +284,41 @@ export default function InstagramDashboard() {
   }, [profileBreakdown]);
   const donutTotal = donutData.reduce((acc, item) => acc + (item.value || 0), 0);
 
-  const audienceCities = (audience?.cities || []).slice(0, 5);
-  const audienceAges = audience?.ages || [];
-  const audienceGender = audience?.gender || [];
-  const hasAudienceData = audienceCities.length > 0 || audienceAges.length > 0 || audienceGender.length > 0;
+  const audienceCities = useMemo(
+    () => (audience?.cities || []).slice(0, 5),
+    [audience],
+  );
+
+  const genderPieData = useMemo(() => {
+    const source = Array.isArray(audience?.gender) ? audience.gender : [];
+    const buckets = {
+      female: { key: 'female', label: 'Feminino', value: 0 },
+      male: { key: 'male', label: 'Masculino', value: 0 },
+    };
+
+    source.forEach((entry) => {
+      const token = String(entry?.key || '').toLowerCase();
+      if (token.startsWith('f')) {
+        buckets.female.value += Number(entry?.value || 0);
+        if (entry?.label) buckets.female.label = entry.label;
+      } else if (token.startsWith('m')) {
+        buckets.male.value += Number(entry?.value || 0);
+        if (entry?.label) buckets.male.label = entry.label;
+      }
+    });
+
+    const entries = Object.values(buckets).filter((item) => item.value > 0);
+    const total = entries.reduce((sum, item) => sum + item.value, 0);
+    return entries.map((item) => ({
+      ...item,
+      percentage: total ? Number(((item.value / total) * 100).toFixed(2)) : 0,
+      color: item.key === 'female' ? GENDER_COLORS.female : GENDER_COLORS.male,
+    }));
+  }, [audience]);
+
+  const hasGenderData = genderPieData.some((item) => item.value > 0);
+  const genderTotalFollowers = genderPieData.reduce((sum, item) => sum + item.value, 0);
+  const hasAudienceData = audienceCities.length > 0 || hasGenderData;
 
   const displayedPosts = posts.slice(0, visiblePosts);
 
@@ -395,12 +428,12 @@ export default function InstagramDashboard() {
         <div className="insights-panels">
           <Section
             title="Audiencia"
-            description="Distribuicao de cidades, faixas etarias e genero dos seguidores."
+            description="Distribuicao de cidades e genero dos seguidores."
           >
             {loadingAudience ? (
               <div className="audience-card__loading">Carregando audiencia...</div>
             ) : hasAudienceData ? (
-              <div className="audience-card">
+              <div className="audience-card audience-card--balanced">
                 <div className="audience-card__column">
                   <h3>Principais cidades</h3>
                   <ul className="audience-ranking">
@@ -423,30 +456,52 @@ export default function InstagramDashboard() {
                     })}
                   </ul>
                 </div>
-                <div className="audience-card__column">
-                  <h3>Faixa etaria</h3>
-                  <ul className="audience-distribution">
-                    {audienceAges.map((group) => (
-                      <li key={group.range} className="audience-distribution__item">
-                        <span className="audience-distribution__label">{group.range}</span>
-                        <div className="audience-distribution__bar">
-                          <span style={{ width: `${Math.max(group.percentage || 0, 2)}%` }} />
+                <div className="audience-card__column audience-card__column--chart">
+                  <h3>Genero dos seguidores</h3>
+                  {hasGenderData ? (
+                    <div className="audience-gender-chart">
+                      <div className="audience-gender-chart__pie">
+                        <ResponsiveContainer width="100%" height={220}>
+                          <PieChart>
+                            <Pie
+                              data={genderPieData}
+                              dataKey="value"
+                              nameKey="label"
+                              innerRadius="55%"
+                              outerRadius="100%"
+                              paddingAngle={2}
+                              stroke="none"
+                            >
+                              {genderPieData.map((segment) => (
+                                <Cell key={segment.key} fill={segment.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip formatter={(value) => Number(value).toLocaleString('pt-BR')} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="audience-gender-chart__total">
+                          <strong>{genderTotalFollowers.toLocaleString('pt-BR')}</strong>
+                          <span>Seguidores</span>
                         </div>
-                        <span className="audience-distribution__value">{formatPercentage(group.percentage)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="audience-card__column">
-                  <h3>Genero</h3>
-                  <ul className="audience-gender">
-                    {audienceGender.map((item) => (
-                      <li key={item.key} className="audience-gender__item">
-                        <span>{item.label}</span>
-                        <strong>{formatPercentage(item.percentage)}</strong>
-                      </li>
-                    ))}
-                  </ul>
+                      </div>
+                      <ul className="audience-gender-chart__legend">
+                        {genderPieData.map((segment) => (
+                          <li key={segment.key}>
+                            <span className="audience-gender-chart__label">
+                              <span
+                                className="audience-gender-chart__dot"
+                                style={{ backgroundColor: segment.color }}
+                              ></span>
+                              {segment.label}
+                            </span>
+                            <strong>{formatPercentage(segment.percentage)}</strong>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="audience-card__notice">Sem dados de genero disponiveis.</p>
+                  )}
                 </div>
               </div>
             ) : (
