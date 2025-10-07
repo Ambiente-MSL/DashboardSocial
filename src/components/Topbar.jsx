@@ -1,16 +1,36 @@
 import { useState } from 'react';
-import { Bell, Menu, Moon, Search, Sun, X } from 'lucide-react';
+import { Bell, Menu, Moon, RefreshCw, Search, Sun, X } from 'lucide-react';
 import DateRangePicker from './DateRangePicker';
 import AccountSelect from './AccountSelect';
 import { useTheme } from '../context/ThemeContext';
 
-export default function Topbar({ title, sidebarOpen, onToggleSidebar, showFilters = false }) {
+export default function Topbar({
+  title,
+  sidebarOpen,
+  onToggleSidebar,
+  showFilters = false,
+  onRefresh,
+  refreshing = false,
+  lastSync,
+}) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const isDark = resolvedTheme === 'dark';
+
+  const formatLastSync = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Intl.DateTimeFormat('pt-BR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(date);
+  };
+
+  const lastSyncLabel = formatLastSync(lastSync);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -40,6 +60,27 @@ export default function Topbar({ title, sidebarOpen, onToggleSidebar, showFilter
         </div>
 
         <div className="action-bar__right">
+          {onRefresh && (
+            <div className="action-bar__refresh">
+              <button
+                type="button"
+                className="action-bar__icon-btn action-bar__icon-btn--refresh"
+                onClick={onRefresh}
+                disabled={refreshing}
+                aria-label="Atualizar dados"
+                aria-busy={refreshing ? 'true' : undefined}
+                data-loading={refreshing || undefined}
+              >
+                <RefreshCw size={18} />
+              </button>
+              {lastSyncLabel && (
+                <span className="action-bar__sync-text">
+                  Atualizado {lastSyncLabel}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Busca de métricas */}
           <div className="action-bar__search-wrapper">
             {showSearch && (

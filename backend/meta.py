@@ -287,14 +287,36 @@ def extract_time_series(payload: Dict[str, Any], target_name: str) -> List[Dict[
 def fb_page_window(page_id: str, since: int, until: int):
     page_token = get_page_access_token(page_id)
 
-    # Métricas básicas que sempre funcionam
-    basic_metrics = "page_impressions,page_impressions_unique,page_post_engagements,page_fan_adds_unique"
-    insight_params = {"metric": basic_metrics, "period": "day", "since": since, "until": until}
-    ins = gget(
-        f"/{page_id}/insights",
-        insight_params,
-        token=page_token,
-    )
+    # Métricas básicas (pode não retornar todas dependendo da revisão do app)
+    basic_metrics = [
+        "page_impressions",
+        "page_impressions_unique",
+        "page_post_engagements",
+        "page_fan_adds_unique",
+    ]
+    insight_params = {"metric": ",".join(basic_metrics), "period": "day", "since": since, "until": until}
+
+    try:
+        ins = gget(
+            f"/{page_id}/insights",
+            insight_params,
+            token=page_token,
+        )
+    except MetaAPIError as err:
+        logger.warning("Fallback fetching individual page metrics due to: %s", err)
+        ins = {"data": []}
+        for metric_name in basic_metrics:
+            try:
+                single = gget(
+                    f"/{page_id}/insights",
+                    {"metric": metric_name, "period": "day", "since": since, "until": until},
+                    token=page_token,
+                )
+            except MetaAPIError:
+                continue
+            data = single.get("data", [])
+            if data:
+                ins.setdefault("data", []).extend(data)
 
     def sum_series(name: str) -> int:
         values = extract_insight_values(ins, name)
@@ -356,14 +378,17 @@ def fb_page_window(page_id: str, since: int, until: int):
     total_com = 0
     total_sha = 0
     total_clicks = 0
+    post_sum_impressions = 0
+    post_sum_reach = 0
+    post_sum_engaged = 0
     url = f"/{page_id}/posts"
+    post_insight_metrics = ["post_impressions", "post_impressions_unique", "post_engaged_users", "post_clicks"]
     base_post_params = {
         "since": since,
         "until": until,
-        "limit": 100,
+        "limit": 50,
         "fields": (
-            "created_time,permalink_url,"
-            "insights.metric(post_impressions,post_impressions_unique,post_engaged_users,post_clicks),"
+            "id,created_time,permalink_url,"
             "reactions.summary(true).limit(0),comments.summary(true).limit(0),shares"
         ),
     }
@@ -373,10 +398,27 @@ def fb_page_window(page_id: str, since: int, until: int):
             total_reac += int(((p_item.get("reactions") or {}).get("summary") or {}).get("total_count", 0) or 0)
             total_com += int(((p_item.get("comments") or {}).get("summary") or {}).get("total_count", 0) or 0)
             total_sha += int((p_item.get("shares") or {}).get("count", 0) or 0)
-            ins_values = (p_item.get("insights") or {}).get("data", [])
+            try:
+                post_insights = gget(
+                    f"/{p_item.get('id')}/insights",
+                    {"metric": ",".join(post_insight_metrics)},
+                    token=page_token,
+                )
+            except MetaAPIError:
+                post_insights = {"data": []}
+            ins_values = post_insights.get("data", [])
             clicks_value = insight_value_from_list(ins_values, "post_clicks")
+            impressions_value = insight_value_from_list(ins_values, "post_impressions")
+            reach_value = insight_value_from_list(ins_values, "post_impressions_unique")
+            engaged_value = insight_value_from_list(ins_values, "post_engaged_users")
             if clicks_value:
                 total_clicks += int(round(clicks_value))
+            if impressions_value:
+                post_sum_impressions += int(round(impressions_value))
+            if reach_value:
+                post_sum_reach += int(round(reach_value))
+            if engaged_value:
+                post_sum_engaged += int(round(engaged_value))
         paging = page.get("paging") or {}
         cursor_after = (paging.get("cursors") or {}).get("after")
         if not cursor_after:
@@ -384,6 +426,13 @@ def fb_page_window(page_id: str, since: int, until: int):
         next_params = dict(base_post_params)
         next_params["after"] = cursor_after
         page = gget(url, next_params, token=page_token)
+
+    if impressions <= 0 and post_sum_impressions > 0:
+        impressions = post_sum_impressions
+    if reach <= 0 and post_sum_reach > 0:
+        reach = post_sum_reach
+    if engaged <= 0 and post_sum_engaged > 0:
+        engaged = post_sum_engaged
 
     engagement_total = total_reac + total_com + total_sha
     video_metrics = fetch_page_video_metrics(page_id, page_token, since, until)
@@ -491,9 +540,8 @@ def ig_window(ig_user_id: str, since: int, until: int):
     accounts_engaged = sum_values(by("accounts_engaged"))
     total_interactions_metric = sum_values(by("total_interactions"))
 
-    # Agregar métricas por mídia (para likes/comments/shares/saves/impressions)
+    # Agregar métricas por mídia (likes/comments/shares/saves)
     sum_likes = sum_comments = sum_shares = sum_saves = 0
-    sum_impressions = 0
 
     url = f"/{ig_user_id}/media"
     params = {
@@ -510,14 +558,12 @@ def ig_window(ig_user_id: str, since: int, until: int):
             try:
                 mi = gget(
                     f"/{media['id']}/insights",
-                    {"metric": "impressions,reach,plays,shares,saved,likes,comments"},
+                    {"metric": "reach,shares,saved,likes,comments"},
                 )
                 for k_item in mi.get("data", []):
                     v = (k_item.get("values") or [{}])[0].get("value", 0) or 0
                     name = k_item.get("name")
-                    if name == "impressions":
-                        sum_impressions += v
-                    elif name == "shares":
+                    if name == "shares":
                         sum_shares += v
                     elif name in ("saved", "saves"):
                         sum_saves += v
@@ -625,7 +671,6 @@ def ig_window(ig_user_id: str, since: int, until: int):
         }
 
     return {
-        "impressions": sum_impressions,
         "reach": reach,
         "interactions": interactions,
         "accounts_engaged": accounts_engaged,
@@ -788,7 +833,7 @@ def ig_organic_summary(ig_user_id: str, since: int, until: int) -> Dict[str, Any
             # insights por mídia
             insights = {}
             try:
-                ins = gget(f"/{mid}/insights", {"metric": "impressions,reach,shares,saved,likes,comments,plays"})
+                ins = gget(f"/{mid}/insights", {"metric": "reach,shares,saved,likes,comments"})
                 for row in ins.get("data", []):
                     insights[row.get("name")] = (row.get("values") or [{}])[0].get("value")
             except Exception:
@@ -799,8 +844,6 @@ def ig_organic_summary(ig_user_id: str, since: int, until: int) -> Dict[str, Any
             shares = insights.get("shares") or 0
             saves = insights.get("saved") or insights.get("saves") or 0
             reach = insights.get("reach") or 0
-            impressions = insights.get("impressions") or 0
-
             post_row = {
                 "id": mid,
                 "mediaType": it.get("media_type"),
@@ -813,7 +856,6 @@ def ig_organic_summary(ig_user_id: str, since: int, until: int) -> Dict[str, Any
                 "shares": _safe(shares, int),
                 "saves": _safe(saves, int),
                 "reach": _safe(reach, int),
-                "impressions": _safe(impressions, int),
                 "total_interactions": _safe(likes, int) + _safe(comments, int) + _safe(shares, int) + _safe(saves, int),
             }
             posts.append(post_row)
@@ -862,22 +904,25 @@ def ig_organic_summary(ig_user_id: str, since: int, until: int) -> Dict[str, Any
         while True:
             for st in page_s.get("data", []):
                 try:
-                    sins = gget(f"/{st['id']}/insights", {"metric": "impressions,exits,taps_forward,taps_back,replies"})
+                    sins = gget(
+                        f"/{st['id']}/insights",
+                        {"metric": "reach,exits,taps_forward,taps_back,replies"},
+                    )
                 except Exception:
                     continue
                 vals = {row.get("name"): (row.get("values") or [{}])[0].get("value") for row in sins.get("data", [])}
-                imp = _safe(vals.get("impressions"), int)
+                reach_val = _safe(vals.get("reach"), int)
                 exits = _safe(vals.get("exits"), int)
                 taps_back = _safe(vals.get("taps_back"), int)
-                if imp <= 0:
+                if reach_val <= 0:
                     continue
-                retention = 1.0 - (exits / imp)
-                replay_rate = taps_back / imp
+                retention = 1.0 - (exits / reach_val)
+                replay_rate = (taps_back / reach_val) if reach_val else 0
                 row = {
                     "id": st.get("id"),
                     "permalink": st.get("permalink"),
                     "timestamp": st.get("timestamp"),
-                    "impressions": imp,
+                    "reach": reach_val,
                     "exits": exits,
                     "retention": round(retention * 100.0, 2),
                     "replay_rate": round(replay_rate * 100.0, 2),

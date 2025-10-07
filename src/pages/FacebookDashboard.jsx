@@ -26,6 +26,10 @@ import { accounts } from "../data/accounts";
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const DEFAULT_ACCOUNT_ID = accounts[0]?.id || "";
 const FB_DONUT_COLORS = ['#22c55e', '#1120f8ff', '#f97316', '#a855f7', '#eab308'];
+const CACHE_KEYS = {
+  facebook_metrics: "facebookMetrics",
+  ads_highlights: "adsHighlights",
+};
 
 
 const toNumber = (value) => {
@@ -251,6 +255,26 @@ export default function FacebookDashboard() {
   });
   const [adsError, setAdsError] = useState("");
   const [loadingAds, setLoadingAds] = useState(false);
+  const [cacheMeta, setCacheMeta] = useState({});
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  useEffect(() => {
+    setCacheMeta({});
+  }, [accountId]);
+
+  const lastSyncAt = useMemo(() => {
+    const timestamps = Object.values(cacheMeta)
+      .map((meta) => {
+        if (!meta?.fetched_at) return null;
+        const time = new Date(meta.fetched_at).getTime();
+        return Number.isFinite(time) ? time : null;
+      })
+      .filter((value) => value != null);
+    if (!timestamps.length) return null;
+    return new Date(Math.max(...timestamps)).toISOString();
+  }, [cacheMeta]);
+
 
   useEffect(() => {
     if (!accountConfig?.facebookPageId) {
@@ -279,6 +303,12 @@ export default function FacebookDashboard() {
         }
         setPageMetrics(json.metrics || []);
         setPageOverview(json.page_overview || {});
+        if (json.cache) {
+          setCacheMeta((prev) => ({
+            ...prev,
+            [CACHE_KEYS.facebook_metrics]: json.cache,
+          }));
+        }
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error(err);
@@ -292,7 +322,7 @@ export default function FacebookDashboard() {
 
     loadMetrics();
     return () => controller.abort();
-  }, [accountConfig?.facebookPageId, since, until]);
+  }, [accountConfig?.facebookPageId, since, until, refreshToken]);
 
 
 
@@ -341,6 +371,12 @@ export default function FacebookDashboard() {
           ads_breakdown: [],
           ...json,
         });
+        if (json.cache) {
+          setCacheMeta((prev) => ({
+            ...prev,
+            [CACHE_KEYS.ads_highlights]: json.cache,
+          }));
+        }
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error(err);
@@ -353,7 +389,64 @@ export default function FacebookDashboard() {
 
     loadAds();
     return () => controller.abort();
-  }, [accountConfig?.adAccountId, since, until]);
+  }, [accountConfig?.adAccountId, since, until, refreshToken]);
+
+  const handleManualRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const payload = {
+        resources: ['facebook_metrics', 'ads_highlights'],
+        account: {
+          facebookPageId: accountConfig?.facebookPageId,
+          adAccountId: accountConfig?.adAccountId,
+        },
+        since: toNumber(since),
+        until: toNumber(until),
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/sync/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const raw = await response.text();
+      const json = safeParseJson(raw) || {};
+
+      if (!response.ok) {
+        throw new Error(describeApiError(json, 'Falha ao atualizar os dados.'));
+      }
+
+      if (json.results) {
+        const updates = Object.entries(json.results).reduce((acc, [resource, value]) => {
+          if (value?.cache && CACHE_KEYS[resource]) {
+            acc[CACHE_KEYS[resource]] = value.cache;
+          }
+          return acc;
+        }, {});
+        if (Object.keys(updates).length) {
+          setCacheMeta((prev) => ({ ...prev, ...updates }));
+        }
+      }
+
+      if (Array.isArray(json.errors) && json.errors.length) {
+        const metricsIssue = json.errors.find((item) => item.resource === 'facebook_metrics');
+        const adsIssue = json.errors.find((item) => item.resource === 'ads_highlights');
+        if (metricsIssue?.error) setPageError(metricsIssue.error);
+        if (adsIssue?.error) setAdsError(adsIssue.error);
+      } else {
+        setPageError('');
+        setAdsError('');
+      }
+
+      setRefreshToken(Date.now());
+    } catch (err) {
+      console.error('Erro ao atualizar dados manualmente', err);
+      setPageError(err?.message || 'Nao foi possivel atualizar os dados.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const pageMetricsByKey = useMemo(() => {
     const map = {};
@@ -620,7 +713,15 @@ export default function FacebookDashboard() {
 
   return (
     <>
-      <Topbar title="Facebook" sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} showFilters={true} />
+      <Topbar
+        title="Facebook"
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={toggleSidebar}
+        showFilters={true}
+        onRefresh={handleManualRefresh}
+        refreshing={refreshing}
+        lastSync={lastSyncAt}
+      />
 
       <div className="page-content">
         <DateRangeIndicator />

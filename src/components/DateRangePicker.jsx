@@ -20,15 +20,10 @@ const toInputValue = (d) => (d ? format(d, "yyyy-MM-dd") : "");
 export default function DateRangePicker() {
   // Usar momento atual
   const now = useMemo(() => new Date(), []);
+  const todayStart = useMemo(() => startOfDay(now), [now]);
 
-  // Calcular o final padrão: momento atual (para ter dados do dia de hoje)
-  // Não usamos endOfDay porque causaria timestamp futuro (próxima meia-noite)
-  const defaultEnd = useMemo(() => {
-    // Usar o momento atual, que sempre será <= agora
-    return now;
-  }, [now]);
-
-  // 7 dias antes (incluindo hoje)
+  // Considerar os últimos 7 dias completos (até o dia anterior) para garantir consistência
+  const defaultEnd = useMemo(() => endOfDay(addDays(todayStart, -1)), [todayStart]);
   const defaultStart = useMemo(() => startOfDay(addDays(defaultEnd, -6)), [defaultEnd]);
 
   const [get, set] = useQueryState({});

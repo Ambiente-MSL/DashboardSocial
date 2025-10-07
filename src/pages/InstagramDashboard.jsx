@@ -1,7 +1,7 @@
 // src/pages/InstagramDashboard.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { ExternalLink, Heart, MessageCircle, Play, Clock, TrendingUp } from "lucide-react";
+import { Heart, MessageCircle, Clock, TrendingUp } from "lucide-react";
 import {
   ResponsiveContainer,
   PieChart,
@@ -19,16 +19,15 @@ import { accounts } from "../data/accounts";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const DEFAULT_ACCOUNT_ID = accounts[0]?.id || "";
-const DONUT_COLORS = ["#6366f1", "#22d3ee", "#94a3b8"];
+const CACHE_KEYS = {
+  instagram_metrics: 'metrics',
+  instagram_audience: 'audience',
+  instagram_posts: 'posts',
+  instagram_organic: 'organic',
+};
 
 const GENDER_COLORS = { male: '#6366f1', female: '#ec4899' };
 
-const mediaTypeLabel = {
-  IMAGE: "Imagem",
-  VIDEO: "Video",
-  CAROUSEL_ALBUM: "Carrossel",
-  REELS: "Reels",
-};
 
 const mapByKey = (arr) => {
   const map = {};
@@ -128,6 +127,26 @@ export default function InstagramDashboard() {
   const [postsError, setPostsError] = useState("");
   const [accountInfo, setAccountInfo] = useState(null);
 
+  const [cacheMeta, setCacheMeta] = useState({});
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  useEffect(() => {
+    setCacheMeta({});
+  }, [accountId]);
+
+  const lastSyncAt = useMemo(() => {
+    const timestamps = Object.values(cacheMeta)
+      .map((meta) => {
+        if (!meta?.fetched_at) return null;
+        const time = new Date(meta.fetched_at).getTime();
+        return Number.isFinite(time) ? time : null;
+      })
+      .filter((value) => value != null);
+    if (!timestamps.length) return null;
+    return new Date(Math.max(...timestamps)).toISOString();
+  }, [cacheMeta]);
+
   useEffect(() => {
     if (!accountConfig?.instagramUserId) {
       setMetrics([]);
@@ -155,6 +174,12 @@ export default function InstagramDashboard() {
           profileBreakdown: json.profile_visitors_breakdown || null,
           followerCounts: json.follower_counts || null,
         });
+        if (json.cache) {
+          setCacheMeta((prev) => ({
+            ...prev,
+            [CACHE_KEYS.instagram_metrics]: json.cache,
+          }));
+        }
       } catch (err) {
         if (err.name === "AbortError") {
           return;
@@ -168,7 +193,7 @@ export default function InstagramDashboard() {
       }
     })();
     return () => controller.abort();
-  }, [accountConfig?.instagramUserId, since, until]);
+  }, [accountConfig?.instagramUserId, since, until, refreshToken]);
 
   useEffect(() => {
     if (!accountConfig?.instagramUserId) {
@@ -192,6 +217,12 @@ export default function InstagramDashboard() {
           ages: Array.isArray(json.ages) ? json.ages : [],
           gender: Array.isArray(json.gender) ? json.gender : [],
         });
+        if (json.cache) {
+          setCacheMeta((prev) => ({
+            ...prev,
+            [CACHE_KEYS.instagram_audience]: json.cache,
+          }));
+        }
       } catch (err) {
         if (err.name === "AbortError") {
           return;
@@ -204,7 +235,7 @@ export default function InstagramDashboard() {
       }
     })();
     return () => controller.abort();
-  }, [accountConfig?.instagramUserId]);
+  }, [accountConfig?.instagramUserId, refreshToken]);
 
   useEffect(() => {
     if (!accountConfig?.instagramUserId) {
@@ -227,6 +258,12 @@ export default function InstagramDashboard() {
         setPosts(json.posts || []);
         setAccountInfo(json.account || null);
         setVisiblePosts(5);
+        if (json.cache) {
+          setCacheMeta((prev) => ({
+            ...prev,
+            [CACHE_KEYS.instagram_posts]: json.cache,
+          }));
+        }
       } catch (err) {
         if (err.name === "AbortError") {
           return;
@@ -240,16 +277,78 @@ export default function InstagramDashboard() {
       }
     })();
     return () => controller.abort();
-  }, [accountConfig?.instagramUserId]);
+  }, [accountConfig?.instagramUserId, refreshToken]);
 
   useEffect(() => {
     setVisiblePosts(5);
   }, [posts]);
 
+  const handleManualRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const payload = {
+        resources: ['instagram_metrics', 'instagram_audience', 'instagram_posts', 'instagram_organic'],
+        account: {
+          instagramUserId: accountConfig?.instagramUserId,
+        },
+        since: since ? Number(since) : null,
+        until: until ? Number(until) : null,
+        limit: 15,
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/sync/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const raw = await response.text();
+      const json = safeParseJson(raw) || {};
+
+      if (!response.ok) {
+        throw new Error(describeApiError(json, 'Falha ao atualizar os dados do Instagram.'));
+      }
+
+      if (json.results) {
+        const updates = Object.entries(json.results).reduce((acc, [resource, value]) => {
+          if (value?.cache && CACHE_KEYS[resource]) {
+            acc[CACHE_KEYS[resource]] = value.cache;
+          }
+          return acc;
+        }, {});
+        if (Object.keys(updates).length) {
+          setCacheMeta((prev) => ({ ...prev, ...updates }));
+        }
+      }
+
+      if (Array.isArray(json.errors) && json.errors.length) {
+        const metricsIssue = json.errors.find((item) => item.resource === 'instagram_metrics');
+        const audienceIssue = json.errors.find((item) => item.resource === 'instagram_audience');
+        const postsIssue = json.errors.find((item) => item.resource === 'instagram_posts');
+        if (metricsIssue?.error) setMetricsError(metricsIssue.error);
+        if (audienceIssue?.error) setAudienceError(audienceIssue.error);
+        if (postsIssue?.error) setPostsError(postsIssue.error);
+      } else {
+        setMetricsError('');
+        setAudienceError('');
+        setPostsError('');
+      }
+
+      setRefreshToken(Date.now());
+    } catch (err) {
+      console.error('Erro ao atualizar dados do Instagram manualmente', err);
+      setMetricsError(err?.message || 'Nao foi possivel atualizar os dados do Instagram.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const metricsByKey = useMemo(() => mapByKey(metrics), [metrics]);
 
   const profileViewsMetric = metricsByKey.profile_views;
   const interactionsMetric = metricsByKey.interactions;
+  const savesMetric = metricsByKey.saves;
+  const sharesMetric = metricsByKey.shares;
   const reachMetric = metricsByKey.reach;
   const followerGrowthMetric = metricsByKey.follower_growth;
   const engagementRateMetric = metricsByKey.engagement_rate;
@@ -271,18 +370,6 @@ export default function InstagramDashboard() {
       ? followerCounts.end - followerCounts.start
       : null);
 
-  const profileBreakdown = metricsMeta.profileBreakdown;
-  const donutData = useMemo(() => {
-    if (!profileBreakdown) return [];
-    const followers = typeof profileBreakdown?.followers === "number" ? profileBreakdown.followers : 0;
-    const nonFollowers = typeof profileBreakdown?.non_followers === "number" ? profileBreakdown.non_followers : 0;
-    if (!followers && !nonFollowers) return [];
-    return [
-      { name: "Seguidores", value: followers },
-      { name: "Nao seguidores", value: nonFollowers },
-    ];
-  }, [profileBreakdown]);
-  const donutTotal = donutData.reduce((acc, item) => acc + (item.value || 0), 0);
 
   const audienceCities = useMemo(
     () => (audience?.cities || []).slice(0, 5),
@@ -344,7 +431,15 @@ export default function InstagramDashboard() {
 
   return (
     <>
-      <Topbar title="Instagram" sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} showFilters={true} />
+      <Topbar
+        title="Instagram"
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={toggleSidebar}
+        showFilters={true}
+        onRefresh={handleManualRefresh}
+        refreshing={refreshing}
+        lastSync={lastSyncAt}
+      />
 
       <div className="page-content">
         <DateRangeIndicator />
@@ -364,13 +459,29 @@ export default function InstagramDashboard() {
                 hint="Total de visitas no perfil durante o intervalo."
               />
               <MetricCard
+                title="Interacoes totais"
+                value={formatMetricValue(interactionsMetric, { loading: loadingMetrics })}
+                delta={metricDelta(interactionsMetric, { loading: loadingMetrics })}
+                hint="Somatorio de curtidas, comentarios, compartilhamentos e salvamentos."
+              />
+              <MetricCard
                 title="Taxa de engajamento"
                 value={loadingMetrics ? "..." : (computedEngagementRate != null ? `${computedEngagementRate.toFixed(2)}%` : "-")}
                 hint={
                   engagementBreakdown && engagementBreakdown.total > 0
-                    ? `${engagementBreakdown.likes.toLocaleString("pt-BR")} curtidas · ${engagementBreakdown.comments.toLocaleString("pt-BR")} coment. · ${engagementBreakdown.saves.toLocaleString("pt-BR")} salvamentos · ${engagementBreakdown.shares.toLocaleString("pt-BR")} compart. | Alcance: ${engagementBreakdown.reach.toLocaleString("pt-BR")}`
+                    ? `${engagementBreakdown.likes.toLocaleString("pt-BR")} curtidas - ${engagementBreakdown.comments.toLocaleString("pt-BR")} coment. - ${engagementBreakdown.saves.toLocaleString("pt-BR")} salvamentos - ${engagementBreakdown.shares.toLocaleString("pt-BR")} compart. | Alcance: ${engagementBreakdown.reach.toLocaleString("pt-BR")}`
                     : "(Curtidas + Comentarios + Salvamentos + Compartilhamentos) dividido pelo alcance."
                 }
+              />
+              <MetricCard
+                title="Salvamentos"
+                value={formatMetricValue(savesMetric, { loading: loadingMetrics })}
+                hint="Quantidade de vezes que os posts foram salvos no periodo."
+              />
+              <MetricCard
+                title="Compartilhamentos"
+                value={formatMetricValue(sharesMetric, { loading: loadingMetrics })}
+                hint="Compartilhamentos gerados pelos posts no periodo."
               />
               <MetricCard
                 title="Crescimento de seguidores"
@@ -379,45 +490,46 @@ export default function InstagramDashboard() {
               />
             </div>
             <div className="overview-layout__chart">
-              <header className="overview-layout__chart-header">
-                <h3>Visitantes do perfil</h3>
-                <p>Comparativo entre seguidores e nao seguidores.</p>
-              </header>
-              <div className="overview-layout__chart-viz">
-                {loadingMetrics ? (
-                  <div className="chart-card__empty">Carregando...</div>
-                ) : donutData.length ? (
-                  <ResponsiveContainer width="100%" height={220}>
-                    <PieChart>
-                      <Tooltip
-                        formatter={(value) => value.toLocaleString("pt-BR")}
-                        contentStyle={{
-                          backgroundColor: "var(--panel)",
-                          border: "1px solid var(--stroke)",
-                          borderRadius: "12px",
-                          padding: "8px 12px",
-                          boxShadow: "var(--shadow-lg)",
-                        }}
-                      />
-                      <Pie
-                        data={donutData}
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={4}
-                        dataKey="value"
-                      >
-                        {donutData.map((entry, index) => (
-                          <Cell key={entry.name} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+              <div className="overview-layout__chart-compact">
+                <header className="overview-layout__chart-header">
+                  <h3>Genero</h3>
+                </header>
+                <div className="overview-layout__chart-viz overview-layout__chart-viz--compact">
+                  {loadingAudience ? (
+                    <div className="chart-card__empty">...</div>
+                  ) : hasGenderData ? (
+                    <>
+                      <ResponsiveContainer width="100%" height={140}>
+                        <PieChart>
+                          <Pie
+                            data={genderPieData}
+                            dataKey="value"
+                            nameKey="label"
+                            innerRadius="50%"
+                            outerRadius="85%"
+                            paddingAngle={2}
+                            stroke="none"
+                          >
+                            {genderPieData.map((segment) => (
+                              <Cell key={segment.key} fill={segment.color} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="overview-layout__chart-legend">
+                        {genderPieData.map((segment) => (
+                          <div key={segment.key} className="overview-layout__legend-item">
+                            <span className="overview-layout__legend-dot" style={{ backgroundColor: segment.color }}></span>
+                            <span className="overview-layout__legend-label">{segment.label}</span>
+                            <strong>{formatPercentage(segment.percentage)}</strong>
+                          </div>
                         ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="chart-card__empty">Sem dados suficientes.</div>
-                )}
-              </div>
-              <div className="overview-layout__chart-total">
-                <strong>Total:</strong> {donutTotal ? donutTotal.toLocaleString("pt-BR") : "-"} visitantes
+                      </div>
+                    </>
+                  ) : (
+                    <div className="chart-card__empty">Sem dados</div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -550,58 +662,79 @@ export default function InstagramDashboard() {
               <div className="posts-table-container">
                 <table className="posts-table">
                   <thead>
-                    <tr>
-                      <th>Preview</th>
-                      <th>Data</th>
-                      <th>Tipo</th>
-                      <th>Legenda</th>
-                      <th>Curtidas</th>
-                      <th>Comentarios</th>
-                      <th>Acao</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedPosts.map((post) => {
-                      const previewUrl = post.previewUrl || post.mediaUrl || post.thumbnailUrl;
-                      const typeLabel = mediaTypeLabel[post.mediaType] || post.mediaType || "Post";
-                      const publishedAt = formatDate(post.timestamp);
-                      const likes = Number.isFinite(post.likeCount) ? post.likeCount : 0;
-                      const comments = Number.isFinite(post.commentsCount) ? post.commentsCount : 0;
+  <tr>
+    <th>Data postada</th>
+    <th>Thumb</th>
+    <th>Legenda</th>
+    <th>Curtidas</th>
+    <th>comentários</th>
+    <th>Compartilhamentos</th>
+    <th>Salvos</th>
+  </tr>
+</thead>
 
-                      return (
-                        <tr key={post.id}>
-                          <td className="posts-table__preview">
-                            {previewUrl ? (
-                              <img src={previewUrl} alt={truncate(post.caption || "Post", 30)} />
-                            ) : (
-                              <div className="posts-table__placeholder">Sem preview</div>
-                            )}
-                            {post.mediaType === "VIDEO" && <Play size={12} className="posts-table__badge" />}
-                          </td>
-                          <td className="posts-table__date">{publishedAt}</td>
-                          <td className="posts-table__type">
-                            <span className="badge">{typeLabel}</span>
-                          </td>
-                          <td className="posts-table__caption">{truncate(post.caption, 80) || "Sem legenda"}</td>
-                          <td className="posts-table__metric">
-                            <Heart size={14} />
-                            {likes.toLocaleString("pt-BR")}
-                          </td>
-                          <td className="posts-table__metric">
-                            <MessageCircle size={14} />
-                            {comments.toLocaleString("pt-BR")}
-                          </td>
-                          <td className="posts-table__action">
-                            {post.permalink && (
-                              <a href={post.permalink} target="_blank" rel="noreferrer" className="posts-table__link">
-                                <ExternalLink size={14} />
-                              </a>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
+<tbody>
+  {displayedPosts.map((post) => {
+    const previewUrl = post.previewUrl || post.mediaUrl || post.thumbnailUrl;
+    const publishedAt = formatDate(post.timestamp);
+    const likes = Number.isFinite(post.likeCount) ? post.likeCount : 0;
+    const comments = Number.isFinite(post.commentsCount) ? post.commentsCount : 0;
+
+    // Alguns backends salvam em nomes diferentes; deixo fallback inteligente:
+    const shares =
+      [post.shareCount, post.shares, post.sharesCount]
+        .find(v => Number.isFinite(v)) ?? '-';
+
+    const saves =
+      [post.saveCount, post.saves, post.saved, post.savedCount]
+        .find(v => Number.isFinite(v)) ?? '-';
+
+    return (
+      <tr key={post.id}>
+        {/* Data postada */}
+        <td className="posts-table__date">{publishedAt}</td>
+
+        {/* Thumb */}
+        <td className="posts-table__preview">
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt={truncate(post.caption || "Post", 30)}
+            />
+          ) : (
+            <div className="posts-table__placeholder">Sem preview</div>
+          )}
+        </td>
+
+        {/* Legenda */}
+        <td className="posts-table__caption">
+          {truncate(post.caption, 80) || "Sem legenda"}
+        </td>
+
+        {/* Curtidas */}
+        <td className="posts-table__metric">
+          <Heart size={14} />{likes.toLocaleString("pt-BR")}
+        </td>
+
+        {/* Comentários */}
+        <td className="posts-table__metric">
+          <MessageCircle size={14} />{comments.toLocaleString("pt-BR")}
+        </td>
+
+        {/* Compartilhamentos */}
+        <td className="posts-table__metric">
+          {Number.isFinite(shares) ? shares.toLocaleString("pt-BR") : "-"}
+        </td>
+
+        {/* Salvos */}
+        <td className="posts-table__metric">
+          {Number.isFinite(saves) ? saves.toLocaleString("pt-BR") : "-"}
+        </td>
+      </tr>
+    );
+  })}
+</tbody>
+
                 </table>
               </div>
               {posts.length > displayedPosts.length && (

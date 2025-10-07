@@ -12,7 +12,7 @@ import logo from '../assets/logo-msl.svg';
 import { useAuth } from '../context/AuthContext';
 
 const NAV_ITEMS = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard', end: true },
+  { to: '/', icon: LayoutDashboard, label: 'Visão geral', end: true },
   { to: '/facebook', icon: Facebook, label: 'Facebook' },
   { to: '/instagram', icon: Instagram, label: 'Instagram' },
   { to: '/relatorios', icon: BarChart3, label: 'Relatórios' },

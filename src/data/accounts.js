@@ -1,9 +1,9 @@
 export const accounts = [
   {
-    id: "lopes",
-    label: "Lopes Veiculos",
-    facebookPageId: "111397251631770",
-    instagramUserId: "17841408349074271",
-    adAccountId: "act_2219016971709359",
+    id: "mauro",
+    label: "Mauro Filho - Deputado",
+    facebookPageId: "1432229983657475",
+    instagramUserId: "17841406203805133",
+    adAccountId: "act_653031036533289",
   },
 ];
