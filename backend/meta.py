@@ -217,6 +217,36 @@ def extract_insight_values(payload: Dict[str, Any], name: str) -> List[float]:
     return []
 
 
+def extract_insight_series(payload: Dict[str, Any], name: str) -> List[Dict[str, Any]]:
+    series: List[Dict[str, Any]] = []
+    if not isinstance(payload, dict):
+        return series
+
+    for item in payload.get('data', []):
+        if item.get('name') != name:
+            continue
+        for entry in item.get('values') or []:
+            if not isinstance(entry, dict):
+                continue
+            coerced = _coerce_number(entry.get('value'))
+            if coerced is None:
+                continue
+            end_time = entry.get('end_time') or entry.get('timestamp') or entry.get('time')
+            iso_date = None
+            if isinstance(end_time, str):
+                iso_date = end_time[:10]
+            elif isinstance(end_time, (int, float)):
+                iso_date = time.strftime("%Y-%m-%d", time.gmtime(int(end_time)))
+            if not iso_date:
+                continue
+            series.append({
+                "date": iso_date,
+                "value": coerced,
+            })
+    series.sort(key=lambda row: row["date"])
+    return series
+
+
 def insight_value_from_list(items: List[Dict[str, Any]], name: str) -> Optional[float]:
     if not isinstance(items, list):
         return None
@@ -328,8 +358,10 @@ def fb_page_window(page_id: str, since: int, until: int):
     likes_add = sum_series("page_fan_adds_unique")
 
     # Função auxiliar para buscar métricas opcionais com fallback
-    def fetch_optional_metrics(metric_list):
+    def fetch_optional_metrics(metric_list, capture_series: Optional[List[str]] = None):
         results = {}
+        series_map: Dict[str, List[Dict[str, Any]]] = {}
+        capture_set = set(capture_series or [])
         for metric_name in metric_list:
             try:
                 payload = gget(
@@ -339,13 +371,17 @@ def fb_page_window(page_id: str, since: int, until: int):
                 )
                 values = extract_insight_values(payload, metric_name)
                 results[metric_name] = int(round(sum(values))) if values else 0
+                if metric_name in capture_set:
+                    series_map[metric_name] = extract_insight_series(payload, metric_name)
             except MetaAPIError:
                 # Métrica não disponível, ignorar
                 results[metric_name] = 0
-        return results
+                if metric_name in capture_set:
+                    series_map[metric_name] = []
+        return results, series_map
 
     # Buscar métricas opcionais de visão geral
-    optional_metrics = fetch_optional_metrics([
+    optional_metrics, optional_series = fetch_optional_metrics([
         "page_views_total",
         "page_video_views",
         "page_video_views_3s",
@@ -356,7 +392,7 @@ def fb_page_window(page_id: str, since: int, until: int):
         "page_cta_clicks_logged_in_total",
         "page_fan_adds",
         "page_fan_removes",
-    ])
+    ], capture_series=["page_fan_adds", "page_fan_removes"])
 
     page_views = optional_metrics.get("page_views_total", 0)
     video_views = optional_metrics.get("page_video_views", 0)
@@ -369,6 +405,39 @@ def fb_page_window(page_id: str, since: int, until: int):
     followers_lost = optional_metrics.get("page_fan_removes", 0)
     net_followers = followers_gained - followers_lost
 
+    def _series_to_map(metric_name: str) -> Dict[str, int]:
+        mapping: Dict[str, int] = {}
+        for entry in optional_series.get(metric_name, []):
+            if not isinstance(entry, dict):
+                continue
+            date = entry.get("date")
+            value = entry.get("value")
+            if not date:
+                continue
+            coerced = _coerce_number(value)
+            if coerced is None:
+                continue
+            mapping[date] = mapping.get(date, 0) + int(round(coerced))
+        return mapping
+
+    fan_adds_map = _series_to_map("page_fan_adds")
+    fan_removes_map = _series_to_map("page_fan_removes")
+    all_series_dates = sorted(set(list(fan_adds_map.keys()) + list(fan_removes_map.keys())))
+    net_followers_series: List[Dict[str, Any]] = []
+    cumulative_net = 0
+    for date in all_series_dates:
+        adds_value = fan_adds_map.get(date, 0)
+        removes_value = fan_removes_map.get(date, 0)
+        net_value = adds_value - removes_value
+        cumulative_net += net_value
+        net_followers_series.append({
+            "date": date,
+            "adds": adds_value,
+            "removes": removes_value,
+            "net": net_value,
+            "cumulative": cumulative_net,
+        })
+
     # Calcular tempo médio de visualização se houver visualizações
     avg_watch_time = 0
     if video_views > 0 and video_view_time > 0:
@@ -378,6 +447,9 @@ def fb_page_window(page_id: str, since: int, until: int):
     total_com = 0
     total_sha = 0
     total_clicks = 0
+    video_reac = 0
+    video_com = 0
+    video_sha = 0
     post_sum_impressions = 0
     post_sum_reach = 0
     post_sum_engaged = 0
@@ -389,15 +461,31 @@ def fb_page_window(page_id: str, since: int, until: int):
         "limit": 50,
         "fields": (
             "id,created_time,permalink_url,"
+            "status_type,attachments{media_type},"
             "reactions.summary(true).limit(0),comments.summary(true).limit(0),shares"
         ),
     }
     page = gget(url, base_post_params, token=page_token)
     while True:
         for p_item in page.get("data", []):
-            total_reac += int(((p_item.get("reactions") or {}).get("summary") or {}).get("total_count", 0) or 0)
-            total_com += int(((p_item.get("comments") or {}).get("summary") or {}).get("total_count", 0) or 0)
-            total_sha += int((p_item.get("shares") or {}).get("count", 0) or 0)
+            reactions_count = int(((p_item.get("reactions") or {}).get("summary") or {}).get("total_count", 0) or 0)
+            comments_count = int(((p_item.get("comments") or {}).get("summary") or {}).get("total_count", 0) or 0)
+            shares_count = int((p_item.get("shares") or {}).get("count", 0) or 0)
+
+            total_reac += reactions_count
+            total_com += comments_count
+            total_sha += shares_count
+
+            attachments = ((p_item.get("attachments") or {}).get("data") or [])[:]
+            status_type = str(p_item.get("status_type") or "").lower()
+            is_video_post = any(
+                isinstance(att, dict) and str(att.get("media_type", "")).lower().startswith("video")
+                for att in attachments
+            ) or ("video" in status_type)
+            if is_video_post:
+                video_reac += reactions_count
+                video_com += comments_count
+                video_sha += shares_count
             try:
                 post_insights = gget(
                     f"/{p_item.get('id')}/insights",
@@ -436,6 +524,26 @@ def fb_page_window(page_id: str, since: int, until: int):
 
     engagement_total = total_reac + total_com + total_sha
     video_metrics = fetch_page_video_metrics(page_id, page_token, since, until)
+    video_engagement_total = video_reac + video_com + video_sha
+    video_metrics["engagement"] = {
+        "total": video_engagement_total,
+        "reactions": video_reac,
+        "comments": video_com,
+        "shares": video_sha,
+    }
+
+    followers_total = 0
+    try:
+        fans_payload = gget(
+            f"/{page_id}/insights",
+            {"metric": "page_fans", "period": "day", "since": since, "until": until},
+            token=page_token,
+        )
+        fans_values = extract_insight_values(fans_payload, "page_fans")
+        if fans_values:
+            followers_total = int(round(fans_values[-1]))
+    except MetaAPIError:
+        followers_total = 0
 
     return {
         "impressions": impressions,
@@ -461,7 +569,9 @@ def fb_page_window(page_id: str, since: int, until: int):
             "followers_gained": followers_gained,
             "followers_lost": followers_lost,
             "net_followers": net_followers,
+            "followers_total": followers_total,
         },
+        "net_followers_series": net_followers_series,
     }
 
 
@@ -542,6 +652,7 @@ def ig_window(ig_user_id: str, since: int, until: int):
 
     # Agregar métricas por mídia (likes/comments/shares/saves)
     sum_likes = sum_comments = sum_shares = sum_saves = 0
+    post_details: List[Dict[str, Any]] = []
 
     url = f"/{ig_user_id}/media"
     params = {
@@ -553,22 +664,57 @@ def ig_window(ig_user_id: str, since: int, until: int):
     page = gget(url, params)
     while True:
         for media in page.get("data", []):
-            sum_likes += media.get("like_count", 0) or 0
-            sum_comments += media.get("comments_count", 0) or 0
+            timestamp_iso = media.get("timestamp")
+            timestamp_unix = None
+            if timestamp_iso:
+                try:
+                    timestamp_dt = datetime.fromisoformat(timestamp_iso.replace("Z", "+00:00"))
+                    timestamp_unix = int(timestamp_dt.timestamp())
+                except ValueError:
+                    timestamp_dt = None
+            else:
+                timestamp_dt = None
             try:
                 mi = gget(
                     f"/{media['id']}/insights",
                     {"metric": "reach,shares,saved,likes,comments"},
                 )
+                insights_map: Dict[str, Any] = {}
                 for k_item in mi.get("data", []):
                     v = (k_item.get("values") or [{}])[0].get("value", 0) or 0
-                    name = k_item.get("name")
+                    name = (k_item.get("name") or "").lower()
+                    insights_map[name] = v
                     if name == "shares":
                         sum_shares += v
                     elif name in ("saved", "saves"):
                         sum_saves += v
             except Exception:
+                insights_map = {}
                 pass
+            reach_value = int(round((insights_map.get("reach") or 0))) if insights_map else 0
+            shares_value = int(round((insights_map.get("shares") or 0)))
+            saves_value = int(round((insights_map.get("saved") or insights_map.get("saves") or 0)))
+            likes_base = media.get("like_count", 0) or 0
+            comments_base = media.get("comments_count", 0) or 0
+            likes_value = int(insights_map.get("likes") or likes_base)
+            comments_value = int(insights_map.get("comments") or comments_base)
+            sum_likes += likes_value
+            sum_comments += comments_value
+            interactions_value = likes_value + comments_value + shares_value + saves_value
+            post_details.append({
+                "id": media.get("id"),
+                "timestamp": timestamp_iso,
+                "timestamp_unix": timestamp_unix,
+                "permalink": media.get("permalink"),
+                "media_type": media.get("media_type"),
+                "preview_url": media.get("media_url") or media.get("thumbnail_url"),
+                "likes": likes_value,
+                "comments": comments_value,
+                "shares": shares_value,
+                "saves": saves_value,
+                "reach": reach_value,
+                "interactions": interactions_value,
+            })
         nextp = (page.get("paging") or {}).get("next")
         if not nextp:
             break
@@ -686,6 +832,8 @@ def ig_window(ig_user_id: str, since: int, until: int):
         "follows": _as_int(follows_total),
         "unfollows": _as_int(unfollows_total),
         "profile_visitors_breakdown": profile_visitors_breakdown,
+        "follower_series": follower_series,
+        "posts_detailed": post_details,
     }
 
 

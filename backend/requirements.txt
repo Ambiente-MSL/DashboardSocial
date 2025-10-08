@@ -4,3 +4,4 @@ requests
 python-dotenv
 supabase>=2.4.0
 apscheduler>=3.10.4
+facebook-business==19.0.4

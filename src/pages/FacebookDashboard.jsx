@@ -13,7 +13,9 @@ import {
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid
+  CartesianGrid,
+  LineChart,
+  Line
 } from "recharts";
 import Topbar from "../components/Topbar";
 import Section from "../components/Section";
@@ -77,114 +79,123 @@ const formatShortNumber = (value) => {
   return value.toLocaleString("pt-BR");
 };
 
-// Organização por categorias
-const PAGE_OVERVIEW_CATEGORIES = {
-  audience: {
-    title: "👥 Audiência",
-    metrics: [
-      {
-        key: "reach",
-        title: "Alcance",
-        hint: "Pessoas únicas alcançadas.",
-      },
-      {
-        key: "page_views",
-        title: "Visualizações da página",
-        hint: "Total de visualizações da página.",
-      },
-      {
-        key: "followers_gained",
-        title: "Novos seguidores",
-        hint: "Seguidores ganhos no período.",
-      },
-      {
-        key: "followers_lost",
-        title: "Deixaram de seguir",
-        hint: "Seguidores perdidos no período.",
-      },
-      {
-        key: "net_followers",
-        title: "Crescimento líquido",
-        hint: "Saldo de seguidores (ganhos - perdidos).",
-      },
-    ],
-  },
-  engagement: {
-    title: "💬 Engajamento",
-    metrics: [
-      {
-        key: "content_activity",
-        title: "Interações totais",
-        hint: "Cliques, reações e engajamentos.",
-      },
-      {
-        key: "cta_clicks",
-        title: "Cliques em links",
-        hint: "Cliques em botões de call-to-action.",
-      },
-    ],
-  },
-  video: {
-    title: "🎥 Desempenho de Vídeos",
-    metrics: [
-      {
-        key: "video_views",
-        title: "Visualizações",
-        hint: "Total de visualizações de vídeos.",
-      },
-      {
-        key: "video_views_3s",
-        title: "Views de 3+ segundos",
-        hint: "Vídeos assistidos por pelo menos 3 segundos.",
-      },
-      {
-        key: "video_views_1m",
-        title: "Views de 1+ minuto",
-        hint: "Vídeos assistidos por pelo menos 1 minuto.",
-      },
-      {
-        key: "avg_watch_time",
-        title: "Tempo médio",
-        hint: "Duração média de visualização.",
-        format: "duration",
-      },
-    ],
-  },
+const formatDateLabel = (isoDate) => {
+  if (!isoDate) return "";
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return isoDate;
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(date);
+};
+
+const formatDateFull = (isoDate) => {
+  if (!isoDate) return "";
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return isoDate;
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(date);
+};
+
+const formatSignedNumber = (value) => {
+  if (!Number.isFinite(value) || value === 0) return '0';
+  const formatted = Math.abs(Math.trunc(value)).toLocaleString('pt-BR');
+  return `${value > 0 ? '+' : '-'}${formatted}`;
 };
 
 const FACEBOOK_CARD_CONFIG = [
   {
     key: "reach",
     title: "Alcance orgânico",
-    hint: "Pessoas alcançadas no período.",
+    hint: "Pessoas alcancadas no periodo.",
+    group: "primary",
+    order: 1,
   },
   {
     key: "post_engagement_total",
-    title: "Engajamento Post",
-    hint: "Reações + comentários + compartilhamentos.",
+    title: "Engajamento total",
+    hint: "Reações, comentarios e compartilhamentos em posts.",
     type: "engagement",
+    group: "primary",
+    order: 2,
   },
   {
-    key: "video_views_10s",
-    title: 'Views de 10+ seg - "ficou interessado"',
-    hint: "Quantidade de pessoas que assistiram pelo menos 10 segundos.",
+    key: "page_views",
+    title: "Visualizacoes da pagina",
+    hint: "Visualizacoes registradas na pagina.",
+    group: "primary",
+    order: 3,
   },
   {
-    key: "video_views_1m",
-    title: 'Views de 1+ min - "realmente assistiu"',
-    hint: "Visualizações acima de um minuto.",
+    key: "content_activity",
+    title: "Interacoes totais",
+    hint: "Somatorio de cliques, reacoes e engajamentos.",
+    group: "engagement",
+    order: 1,
+    hidden: true,
   },
   {
-    key: "video_avg_watch_time",
-    title: "Tempo médio de visualização",
-    hint: "Duração média assistida por pessoa.",
-    format: "duration",
+    key: "cta_clicks",
+    title: "Cliques em CTA",
+    hint: "Cliques em botoes de call-to-action.",
+    group: "engagement",
+    order: 2,
+    hidden: true,
+  },
+  {
+    key: "post_clicks",
+    title: "Cliques em posts",
+    hint: "Cliques gerados pelos posts publicados.",
+    group: "engagement",
+    order: 3,
+    hidden: true,
+  },
+  {
+    key: "followers_total",
+    title: "Seguidores da pagina",
+    hint: "Total de seguidores no final do periodo selecionado.",
+    group: "audience",
+    order: 0,
+  },
+  {
+    key: "followers_gained",
+    title: "Novos seguidores",
+    hint: "Seguidores ganhos no periodo.",
+    group: "audience",
+    order: 1,
+  },
+  {
+    key: "followers_lost",
+    title: "Deixaram de seguir",
+    hint: "Seguidores perdidos no periodo.",
+    group: "audience",
+    order: 2,
+  },
+  {
+    key: "net_followers",
+    title: "Crescimento liquido",
+    hint: "Saldo entre ganhos e perdas de seguidores.",
+    group: "audience",
+    order: 3,
   },
   {
     key: "video_watch_time_total",
-    title: "Soma total de tempo assistido",
-    hint: "Tempo acumulado de visualização dos vídeos.",
+    title: "Tempo total assistido",
+    hint: "Tempo acumulado de visualizacao dos videos.",
     format: "duration",
+    group: "video",
+    order: 1,
+  },
+  {
+    key: "video_views_total",
+    title: "Video views",
+    hint: "Total de visualizacoes de videos no periodo.",
+    group: "video",
+    order: 2,
+  },
+  {
+    key: "video_engagement_total",
+    title: "Videos (reacoes, comentarios, compartilhamentos)",
+    hint: "Engajamento gerado pelos videos: reacoes, comentarios e compartilhamentos.",
+    type: "engagement",
+    group: "video",
+    order: 3,
   },
 ];
 
@@ -237,6 +248,7 @@ export default function FacebookDashboard() {
   const [pageError, setPageError] = useState("");
   const [loadingPage, setLoadingPage] = useState(false);
   const [pageOverview, setPageOverview] = useState({});
+  const [netFollowersSeries, setNetFollowersSeries] = useState([]);
 
 
   const [performanceScope, setPerformanceScope] = useState("all");
@@ -279,7 +291,9 @@ export default function FacebookDashboard() {
   useEffect(() => {
     if (!accountConfig?.facebookPageId) {
       setPageMetrics([]);
-      setPageError("Página do Facebook não configurada.");
+      setPageOverview({});
+      setNetFollowersSeries([]);
+      setPageError("PÃ¡gina do Facebook nÃ£o configurada.");
       return;
     }
 
@@ -299,10 +313,11 @@ export default function FacebookDashboard() {
         const raw = await response.text();
         const json = safeParseJson(raw) || {};
         if (!response.ok) {
-          throw new Error(describeApiError(json, "Falha ao carregar métricas de página."));
+          throw new Error(describeApiError(json, "Falha ao carregar métricas de pÃ¡gina."));
         }
         setPageMetrics(json.metrics || []);
         setPageOverview(json.page_overview || {});
+        setNetFollowersSeries(json.net_followers_series || []);
         if (json.cache) {
           setCacheMeta((prev) => ({
             ...prev,
@@ -313,6 +328,8 @@ export default function FacebookDashboard() {
         if (err.name !== "AbortError") {
           console.error(err);
           setPageMetrics([]);
+          setPageOverview({});
+          setNetFollowersSeries([]);
           setPageError(err.message || "Não foi possível carregar as métricas de página.");
         }
       } finally {
@@ -492,7 +509,7 @@ export default function FacebookDashboard() {
 
   const cardItems = useMemo(
     () =>
-      FACEBOOK_CARD_CONFIG.map((config) => {
+      FACEBOOK_CARD_CONFIG.filter((config) => !config.hidden).map((config) => {
         const metric = pageMetricsByKey[config.key];
         return {
           ...config,
@@ -504,40 +521,74 @@ export default function FacebookDashboard() {
     [pageMetricsByKey, loadingPage],
   );
 
-  // Processar cards por categoria
-  const overviewByCategory = useMemo(() => {
-    const result = {};
-
-    Object.entries(PAGE_OVERVIEW_CATEGORIES).forEach(([categoryKey, category]) => {
-      result[categoryKey] = {
-        title: category.title,
-        metrics: category.metrics.map((config) => {
-          const value = pageOverview[config.key];
-          let formattedValue = "—";
-
-          if (loadingPage) {
-            formattedValue = "...";
-          } else if (value != null) {
-            if (config.format === "duration") {
-              const totalSeconds = Number(value);
-              const minutes = Math.floor(totalSeconds / 60);
-              const seconds = Math.floor(totalSeconds % 60);
-              formattedValue = `${minutes}min ${seconds}s`;
-            } else {
-              formattedValue = formatShortNumber(Number(value));
-            }
-          }
-
-          return {
-            ...config,
-            value: formattedValue,
-          };
-        }),
-      };
+  const cardGroups = useMemo(() => {
+    const groups = {};
+    cardItems.forEach((item) => {
+      const groupKey = item.group || "other";
+      if (!groups[groupKey]) groups[groupKey] = [];
+      groups[groupKey].push(item);
     });
+    Object.values(groups).forEach((items) => {
+      items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    });
+    return groups;
+  }, [cardItems]);
 
-    return result;
-  }, [pageOverview, loadingPage]);
+  const primaryCards = cardGroups.primary || [];
+
+  const supportingGroups = useMemo(() => {
+    const baseGroups = [
+      { key: "audience", title: "Audiência", items: cardGroups.audience || [] },
+      { key: "engagement", title: "Interações", items: cardGroups.engagement || [] },
+      { key: "video", title: "Vídeos", items: cardGroups.video || [] },
+    ];
+    const extraGroups = Object.entries(cardGroups)
+      .filter(([key]) => !["primary", "audience", "engagement", "video"].includes(key))
+      .map(([key, items]) => ({
+        key,
+        title: key === "other" ? "Outros" : key.charAt(0).toUpperCase() + key.slice(1),
+        items,
+      }));
+    return [...baseGroups, ...extraGroups].filter((group) => group.items.length > 0);
+  }, [cardGroups]);
+
+  const netFollowersTrend = useMemo(() => {
+    if (!Array.isArray(netFollowersSeries)) return [];
+    return netFollowersSeries
+      .map((point) => {
+        const date = point?.date;
+        if (!date) return null;
+        const cumulative = Number(point?.cumulative ?? 0);
+        const net = Number(point?.net ?? 0);
+        return {
+          date,
+          label: formatDateLabel(date),
+          cumulative: Number.isFinite(cumulative) ? cumulative : 0,
+          net: Number.isFinite(net) ? net : 0,
+        };
+      })
+      .filter(Boolean);
+  }, [netFollowersSeries]);
+
+  const netFollowersSummary = useMemo(() => {
+    if (!Array.isArray(netFollowersSeries) || !netFollowersSeries.length) return null;
+    const last = netFollowersSeries[netFollowersSeries.length - 1] || {};
+    const total = Number(last.cumulative ?? 0);
+    const latestNet = Number(last.net ?? 0);
+    const adds = Number(last.adds ?? 0);
+    const removes = Number(last.removes ?? 0);
+    const lastDate = last.date || null;
+    return {
+      total: Number.isFinite(total) ? total : 0,
+      latestNet: Number.isFinite(latestNet) ? latestNet : 0,
+      adds: Number.isFinite(adds) ? adds : 0,
+      removes: Number.isFinite(removes) ? removes : 0,
+      lastDate,
+    };
+  }, [netFollowersSeries]);
+
+  const hasNetFollowersTrend = netFollowersTrend.length > 0;
+
   const insightDonutData = useMemo(() => {
     const segments = [
       { key: 'content_activity', label: 'Interações', value: Number(pageOverview?.content_activity ?? 0) || 0 },
@@ -563,7 +614,7 @@ export default function FacebookDashboard() {
       {
         key: 'reach',
         name: 'Alcance total',
-        description: 'Pessoas alcançadas no período selecionado',
+        description: 'Pessoas alcançadas no perí­odo selecionado',
         value: Number.isFinite(reachMetric) && reachMetric > 0 ? reachMetric : 0,
         color: '#22c55e',
       },
@@ -580,7 +631,7 @@ export default function FacebookDashboard() {
   const hasInsightDonut = insightDonutData.items.length > 0;
   const hasReachVsInteractions = reachVsInteractionsData.length > 0;
 
-  // ======= Métricas de ADS com porcentagens e setas =======
+  // ======= MÃ©tricas de ADS com porcentagens e setas =======
   const adsTotalsCards = useMemo(() => {
     const totals = adsData.totals || {};
     return [
@@ -662,7 +713,7 @@ export default function FacebookDashboard() {
 
   const bestAd = adsData.best_ad;
 
-  // Gráfico horizontal de barras (Impressões, Alcance, Cliques)
+  // GrÃ¡fico horizontal de barras (ImpressÃµes, Alcance, Cliques)
   const volumeBarData = useMemo(() => {
     const totals = adsData?.totals || {};
     return [
@@ -674,7 +725,7 @@ export default function FacebookDashboard() {
 
   const hasVolumeData = volumeBarData.some((item) => item.value > 0);
 
-  // Comparação orgânico x pago
+  // ComparaÃ§Ã£o orgÃ¢nico x pago
   const organicVsPaidData = useMemo(() => {
     const organicReach = Number(pageMetricsByKey.reach?.value || 0);
     const organicEngagement = Number(pageMetricsByKey.post_engagement_total?.value || 0);
@@ -749,35 +800,122 @@ export default function FacebookDashboard() {
         {pageError && <div className="alert alert--error">{pageError}</div>}
 
         {showOrganicSections && (
-          <>
-            <div className="fb-overview-grid">
-              <div className="fb-overview-left">
-                <Section
-                  title="Visão geral da página"
-                  description="Principais métricas de desempenho da página no período selecionado."
-                >
-                  {Object.entries(overviewByCategory).map(([categoryKey, category]) => (
-                    <div key={categoryKey} className="metric-category">
-                      <h3 className="metric-category__title">{category.title}</h3>
-                      <KpiGrid>
-                        {category.metrics.map(({ key, title, hint, value }) => (
-                          <MetricCard key={key} title={title} value={value} hint={hint} />
-                        ))}
-                      </KpiGrid>
+          <Section
+            title="Resumo organico da página"
+            description="Indicadores principais do periodo selecionado."
+          >
+            <div className="fb-summary">
+              <div className="fb-summary__metrics">
+                {primaryCards.length > 0 && (
+                  <div className="fb-summary__primary">
+                    {primaryCards.map((card) => (
+                      <MetricCard
+                        key={card.key}
+                        title={card.title}
+                        value={card.value}
+                        delta={card.delta}
+                        hint={card.hint}
+                        variant="compact"
+                      >
+                        {card.extra}
+                      </MetricCard>
+                    ))}
+                  </div>
+                )}
+
+                {supportingGroups.map((group) => (
+                  <div key={group.key} className="fb-summary__group">
+                    <div className="fb-summary__group-header">
+                      <h3>{group.title}</h3>
                     </div>
-                  ))}
-                </Section>
+                    <div className="fb-summary__group-grid">
+                      {group.items.map((item) => (
+                        <MetricCard
+                          key={item.key}
+                          title={item.title}
+                          value={item.value}
+                          delta={item.delta}
+                          hint={item.hint}
+                          variant="compact"
+                        >
+                          {item.extra}
+                        </MetricCard>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              <div className="fb-overview-right">
+              <div className="fb-summary__insights">
+                <div className="card fb-line-card">
+                  <div className="fb-line-card__header">
+                    <div>
+                      <h3>Crescimento liquido</h3>
+                      <p>Acompanhamento diario do saldo de seguidores.</p>
+                    </div>
+                    {netFollowersSummary && (
+                      <div className={`fb-line-card__badge${netFollowersSummary.total < 0 ? ' fb-line-card__badge--down' : ''}`}>
+                        {formatSignedNumber(netFollowersSummary.total)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="fb-line-card__chart">
+                    {loadingPage ? (
+                      <div className="chart-card__empty">Carregando dados...</div>
+                    ) : hasNetFollowersTrend ? (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={netFollowersTrend} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                          <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                          <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={formatShortNumber} width={64} />
+                          <Tooltip
+                            labelFormatter={(label, payload) => {
+                              const rawDate = payload && payload[0]?.payload?.date;
+                              return rawDate ? formatDateFull(rawDate) : label;
+                            }}
+                            formatter={(value, name) => {
+                              const numeric = Number(value);
+                              if (name === 'net') {
+                                return [formatSignedNumber(numeric), 'Liquido'];
+                              }
+                              return [formatNumber(Number(numeric)), 'Total acumulado'];
+                            }}
+                            contentStyle={{
+                              backgroundColor: 'var(--panel)',
+                              border: '1px solid var(--stroke)',
+                              borderRadius: '12px',
+                              padding: '8px 12px',
+                              boxShadow: 'var(--shadow-lg)',
+                            }}
+                          />
+                          <Line type="monotone" dataKey="cumulative" stroke="var(--accent)" strokeWidth={2.5} dot={false} />
+                          <Line type="monotone" dataKey="net" stroke="#0ea5e9" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="chart-card__empty">Sem dados suficientes para o periodo.</div>
+                    )}
+                  </div>
+                  {netFollowersSummary && (
+                    <div className="fb-line-card__footer">
+                      <span>
+                        Ultimo dia {netFollowersSummary.lastDate ? formatDateLabel(netFollowersSummary.lastDate) : '---'}: {formatSignedNumber(netFollowersSummary.latestNet)}
+                      </span>
+                      <span>
+                        Entradas {formatNumber(netFollowersSummary.adds)} - Saidas {formatNumber(netFollowersSummary.removes)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
                 <div className="card fb-insight-card fb-insight-card--donut">
                   <div className="fb-insight-card__header">
-                    <h3>Composição de resultados</h3>
-                    <span>Distribuição das métricas principais do período</span>
+                    <h3>Composicao de resultados</h3>
+                    <span>Distribuicao das metricas principais do periodo</span>
                   </div>
 
                   {loadingPage ? (
-                    <div className="fb-insight-card__empty">Carregando distribuição…</div>
+                    <div className="fb-insight-card__empty">Carregando distribuicao...</div>
                   ) : hasInsightDonut ? (
                     <>
                       <div className="fb-donut-card__chart">
@@ -820,18 +958,18 @@ export default function FacebookDashboard() {
                       </ul>
                     </>
                   ) : (
-                    <div className="fb-insight-card__empty">Sem dados suficientes para exibir o gráfico.</div>
+                    <div className="fb-insight-card__empty">Sem dados suficientes para exibir o grafico.</div>
                   )}
                 </div>
 
                 <div className="card fb-insight-card fb-insight-card--bars">
                   <div className="fb-insight-card__header">
-                    <h3>Alcance vs. Interações</h3>
-                    <span>Comparativo visual do período atual</span>
+                    <h3>Alcance vs. Interacoes</h3>
+                    <span>Comparativo visual do periodo atual</span>
                   </div>
 
                   {loadingPage ? (
-                    <div className="fb-insight-card__empty">Carregando comparativo…</div>
+                    <div className="fb-insight-card__empty">Carregando comparativo...</div>
                   ) : hasReachVsInteractions ? (
                     <>
                       <div className="fb-bar-card__chart">
@@ -880,28 +1018,12 @@ export default function FacebookDashboard() {
                 </div>
               </div>
             </div>
-
-            <div className="section-divider"></div>
-
-            <Section
-              title="Resumo orgânico"
-              description="Indicadores principais da página (intervalo selecionado)."
-            >
-              <KpiGrid>
-                {cardItems.map(({ key, title, hint, value, delta, extra }) => (
-                  <MetricCard key={key} title={title} value={value} delta={delta} hint={hint}>
-                    {extra}
-                  </MetricCard>
-                ))}
-              </KpiGrid>
-
-            </Section>
-          </>
+          </Section>
         )}
       {showPaidSections && (
         <Section
         title="Desempenho de anúncios"
-        description="Resumo das campanhas no período selecionado."
+        description="Resumo das campanhas no perí­odo selecionado."
       >
         {adsError && <div className="alert alert--error">{adsError}</div>}
 
@@ -925,7 +1047,7 @@ export default function FacebookDashboard() {
           <div className="card chart-card" style={{ minHeight: '280px' }}>
             <div>
               <h3 className="chart-card__title">Volume por indicador</h3>
-              <p className="chart-card__subtitle">Comparativo de impressões, alcance e cliques</p>
+              <p className="chart-card__subtitle">Comparativo de impressÃµes, alcance e cliques</p>
             </div>
             <div className="chart-card__viz" style={{ minHeight: '200px' }}>
               {loadingAds ? (
@@ -955,7 +1077,7 @@ export default function FacebookDashboard() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="chart-card__empty">Sem dados suficientes no período.</div>
+                <div className="chart-card__empty">Sem dados suficientes no perí­odo.</div>
               )}
             </div>
           </div>
@@ -982,7 +1104,7 @@ export default function FacebookDashboard() {
                 ))}
               </div>
             ) : (
-              <p className="muted">Nenhum anúncio disponível para o período.</p>
+              <p className="muted">Nenhum anúncio disponí­vel para o perí­odo.</p>
             )}
           </div>
         </div>
@@ -991,7 +1113,7 @@ export default function FacebookDashboard() {
 
 
       <Section
-        title="Orgânico x Pago"
+        title="OrgÃ¢nico x Pago"
         description="Comparativo de desempenho entre conteúdo orgânico e anúncios pagos."
       >
         <div className="card chart-card">

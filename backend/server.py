@@ -158,6 +158,12 @@ def fetch_facebook_metrics(
     engagement_prev = prev.get("engagement") or {}
     video_cur = cur.get("video") or {}
     video_prev = prev.get("video") or {}
+    video_engagement_cur = (video_cur.get("engagement") or {}) if isinstance(video_cur, dict) else {}
+    video_engagement_prev = (video_prev.get("engagement") or {}) if isinstance(video_prev, dict) else {}
+    video_engagement_cur_total = video_engagement_cur.get("total")
+    video_engagement_prev_total = video_engagement_prev.get("total")
+    page_overview_cur = cur.get("page_overview") or {}
+    page_overview_prev = prev.get("page_overview") or {}
 
     metrics = [
         {
@@ -178,22 +184,69 @@ def fetch_facebook_metrics(
             },
         },
         {
-            "key": "video_views_10s",
-            "label": "Views de 10+ seg",
-            "value": video_cur.get("views_10s"),
-            "deltaPct": pct(video_cur.get("views_10s"), video_prev.get("views_10s")),
+            "key": "page_views",
+            "label": "Visualizacoes da pagina",
+            "value": page_overview_cur.get("page_views"),
+            "deltaPct": pct(page_overview_cur.get("page_views"), page_overview_prev.get("page_views")),
         },
         {
-            "key": "video_views_1m",
-            "label": "Views de 1+ min",
-            "value": video_cur.get("views_1m"),
-            "deltaPct": pct(video_cur.get("views_1m"), video_prev.get("views_1m")),
+            "key": "content_activity",
+            "label": "Interacoes totais",
+            "value": page_overview_cur.get("content_activity"),
+            "deltaPct": pct(page_overview_cur.get("content_activity"), page_overview_prev.get("content_activity")),
         },
         {
-            "key": "video_avg_watch_time",
-            "label": "Tempo medio de visualizacao",
-            "value": video_cur.get("avg_watch_time"),
-            "deltaPct": pct(video_cur.get("avg_watch_time"), video_prev.get("avg_watch_time")),
+            "key": "cta_clicks",
+            "label": "Cliques em CTA",
+            "value": page_overview_cur.get("cta_clicks"),
+            "deltaPct": pct(page_overview_cur.get("cta_clicks"), page_overview_prev.get("cta_clicks")),
+        },
+        {
+            "key": "post_clicks",
+            "label": "Cliques em posts",
+            "value": cur.get("post_clicks"),
+            "deltaPct": pct(cur.get("post_clicks"), prev.get("post_clicks")),
+        },
+        {
+            "key": "followers_total",
+            "label": "Seguidores da pagina",
+            "value": page_overview_cur.get("followers_total"),
+            "deltaPct": pct(page_overview_cur.get("followers_total"), page_overview_prev.get("followers_total")),
+        },
+        {
+            "key": "followers_gained",
+            "label": "Novos seguidores",
+            "value": page_overview_cur.get("followers_gained"),
+            "deltaPct": pct(page_overview_cur.get("followers_gained"), page_overview_prev.get("followers_gained")),
+        },
+        {
+            "key": "followers_lost",
+            "label": "Deixaram de seguir",
+            "value": page_overview_cur.get("followers_lost"),
+            "deltaPct": pct(page_overview_cur.get("followers_lost"), page_overview_prev.get("followers_lost")),
+        },
+        {
+            "key": "net_followers",
+            "label": "Crescimento liquido",
+            "value": page_overview_cur.get("net_followers"),
+            "deltaPct": pct(page_overview_cur.get("net_followers"), page_overview_prev.get("net_followers")),
+        },
+        {
+            "key": "video_views_total",
+            "label": "Video views",
+            "value": page_overview_cur.get("video_views"),
+            "deltaPct": pct(page_overview_cur.get("video_views"), page_overview_prev.get("video_views")),
+        },
+        {
+            "key": "video_engagement_total",
+            "label": "Videos (reacoes, comentarios, compartilhamentos)",
+            "value": video_engagement_cur_total,
+            "deltaPct": pct(video_engagement_cur_total, video_engagement_prev_total),
+            "breakdown": {
+                "reactions": video_engagement_cur.get("reactions"),
+                "comments": video_engagement_cur.get("comments"),
+                "shares": video_engagement_cur.get("shares"),
+            },
         },
         {
             "key": "video_watch_time_total",
@@ -210,12 +263,14 @@ def fetch_facebook_metrics(
             "shares": engagement_cur.get("shares"),
         },
         "video": {
-            "views_10s": video_cur.get("views_10s"),
-            "views_1m": video_cur.get("views_1m"),
+            "watch_time_total": video_cur.get("watch_time_total"),
+            "engagement": video_engagement_cur,
+            "views": page_overview_cur.get("video_views"),
         },
     }
 
-    page_overview = cur.get("page_overview") or {}
+    page_overview = page_overview_cur
+    net_followers_series = cur.get("net_followers_series") or []
 
     return {
         "since": since_ts,
@@ -223,7 +278,62 @@ def fetch_facebook_metrics(
         "metrics": metrics,
         "breakdowns": breakdowns,
         "page_overview": page_overview,
+        "net_followers_series": net_followers_series,
     }
+
+
+def _enrich_facebook_metrics_payload(payload: Dict[str, Any]) -> None:
+    if not isinstance(payload, dict):
+        return
+
+    metrics: List[Dict[str, Any]] = payload.setdefault("metrics", [])
+    metrics_by_key = {}
+    for item in metrics:
+        if isinstance(item, dict) and item.get("key"):
+            metrics_by_key[item["key"]] = item
+
+    page_overview = payload.get("page_overview") or {}
+    video_data = payload.get("video") or {}
+    breakdowns = payload.get("breakdowns") or {}
+    video_breakdown = {}
+    if isinstance(video_data, dict):
+        video_breakdown = video_data.get("engagement") or {}
+    if not video_breakdown and isinstance(breakdowns, dict):
+        video_breakdown = (breakdowns.get("video") or {}).get("engagement") or {}
+
+    def ensure_metric(key: str, label: str, value: Optional[Any], breakdown: Optional[Dict[str, Any]] = None) -> None:
+        if value in (None, "", []):
+            return
+        metric = metrics_by_key.get(key)
+        if metric:
+            if metric.get("value") in (None, "", "-"):
+                metric["value"] = value
+            if breakdown and not metric.get("breakdown"):
+                metric["breakdown"] = breakdown
+        else:
+            entry = {
+                "key": key,
+                "label": label,
+                "value": value,
+                "deltaPct": None,
+            }
+            if breakdown:
+                entry["breakdown"] = breakdown
+            metrics.append(entry)
+            metrics_by_key[key] = entry
+
+    ensure_metric("video_views_total", "Video views", page_overview.get("video_views"))
+    ensure_metric(
+        "video_engagement_total",
+        "Videos (reacoes, comentarios, compartilhamentos)",
+        (video_breakdown or {}).get("total"),
+        {
+            "reactions": (video_breakdown or {}).get("reactions"),
+            "comments": (video_breakdown or {}).get("comments"),
+            "shares": (video_breakdown or {}).get("shares"),
+        },
+    )
+    ensure_metric("followers_total", "Seguidores da pagina", page_overview.get("followers_total"))
 
 
 def fetch_facebook_posts(
@@ -267,31 +377,27 @@ def fetch_instagram_metrics(
         "reach": 0,
     }
 
-    try:
-        posts_data = ig_recent_posts(ig_id, limit=10)
-    except MetaAPIError as err:
-        logger.warning("Falha ao buscar posts do Instagram para calcular engajamento: %s", err, exc_info=False)
-        posts_data = {}
-    posts = (posts_data or {}).get("posts", [])
     posts_in_period = []
-    for post in posts:
-        timestamp = post.get("timestamp")
-        if not timestamp:
-            continue
-        try:
-            timestamp_dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-        except ValueError:
-            continue
-        post_unix = int(timestamp_dt.timestamp())
-        if since_ts <= post_unix <= until_ts:
+    posts_details = cur.get("posts_detailed") or []
+    for post in posts_details:
+        timestamp_unix = post.get("timestamp_unix")
+        if timestamp_unix is None:
+            timestamp_iso = post.get("timestamp")
+            if timestamp_iso:
+                try:
+                    timestamp_dt = datetime.fromisoformat(timestamp_iso.replace("Z", "+00:00"))
+                    timestamp_unix = int(timestamp_dt.timestamp())
+                except ValueError:
+                    timestamp_unix = None
+        if timestamp_unix is not None and since_ts <= timestamp_unix <= until_ts:
             posts_in_period.append(post)
 
     if posts_in_period:
         total_interactions = 0
         total_reach = 0
         for post in posts_in_period:
-            likes = int(post.get("like_count") or post.get("likes") or 0)
-            comments = int(post.get("comments_count") or post.get("comments") or 0)
+            likes = int(post.get("likes") or post.get("like_count") or 0)
+            comments = int(post.get("comments") or post.get("comments_count") or 0)
             shares = int(post.get("shares") or 0)
             saves = int(post.get("saves") or 0)
             total_post_interactions = likes + comments + shares + saves
@@ -332,14 +438,13 @@ def fetch_instagram_metrics(
         cur["interactions"] = engagement_breakdown["total"]
 
     metrics = [
+        {"key": "followers_total", "label": "SEGUIDORES", "value": cur.get("follower_count_end"), "deltaPct": pct(cur.get("follower_count_end"), prev.get("follower_count_end"))},
         {"key": "reach", "label": "ALCANCE", "value": cur["reach"], "deltaPct": pct(cur["reach"], prev["reach"])},
-        {"key": "profile_views", "label": "VIEWS DE PERFIL", "value": cur["profile_views"], "deltaPct": pct(cur["profile_views"], prev["profile_views"])},
-        {"key": "website_clicks", "label": "CLIQUES NO SITE", "value": cur["website_clicks"], "deltaPct": pct(cur["website_clicks"], prev["website_clicks"])},
-        {"key": "interactions", "label": "INTERACOES TOTAIS", "value": cur["interactions"], "deltaPct": pct(cur["interactions"], prev["interactions"])},
-        {"key": "likes", "label": "CURTIDAS", "value": cur.get("likes"), "deltaPct": None},
-        {"key": "comments", "label": "COMENTARIOS", "value": cur.get("comments"), "deltaPct": None},
-        {"key": "shares", "label": "COMPARTILHAMENTOS", "value": cur.get("shares"), "deltaPct": None},
-        {"key": "saves", "label": "SALVAMENTOS", "value": cur.get("saves"), "deltaPct": None},
+        {"key": "interactions", "label": "INTERACOES", "value": cur["interactions"], "deltaPct": pct(cur["interactions"], prev["interactions"])},
+        {"key": "likes", "label": "CURTIDAS", "value": cur.get("likes"), "deltaPct": pct(cur.get("likes"), prev.get("likes")) if prev.get("likes") else None},
+        {"key": "saves", "label": "SALVAMENTOS", "value": cur.get("saves"), "deltaPct": pct(cur.get("saves"), prev.get("saves")) if prev.get("saves") else None},
+        {"key": "shares", "label": "COMPARTILHAMENTOS", "value": cur.get("shares"), "deltaPct": pct(cur.get("shares"), prev.get("shares")) if prev.get("shares") else None},
+        {"key": "comments", "label": "COMENTARIOS", "value": cur.get("comments"), "deltaPct": pct(cur.get("comments"), prev.get("comments")) if prev.get("comments") else None},
         {
             "key": "engagement_rate",
             "label": "TAXA ENGAJAMENTO",
@@ -360,12 +465,40 @@ def fetch_instagram_metrics(
         "follows": cur.get("follows"),
         "unfollows": cur.get("unfollows"),
     }
+
+    top_posts: Dict[str, List[Dict[str, Any]]] = {"reach": [], "engagement": [], "saves": []}
+    if posts_in_period:
+        sorted_by_reach = sorted(posts_in_period, key=lambda p: p.get("reach") or 0, reverse=True)
+        sorted_by_engagement = sorted(posts_in_period, key=lambda p: p.get("interactions") or 0, reverse=True)
+        sorted_by_saves = sorted(posts_in_period, key=lambda p: p.get("saves") or 0, reverse=True)
+
+        def serialize_post(post: Dict[str, Any]) -> Dict[str, Any]:
+            return {
+                "id": post.get("id"),
+                "timestamp": post.get("timestamp"),
+                "permalink": post.get("permalink"),
+                "mediaType": post.get("media_type"),
+                "previewUrl": post.get("preview_url"),
+                "reach": int(post.get("reach") or 0),
+                "likes": int(post.get("likes") or post.get("like_count") or 0),
+                "comments": int(post.get("comments") or post.get("comments_count") or 0),
+                "shares": int(post.get("shares") or 0),
+                "saves": int(post.get("saves") or 0),
+                "interactions": int(post.get("interactions") or 0),
+            }
+
+        top_posts["reach"] = [serialize_post(post) for post in sorted_by_reach[:3]]
+        top_posts["engagement"] = [serialize_post(post) for post in sorted_by_engagement[:3]]
+        top_posts["saves"] = [serialize_post(post) for post in sorted_by_saves[:3]]
+
     return {
         "since": since_ts,
         "until": until_ts,
         "metrics": metrics,
         "profile_visitors_breakdown": cur.get("profile_visitors_breakdown"),
         "follower_counts": follower_counts,
+        "follower_series": cur.get("follower_series") or [],
+        "top_posts": top_posts,
     }
 
 
@@ -490,6 +623,8 @@ def facebook_metrics():
     except ValueError as err:
         return jsonify({"error": str(err)}), 400
 
+    payload = dict(payload)
+    _enrich_facebook_metrics_payload(payload)
     response = dict(payload)
     response["cache"] = meta
     return jsonify(response)
