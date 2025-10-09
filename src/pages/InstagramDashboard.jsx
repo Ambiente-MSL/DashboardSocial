@@ -1,13 +1,17 @@
 ﻿// src/pages/InstagramDashboard.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { ExternalLink, Heart, MessageCircle, Play, Clock, TrendingUp } from "lucide-react";
+import { Bookmark, ExternalLink, Heart, MessageCircle, Play, TrendingUp } from "lucide-react";
 import {
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
   Tooltip,
+  BarChart,
+  Bar,
 } from "recharts";
 
 import Topbar from "../components/Topbar";
@@ -19,19 +23,13 @@ import { accounts } from "../data/accounts";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const DEFAULT_ACCOUNT_ID = accounts[0]?.id || "";
-const DONUT_COLORS = ["#6366f1", "#22d3ee", "#94a3b8"];
 
-const mediaTypeLabel = {
-  IMAGE: "Imagem",
-  VIDEO: "Video",
-  CAROUSEL_ALBUM: "Carrossel",
-  REELS: "Reels",
-};
-
-const mapByKey = (arr) => {
+const mapByKey = (items) => {
   const map = {};
-  (arr || []).forEach((item) => {
-    if (item && item.key) map[item.key] = item;
+  (items || []).forEach((item) => {
+    if (item && item.key) {
+      map[item.key] = item;
+    }
   });
   return map;
 };
@@ -59,27 +57,30 @@ const describeApiError = (payload, fallback) => {
   return fallback;
 };
 
-const formatDate = (iso) => {
-  if (!iso) return "";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(date);
-};
-
-const truncate = (text, length = 140) => {
+const truncate = (text, length = 120) => {
   if (!text) return "";
   if (text.length <= length) return text;
   return `${text.slice(0, length - 3)}...`;
 };
 
-const formatMetricValue = (metric, { percentage = false, loading } = {}) => {
+const extractNumber = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const sumInteractions = (post) => {
+  const likes = extractNumber(post.likeCount ?? post.likes);
+  const comments = extractNumber(post.commentsCount ?? post.comments);
+  const shares = extractNumber(post.shares ?? post.shareCount);
+  const saves = extractNumber(post.saved ?? post.saves ?? post.saveCount);
+  return likes + comments + shares + saves;
+};
+
+const formatMetricValue = (metric, { loading } = {}) => {
   if (loading) return "...";
   if (!metric) return "-";
   const value = metric.value;
   if (value == null) return "-";
-  if (percentage && typeof value === "number") {
-    return `${Number(value).toFixed(2)}%`;
-  }
   if (typeof value === "number") {
     return value.toLocaleString("pt-BR");
   }
@@ -91,9 +92,11 @@ const metricDelta = (metric, { loading } = {}) => {
   return metric?.deltaPct ?? null;
 };
 
-const formatPercentage = (value) => {
-  if (value == null || Number.isNaN(value)) return "-";
-  return `${Number(value).toFixed(1)}%`;
+const formatDate = (iso) => {
+  if (!iso) return "-";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(date);
 };
 
 export default function InstagramDashboard() {
@@ -109,27 +112,22 @@ export default function InstagramDashboard() {
   const until = get("until");
 
   const [metrics, setMetrics] = useState([]);
-  const [metricsMeta, setMetricsMeta] = useState({
-    profileBreakdown: null,
-    followerCounts: null,
-  });
+  const [metricsMeta, setMetricsMeta] = useState({ followerCounts: null });
   const [loadingMetrics, setLoadingMetrics] = useState(false);
   const [metricsError, setMetricsError] = useState("");
-
-  const [audience, setAudience] = useState({ cities: [], ages: [], gender: [] });
-  const [loadingAudience, setLoadingAudience] = useState(false);
-  const [audienceError, setAudienceError] = useState("");
 
   const [posts, setPosts] = useState([]);
   const [visiblePosts, setVisiblePosts] = useState(5);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [postsError, setPostsError] = useState("");
   const [accountInfo, setAccountInfo] = useState(null);
+  const [followerSeries, setFollowerSeries] = useState([]);
 
   useEffect(() => {
     if (!accountConfig?.instagramUserId) {
       setMetrics([]);
-      setMetricsMeta({ profileBreakdown: null, followerCounts: null });
+      setMetricsMeta({ followerCounts: null });
+      setFollowerSeries([]);
       setMetricsError("Conta do Instagram nao configurada.");
       return;
     }
@@ -142,24 +140,22 @@ export default function InstagramDashboard() {
         if (since) params.set("since", since);
         if (until) params.set("until", until);
         params.set("igUserId", accountConfig.instagramUserId);
-
         const url = `${API_BASE_URL}/api/instagram/metrics?${params.toString()}`;
         const resp = await fetch(url, { signal: controller.signal });
         const raw = await resp.text();
         const json = safeParseJson(raw) || {};
         if (!resp.ok) throw new Error(describeApiError(json, "Falha ao carregar metricas do Instagram."));
         setMetrics(json.metrics || []);
-        setMetricsMeta({
-          profileBreakdown: json.profile_visitors_breakdown || null,
-          followerCounts: json.follower_counts || null,
-        });
+        setMetricsMeta({ followerCounts: json.follower_counts || null });
+        setFollowerSeries(Array.isArray(json.follower_series) ? json.follower_series : []);
       } catch (err) {
         if (err.name === "AbortError") {
           return;
         }
         console.error(err);
         setMetrics([]);
-        setMetricsMeta({ profileBreakdown: null, followerCounts: null });
+        setMetricsMeta({ followerCounts: null });
+        setFollowerSeries([]);
         setMetricsError(err.message || "Nao foi possivel atualizar os indicadores do Instagram.");
       } finally {
         setLoadingMetrics(false);
@@ -167,42 +163,6 @@ export default function InstagramDashboard() {
     })();
     return () => controller.abort();
   }, [accountConfig?.instagramUserId, since, until]);
-
-  useEffect(() => {
-    if (!accountConfig?.instagramUserId) {
-      setAudience({ cities: [], ages: [], gender: [] });
-      setAudienceError("Conta do Instagram nao configurada.");
-      return;
-    }
-    const controller = new AbortController();
-    (async () => {
-      setLoadingAudience(true);
-      setAudienceError("");
-      try {
-        const params = new URLSearchParams({ igUserId: accountConfig.instagramUserId });
-        const url = `${API_BASE_URL}/api/instagram/audience?${params.toString()}`;
-        const resp = await fetch(url, { signal: controller.signal });
-        const raw = await resp.text();
-        const json = safeParseJson(raw) || {};
-        if (!resp.ok) throw new Error(describeApiError(json, "Falha ao carregar audiencia do Instagram."));
-        setAudience({
-          cities: Array.isArray(json.cities) ? json.cities : [],
-          ages: Array.isArray(json.ages) ? json.ages : [],
-          gender: Array.isArray(json.gender) ? json.gender : [],
-        });
-      } catch (err) {
-        if (err.name === "AbortError") {
-          return;
-        }
-        console.error(err);
-        setAudience({ cities: [], ages: [], gender: [] });
-        setAudienceError(err.message || "Nao foi possivel carregar a audiencia.");
-      } finally {
-        setLoadingAudience(false);
-      }
-    })();
-    return () => controller.abort();
-  }, [accountConfig?.instagramUserId]);
 
   useEffect(() => {
     if (!accountConfig?.instagramUserId) {
@@ -240,52 +200,98 @@ export default function InstagramDashboard() {
     return () => controller.abort();
   }, [accountConfig?.instagramUserId]);
 
-  useEffect(() => {
-    setVisiblePosts(5);
-  }, [posts]);
-
   const metricsByKey = useMemo(() => mapByKey(metrics), [metrics]);
-
   const profileViewsMetric = metricsByKey.profile_views;
   const interactionsMetric = metricsByKey.interactions;
-  const reachMetric = metricsByKey.reach;
-  const followerGrowthMetric = metricsByKey.follower_growth;
-  const engagementRateMetric = metricsByKey.engagement_rate;
-
-  const interactionsValue = typeof interactionsMetric?.value === "number" ? interactionsMetric.value : null;
-  const reachValue = typeof reachMetric?.value === "number" ? reachMetric.value : null;
-  const computedEngagementRate = typeof engagementRateMetric?.value === "number"
-    ? engagementRateMetric.value
-    : (Number.isFinite(interactionsValue) && Number.isFinite(reachValue) && reachValue > 0
-      ? (interactionsValue / reachValue) * 100
-      : null);
-
-  const engagementBreakdown = engagementRateMetric?.breakdown || null;
+  const likesMetric = metricsByKey.likes;
+  const commentsMetric = metricsByKey.comments;
+  const sharesMetric = metricsByKey.shares;
+  const savesMetric = metricsByKey.saves;
 
   const followerCounts = metricsMeta.followerCounts || {};
-  const followerGrowthValue = typeof followerGrowthMetric?.value === "number"
-    ? followerGrowthMetric.value
-    : (typeof followerCounts.end === "number" && typeof followerCounts.start === "number"
-      ? followerCounts.end - followerCounts.start
-      : null);
+  const followerDeltaValue = extractNumber(followerCounts.end) - extractNumber(followerCounts.start);
+  const interactionsValue = extractNumber(interactionsMetric?.value);
 
-  const profileBreakdown = metricsMeta.profileBreakdown;
-  const donutData = useMemo(() => {
-    if (!profileBreakdown) return [];
-    const followers = typeof profileBreakdown?.followers === "number" ? profileBreakdown.followers : 0;
-    const nonFollowers = typeof profileBreakdown?.non_followers === "number" ? profileBreakdown.non_followers : 0;
-    if (!followers && !nonFollowers) return [];
-    return [
-      { name: "Seguidores", value: followers },
-      { name: "Nao seguidores", value: nonFollowers },
+  const engagementBreakdown = metricsByKey.engagement_rate?.breakdown || {
+    likes: extractNumber(likesMetric?.value),
+    comments: extractNumber(commentsMetric?.value),
+    shares: extractNumber(sharesMetric?.value),
+    saves: extractNumber(savesMetric?.value),
+  };
+
+  const primaryCards = useMemo(
+    () => [
+      {
+        key: "profile_views",
+        title: "Visitas no perfil",
+        metric: profileViewsMetric,
+      },
+      {
+        key: "interactions",
+        title: "Interacoes",
+        metric: interactionsMetric,
+      },
+      {
+        key: "followers",
+        title: "Seguidores",
+        metric: { value: followerCounts.end },
+        deltaValue: followerDeltaValue,
+      },
+      {
+        key: "engagement",
+        title: "Engajamento total",
+        metric: { value: interactionsValue },
+      },
+    ],
+    [followerCounts.end, followerDeltaValue, interactionsMetric, interactionsValue, profileViewsMetric],
+  );
+
+  const engagementDetails = useMemo(
+    () => [
+      { key: "likes", label: "Curtidas", value: extractNumber(engagementBreakdown.likes) },
+      { key: "comments", label: "Comentarios", value: extractNumber(engagementBreakdown.comments) },
+      { key: "shares", label: "Compart.", value: extractNumber(engagementBreakdown.shares) },
+      { key: "saves", label: "Salvos", value: extractNumber(engagementBreakdown.saves) },
+    ],
+    [engagementBreakdown],
+  );
+
+  const followerLineData = useMemo(
+    () => followerSeries.map((entry) => ({
+      label: formatDate(entry.date ?? entry.end_time),
+      value: extractNumber(entry.value),
+    })),
+    [followerSeries],
+  );
+
+  const barChartData = useMemo(
+    () => posts.slice(0, 6).map((post, index) => ({
+      label: `Post ${index + 1}`,
+      interactions: sumInteractions(post),
+      reach: extractNumber(post.reach),
+    })),
+    [posts],
+  );
+
+  const rankingMetrics = useMemo(() => {
+    const builders = [
+      { key: "reach", label: "Maior alcance", extractor: (post) => extractNumber(post.reach) },
+      { key: "interactions", label: "Maior engajamento", extractor: (post) => sumInteractions(post) },
+      { key: "saves", label: "Maior salvamento", extractor: (post) => extractNumber(post.saved ?? post.saves ?? post.saveCount) },
     ];
-  }, [profileBreakdown]);
-  const donutTotal = donutData.reduce((acc, item) => acc + (item.value || 0), 0);
-
-  const audienceCities = (audience?.cities || []).slice(0, 5);
-  const audienceAges = audience?.ages || [];
-  const audienceGender = audience?.gender || [];
-  const hasAudienceData = audienceCities.length > 0 || audienceAges.length > 0 || audienceGender.length > 0;
+    return builders.map(({ key, label, extractor }) => {
+      let topPost = null;
+      let topValue = -1;
+      posts.forEach((post) => {
+        const value = extractor(post);
+        if (value > topValue) {
+          topPost = post;
+          topValue = value;
+        }
+      });
+      return { key, label, post: topPost, value: topValue };
+    });
+  }, [posts]);
 
   const displayedPosts = posts.slice(0, visiblePosts);
 
@@ -312,236 +318,182 @@ export default function InstagramDashboard() {
   return (
     <>
       <Topbar title="Instagram" sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} showFilters={true} />
-
-      <div className="page-content">
+      <div className="page-content ig-dashboard">
         <DateRangeIndicator />
-
+        {accountBadge && <div className="ig-account-highlight">{accountBadge}</div>}
         {metricsError && <div className="alert alert--error">{metricsError}</div>}
 
-        <Section
-          title="Visao geral do perfil"
-          description="Resumo rapido de visitas, engajamento e crescimento organico do periodo selecionado."
-        >
-          <div className="overview-layout">
-            <div className="overview-layout__cards">
+        <Section title="Visao geral do perfil">
+          <div className="ig-primary-cards">
+            {primaryCards.map(({ key, title, metric, deltaValue }) => (
               <MetricCard
-                title="Visitas no perfil"
-                value={formatMetricValue(profileViewsMetric, { loading: loadingMetrics })}
-                delta={metricDelta(profileViewsMetric, { loading: loadingMetrics })}
-                hint="Total de visitas no perfil durante o intervalo."
+                key={key}
+                title={title}
+                value={formatMetricValue(metric, { loading: loadingMetrics })}
+                delta={typeof deltaValue === "number" ? deltaValue : metricDelta(metric, { loading: loadingMetrics })}
+                variant="compact"
               />
-              <MetricCard
-                title="Taxa de engajamento"
-                value={loadingMetrics ? "..." : (computedEngagementRate != null ? `${computedEngagementRate.toFixed(2)}%` : "-")}
-                hint={
-                  engagementBreakdown && engagementBreakdown.total > 0
-                    ? `${engagementBreakdown.likes.toLocaleString("pt-BR")} curtidas ┬À ${engagementBreakdown.comments.toLocaleString("pt-BR")} coment. ┬À ${engagementBreakdown.saves.toLocaleString("pt-BR")} salvamentos ┬À ${engagementBreakdown.shares.toLocaleString("pt-BR")} compart. | Alcance: ${engagementBreakdown.reach.toLocaleString("pt-BR")}`
-                    : "(Curtidas + Comentarios + Salvamentos + Compartilhamentos) dividido pelo alcance."
-                }
-              />
-              <MetricCard
-                title="Crescimento de seguidores"
-                value={loadingMetrics ? "..." : (followerGrowthValue != null ? followerGrowthValue.toLocaleString("pt-BR") : "-")}
-                hint="Saldo de seguidores ganhados no periodo."
-              />
-            </div>
-            <div className="overview-layout__chart">
-              <header className="overview-layout__chart-header">
-                <h3>Visitantes do perfil</h3>
-                <p>Comparativo entre seguidores e nao seguidores.</p>
-              </header>
-              <div className="overview-layout__chart-viz">
+            ))}
+          </div>
+          <div className="ig-engagement-details">
+            {engagementDetails.map((detail) => (
+              <div key={detail.key} className="ig-engagement-details__item">
+                <span className="ig-engagement-details__label">{detail.label}</span>
+                <span className="ig-engagement-details__value">{detail.value.toLocaleString("pt-BR")}</span>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        <Section title="Tendencias da conta" description="Comparativos rápidos para análise diária.">
+          <div className="ig-charts">
+            <div className="ig-chart-card">
+              <div className="ig-chart-card__header">
+                <h3>Evolucao de seguidores</h3>
+                <span>Serie diária informada pelo Instagram.</span>
+              </div>
+              <div className="ig-chart-card__body">
                 {loadingMetrics ? (
                   <div className="chart-card__empty">Carregando...</div>
-                ) : donutData.length ? (
+                ) : followerLineData.length ? (
                   <ResponsiveContainer width="100%" height={220}>
-                    <PieChart>
-                      <Tooltip
-                        formatter={(value) => value.toLocaleString("pt-BR")}
-                        contentStyle={{
-                          backgroundColor: "var(--panel)",
-                          border: "1px solid var(--stroke)",
-                          borderRadius: "12px",
-                          padding: "8px 12px",
-                          boxShadow: "var(--shadow-lg)",
-                        }}
-                      />
-                      <Pie
-                        data={donutData}
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={4}
-                        dataKey="value"
-                      >
-                        {donutData.map((entry, index) => (
-                          <Cell key={entry.name} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
-                        ))}
-                      </Pie>
-                    </PieChart>
+                    <LineChart data={followerLineData} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                      <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: "var(--text-muted)", fontSize: 12 }} />
+                      <YAxis stroke="var(--text-muted)" tickFormatter={(value) => value.toLocaleString("pt-BR")} />
+                      <Tooltip formatter={(value) => Number(value).toLocaleString("pt-BR")} />
+                      <Line type="monotone" dataKey="value" stroke="#34d399" strokeWidth={2} dot={false} />
+                    </LineChart>
                   </ResponsiveContainer>
                 ) : (
                   <div className="chart-card__empty">Sem dados suficientes.</div>
                 )}
               </div>
-              <div className="overview-layout__chart-total">
-                <strong>Total:</strong> {donutTotal ? donutTotal.toLocaleString("pt-BR") : "-"} visitantes
+            </div>
+
+            <div className="ig-chart-card">
+              <div className="ig-chart-card__header">
+                <h3>Interacoes por post</h3>
+                <span>Comparativo entre alcance e interacoes.</span>
+              </div>
+              <div className="ig-chart-card__body">
+                {loadingPosts ? (
+                  <div className="chart-card__empty">Carregando...</div>
+                ) : barChartData.length ? (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={barChartData} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                      <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: "var(--text-muted)", fontSize: 12 }} />
+                      <YAxis stroke="var(--text-muted)" tickFormatter={(value) => value.toLocaleString("pt-BR")} />
+                      <Tooltip formatter={(value) => Number(value).toLocaleString("pt-BR")} />
+                      <Bar dataKey="interactions" fill="#34d399" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="reach" fill="#4e4e4e" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="chart-card__empty">Sem interacoes recentes.</div>
+                )}
               </div>
             </div>
           </div>
         </Section>
 
-        {audienceError && <div className="alert alert--error">{audienceError}</div>}
-
-        <div className="insights-panels">
-          <Section
-            title="Audiencia"
-            description="Distribuicao de cidades, faixas etarias e genero dos seguidores."
-          >
-            {loadingAudience ? (
-              <div className="audience-card__loading">Carregando audiencia...</div>
-            ) : hasAudienceData ? (
-              <div className="audience-card">
-                <div className="audience-card__column">
-                  <h3>Principais cidades</h3>
-                  <ul className="audience-ranking">
-                    {audienceCities.map((city, index) => {
-                      const percentage = city?.percentage ?? 0;
-                      return (
-                        <li key={`${city.name || "Cidade"}-${index}`} className="audience-ranking__item">
-                          <span className="audience-ranking__position">{index + 1}</span>
-                          <div className="audience-ranking__meta">
-                            <div className="audience-ranking__top">
-                              <span className="audience-ranking__name">{city?.name || "Nao informado"}</span>
-                              <span className="audience-ranking__value">{formatPercentage(percentage)}</span>
-                            </div>
-                            <div className="audience-ranking__bar">
-                              <span style={{ width: `${Math.max(percentage, 2)}%` }} />
-                            </div>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
+        <Section title="Ranking de posts" description="Destaques do período atual.">
+          <div className="ig-ranking">
+            {rankingMetrics.map(({ key, label, post, value }) => (
+              <div key={key} className="ig-ranking__item">
+                <div className="ig-ranking__title">
+                  <span className="badge">{label}</span>
+                  <strong>{Number.isFinite(value) && value >= 0 ? value.toLocaleString("pt-BR") : "-"}</strong>
                 </div>
-                <div className="audience-card__column">
-                  <h3>Faixa etaria</h3>
-                  <ul className="audience-distribution">
-                    {audienceAges.map((group) => (
-                      <li key={group.range} className="audience-distribution__item">
-                        <span className="audience-distribution__label">{group.range}</span>
-                        <div className="audience-distribution__bar">
-                          <span style={{ width: `${Math.max(group.percentage || 0, 2)}%` }} />
-                        </div>
-                        <span className="audience-distribution__value">{formatPercentage(group.percentage)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="audience-card__column">
-                  <h3>Genero</h3>
-                  <ul className="audience-gender">
-                    {audienceGender.map((item) => (
-                      <li key={item.key} className="audience-gender__item">
-                        <span>{item.label}</span>
-                        <strong>{formatPercentage(item.percentage)}</strong>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ) : (
-              <div className="audience-card__empty">Sem dados de audiencia disponiveis.</div>
-            )}
-          </Section>
-
-          <Section
-            title="Melhor horario para postar"
-            description="Janela com maior engajamento medio historico."
-            surface={true}
-          >
-            <div className="best-time-card best-time-card--compact">
-              <div className="best-time-card__icon">
-                <Clock size={32} />
-              </div>
-              <div className="best-time-card__content">
-                <div className="best-time-card__primary">
-                  <div className="best-time-card__time">18:00 - 21:00</div>
-                  <div className="best-time-card__label">Janela de melhor desempenho</div>
-                </div>
-                <div className="best-time-card__secondary">
-                  <div className="best-time-card__metric">
-                    <TrendingUp size={16} />
-                    <span>+45% de engajamento</span>
+                {post ? (
+                  <div className="ig-ranking__content">
+                    <div className="ig-ranking__preview">
+                      {post.previewUrl ? (
+                        <img src={post.previewUrl} alt={truncate(post.caption || "Post", 60)} />
+                      ) : (
+                        <div className="ig-ranking__preview--placeholder">Sem preview</div>
+                      )}
+                      {post.mediaType === "VIDEO" && <Play size={14} className="ig-ranking__badge" />}
+                    </div>
+                    <div className="ig-ranking__meta">
+                      <span className="ig-ranking__caption">{truncate(post.caption, 100) || "Sem legenda"}</span>
+                      <div className="ig-ranking__metrics">
+                        <span><Heart size={14} /> {extractNumber(post.likeCount).toLocaleString("pt-BR")}</span>
+                        <span><MessageCircle size={14} /> {extractNumber(post.commentsCount).toLocaleString("pt-BR")}</span>
+                        <span><TrendingUp size={14} /> {sumInteractions(post).toLocaleString("pt-BR")}</span>
+                      </div>
+                      {post.permalink && (
+                        <a className="ig-ranking__link" href={post.permalink} target="_blank" rel="noreferrer">
+                          <ExternalLink size={14} /> Ver post
+                        </a>
+                      )}
+                    </div>
                   </div>
-                  <div className="best-time-card__days">
-                    Dias favoraveis: <strong>Terca, Quarta e Quinta</strong>
-                  </div>
-                </div>
+                ) : (
+                  <div className="ig-ranking__empty">Sem dados disponíveis.</div>
+                )}
               </div>
-            </div>
-          </Section>
-        </div>
+            ))}
+          </div>
+        </Section>
 
-        <Section
-          title="Ultimos posts"
-          description="Acompanhe o desempenho recente do feed oficial."
-          right={accountBadge}
-        >
+        <Section title="Últimos posts" description="Acompanhe o desempenho recente.">
           {postsError && <div className="alert alert--error">{postsError}</div>}
           {loadingPosts && posts.length === 0 ? (
             <div className="table-loading">Carregando posts...</div>
-          ) : displayedPosts.length > 0 ? (
+          ) : displayedPosts.length ? (
             <>
               <div className="posts-table-container">
                 <table className="posts-table">
                   <thead>
                     <tr>
-                      <th>Preview</th>
                       <th>Data</th>
-                      <th>Tipo</th>
+                      <th>Preview</th>
                       <th>Legenda</th>
                       <th>Curtidas</th>
-                      <th>Comentarios</th>
-                      <th>Acao</th>
+                      <th>Qtd comentários</th>
+                      <th>Compartilhamentos</th>
+                      <th>Salvos</th>
                     </tr>
                   </thead>
                   <tbody>
                     {displayedPosts.map((post) => {
                       const previewUrl = post.previewUrl || post.mediaUrl || post.thumbnailUrl;
-                      const typeLabel = mediaTypeLabel[post.mediaType] || post.mediaType || "Post";
                       const publishedAt = formatDate(post.timestamp);
-                      const likes = Number.isFinite(post.likeCount) ? post.likeCount : 0;
-                      const comments = Number.isFinite(post.commentsCount) ? post.commentsCount : 0;
-
+                      const likes = extractNumber(post.likeCount);
+                      const comments = extractNumber(post.commentsCount);
+                      const shares = extractNumber(post.shareCount ?? post.shares);
+                      const saves = extractNumber(post.saved ?? post.saves ?? post.saveCount);
                       return (
                         <tr key={post.id}>
+                          <td className="posts-table__date">{publishedAt}</td>
                           <td className="posts-table__preview">
                             {previewUrl ? (
-                              <img src={previewUrl} alt={truncate(post.caption || "Post", 30)} />
+                              post.permalink ? (
+                                <a href={post.permalink} target="_blank" rel="noreferrer" className="posts-table__link">
+                                  <img src={previewUrl} alt={truncate(post.caption || "Post", 40)} />
+                                </a>
+                              ) : (
+                                <img src={previewUrl} alt={truncate(post.caption || "Post", 40)} />
+                              )
                             ) : (
                               <div className="posts-table__placeholder">Sem preview</div>
                             )}
                             {post.mediaType === "VIDEO" && <Play size={12} className="posts-table__badge" />}
                           </td>
-                          <td className="posts-table__date">{publishedAt}</td>
-                          <td className="posts-table__type">
-                            <span className="badge">{typeLabel}</span>
-                          </td>
                           <td className="posts-table__caption">{truncate(post.caption, 80) || "Sem legenda"}</td>
                           <td className="posts-table__metric">
-                            <Heart size={14} />
-                            {likes.toLocaleString("pt-BR")}
+                            <Heart size={14} /> {likes.toLocaleString("pt-BR")}
                           </td>
                           <td className="posts-table__metric">
-                            <MessageCircle size={14} />
-                            {comments.toLocaleString("pt-BR")}
+                            <MessageCircle size={14} /> {comments.toLocaleString("pt-BR")}
                           </td>
-                          <td className="posts-table__action">
-                            {post.permalink && (
-                              <a href={post.permalink} target="_blank" rel="noreferrer" className="posts-table__link">
-                                <ExternalLink size={14} />
-                              </a>
-                            )}
+                          <td className="posts-table__metric">
+                            <TrendingUp size={14} /> {shares.toLocaleString("pt-BR")}
+                          </td>
+                          <td className="posts-table__metric">
+                            <Bookmark size={14} /> {saves.toLocaleString("pt-BR")}
                           </td>
                         </tr>
                       );

@@ -128,6 +128,55 @@ def _persist_entry(client: Client, record: Dict[str, Any]) -> None:
         raise
 
 
+def get_latest_cached_payload(
+    resource: str,
+    owner_id: Optional[str],
+    extra: Optional[Dict[str, Any]] = None,
+) -> Optional[Tuple[Any, Dict[str, Any]]]:
+    """
+    Recupera a entrada mais recente armazenada no cache para o recurso/owner fornecido.
+
+    Args:
+        resource: Nome do recurso (por exemplo, "instagram_metrics").
+        owner_id: Identificador do recurso (por exemplo, ID do Instagram).
+        extra: Parâmetros extras que compõem a chave (opcional).
+
+    Returns:
+        Tuple contendo (payload, metadata) ou None caso não exista cache disponível.
+    """
+    supabase = _get_supabase()
+    if supabase is None:
+        return None
+
+    query = (
+        supabase.table(CACHE_TABLE)
+        .select("*")
+        .eq("resource", resource)
+    )
+    if owner_id:
+        query = query.eq("owner_id", owner_id)
+
+    normalized_extra = _make_extra(extra)
+    if normalized_extra:
+        query = query.eq("extra", normalized_extra)
+
+    try:
+        response = query.order("fetched_at", desc=True).limit(1).execute()
+    except Exception as err:  # noqa: BLE001
+        logger.error("Falha ao recuperar cache mais recente para %s/%s: %s", resource, owner_id, err)
+        return None
+
+    data = getattr(response, "data", None) or []
+    if not data:
+        return None
+
+    record = data[0]
+    payload = _clone_payload(record.get("payload"))
+    metadata = _build_metadata(record, stale=True, source="cache-fallback")
+    metadata["fallback"] = True
+    return payload, metadata
+
+
 def _build_metadata(record: Dict[str, Any], stale: bool, source: str) -> Dict[str, Any]:
     return {
         "cache_key": record.get("cache_key"),

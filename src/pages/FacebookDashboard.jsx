@@ -103,7 +103,7 @@ const FACEBOOK_CARD_CONFIG = [
   {
     key: "reach",
     title: "Alcance orgânico",
-    hint: "Pessoas alcancadas no periodo.",
+    hint: "Pessoas alcancadas no período.",
     group: "primary",
     order: 1,
   },
@@ -117,14 +117,14 @@ const FACEBOOK_CARD_CONFIG = [
   },
   {
     key: "page_views",
-    title: "Visualizacoes da pagina",
+    title: "Visualizações da pagina",
     hint: "Visualizacoes registradas na pagina.",
     group: "primary",
     order: 3,
   },
   {
     key: "content_activity",
-    title: "Interacoes totais",
+    title: "Interações totais",
     hint: "Somatorio de cliques, reacoes e engajamentos.",
     group: "engagement",
     order: 1,
@@ -148,8 +148,8 @@ const FACEBOOK_CARD_CONFIG = [
   },
   {
     key: "followers_total",
-    title: "Seguidores da pagina",
-    hint: "Total de seguidores no final do periodo selecionado.",
+    title: "Seguidores da página",
+    hint: "Total de seguidores no final do período selecionado.",
     group: "audience",
     order: 0,
   },
@@ -169,7 +169,7 @@ const FACEBOOK_CARD_CONFIG = [
   },
   {
     key: "net_followers",
-    title: "Crescimento liquido",
+    title: "Crescimento líquido",
     hint: "Saldo entre ganhos e perdas de seguidores.",
     group: "audience",
     order: 3,
@@ -191,8 +191,8 @@ const FACEBOOK_CARD_CONFIG = [
   },
   {
     key: "video_engagement_total",
-    title: "Videos (reacoes, comentarios, compartilhamentos)",
-    hint: "Engajamento gerado pelos videos: reacoes, comentarios e compartilhamentos.",
+    title: "Vídeos (reações, comentários, compartilhamentos)",
+    hint: "Engajamento gerado pelos videos: reações, comentários e compartilhamentos.",
     type: "engagement",
     group: "video",
     order: 3,
@@ -293,7 +293,7 @@ export default function FacebookDashboard() {
       setPageMetrics([]);
       setPageOverview({});
       setNetFollowersSeries([]);
-      setPageError("PÃ¡gina do Facebook nÃ£o configurada.");
+      setPageError("Página do Facebook nÃ£o configurada.");
       return;
     }
 
@@ -313,7 +313,7 @@ export default function FacebookDashboard() {
         const raw = await response.text();
         const json = safeParseJson(raw) || {};
         if (!response.ok) {
-          throw new Error(describeApiError(json, "Falha ao carregar métricas de pÃ¡gina."));
+          throw new Error(describeApiError(json, "Falha ao carregar métricas de página."));
         }
         setPageMetrics(json.metrics || []);
         setPageOverview(json.page_overview || {});
@@ -459,7 +459,7 @@ export default function FacebookDashboard() {
       setRefreshToken(Date.now());
     } catch (err) {
       console.error('Erro ao atualizar dados manualmente', err);
-      setPageError(err?.message || 'Nao foi possivel atualizar os dados.');
+      setPageError(err?.message || 'Não foi possivel atualizar os dados.');
     } finally {
       setRefreshing(false);
     }
@@ -725,7 +725,7 @@ export default function FacebookDashboard() {
 
   const hasVolumeData = volumeBarData.some((item) => item.value > 0);
 
-  // ComparaÃ§Ã£o orgÃ¢nico x pago
+  // Comparação orgânico x pago
   const organicVsPaidData = useMemo(() => {
     const organicReach = Number(pageMetricsByKey.reach?.value || 0);
     const organicEngagement = Number(pageMetricsByKey.post_engagement_total?.value || 0);
@@ -1113,7 +1113,7 @@ export default function FacebookDashboard() {
 
 
       <Section
-        title="OrgÃ¢nico x Pago"
+        title="Orgânico x Pago"
         description="Comparativo de desempenho entre conteúdo orgânico e anúncios pagos."
       >
         <div className="card chart-card">

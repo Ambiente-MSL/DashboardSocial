@@ -8,7 +8,12 @@ from typing import Any, Dict, List, Optional
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from cache import get_cached_payload, mark_cache_error, register_fetcher
+from cache import (
+    get_cached_payload,
+    get_latest_cached_payload,
+    mark_cache_error,
+    register_fetcher,
+)
 from meta import (
     MetaAPIError,
     ads_highlights,
@@ -662,7 +667,7 @@ def facebook_posts():
 @app.get("/api/instagram/metrics")
 def instagram_metrics():
     """
-    Cards orgânicos (conta) – usa cache Supabase antes de acessar a Graph API.
+    Cards orgânicos (conta) — usa cache Supabase antes de acessar a Graph API.
     """
     ig = request.args.get("igUserId", IG_ID)
     if not ig:
@@ -678,9 +683,45 @@ def instagram_metrics():
         )
     except MetaAPIError as err:
         mark_cache_error("instagram_metrics", ig, since, until, None, err.args[0])
+        fallback = get_latest_cached_payload("instagram_metrics", ig)
+        if fallback:
+            payload, meta = fallback
+            meta = dict(meta or {})
+            meta["fallback_error"] = err.args[0]
+            meta["fallback_reason"] = "meta_api_error"
+            meta["requested_since"] = since
+            meta["requested_until"] = until
+            response = dict(payload) if isinstance(payload, dict) else {"payload": payload}
+            response["cache"] = meta
+            return jsonify(response)
         return meta_error_response(err)
     except ValueError as err:
+        fallback = get_latest_cached_payload("instagram_metrics", ig)
+        if fallback:
+            payload, meta = fallback
+            meta = dict(meta or {})
+            meta["fallback_error"] = err.args[0] if err.args else str(err)
+            meta["fallback_reason"] = "invalid_range"
+            meta["requested_since"] = since
+            meta["requested_until"] = until
+            response = dict(payload) if isinstance(payload, dict) else {"payload": payload}
+            response["cache"] = meta
+            return jsonify(response)
         return jsonify({"error": str(err)}), 400
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Falha inesperada em instagram_metrics")
+        fallback = get_latest_cached_payload("instagram_metrics", ig)
+        if fallback:
+            payload, meta = fallback
+            meta = dict(meta or {})
+            meta["fallback_error"] = str(err)
+            meta["fallback_reason"] = "unexpected_error"
+            meta["requested_since"] = since
+            meta["requested_until"] = until
+            response = dict(payload) if isinstance(payload, dict) else {"payload": payload}
+            response["cache"] = meta
+            return jsonify(response)
+        return jsonify({"error": str(err)}), 500
 
     response = dict(payload)
     response["cache"] = meta
@@ -705,9 +746,45 @@ def instagram_organic():
         )
     except MetaAPIError as err:
         mark_cache_error("instagram_organic", ig, since, until, None, err.args[0])
+        fallback = get_latest_cached_payload("instagram_organic", ig)
+        if fallback:
+            payload, meta = fallback
+            meta = dict(meta or {})
+            meta["fallback_error"] = err.args[0]
+            meta["fallback_reason"] = "meta_api_error"
+            meta["requested_since"] = since
+            meta["requested_until"] = until
+            response = dict(payload) if isinstance(payload, dict) else {"payload": payload}
+            response["cache"] = meta
+            return jsonify(response)
         return meta_error_response(err)
     except ValueError as err:
+        fallback = get_latest_cached_payload("instagram_organic", ig)
+        if fallback:
+            payload, meta = fallback
+            meta = dict(meta or {})
+            meta["fallback_error"] = err.args[0] if err.args else str(err)
+            meta["fallback_reason"] = "invalid_range"
+            meta["requested_since"] = since
+            meta["requested_until"] = until
+            response = dict(payload) if isinstance(payload, dict) else {"payload": payload}
+            response["cache"] = meta
+            return jsonify(response)
         return jsonify({"error": str(err)}), 400
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Falha inesperada em instagram_organic")
+        fallback = get_latest_cached_payload("instagram_organic", ig)
+        if fallback:
+            payload, meta = fallback
+            meta = dict(meta or {})
+            meta["fallback_error"] = str(err)
+            meta["fallback_reason"] = "unexpected_error"
+            meta["requested_since"] = since
+            meta["requested_until"] = until
+            response = dict(payload) if isinstance(payload, dict) else {"payload": payload}
+            response["cache"] = meta
+            return jsonify(response)
+        return jsonify({"error": str(err)}), 500
 
     response = dict(payload)
     response["cache"] = meta
@@ -728,7 +805,28 @@ def instagram_audience():
         )
     except MetaAPIError as err:
         mark_cache_error("instagram_audience", ig, None, None, None, err.args[0])
+        fallback = get_latest_cached_payload("instagram_audience", ig)
+        if fallback:
+            payload, meta = fallback
+            meta = dict(meta or {})
+            meta["fallback_error"] = err.args[0]
+            meta["fallback_reason"] = "meta_api_error"
+            response = dict(payload) if isinstance(payload, dict) else {"payload": payload}
+            response["cache"] = meta
+            return jsonify(response)
         return meta_error_response(err)
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Falha inesperada em instagram_audience")
+        fallback = get_latest_cached_payload("instagram_audience", ig)
+        if fallback:
+            payload, meta = fallback
+            meta = dict(meta or {})
+            meta["fallback_error"] = str(err)
+            meta["fallback_reason"] = "unexpected_error"
+            response = dict(payload) if isinstance(payload, dict) else {"payload": payload}
+            response["cache"] = meta
+            return jsonify(response)
+        return jsonify({"error": str(err)}), 500
     response = dict(payload)
     response["cache"] = meta
     return jsonify(response)

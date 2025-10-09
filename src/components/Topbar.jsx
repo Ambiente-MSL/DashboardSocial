@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { Bell, Menu, Moon, RefreshCw, Search, Sun, X } from 'lucide-react';
-import DateRangePicker from './DateRangePicker';
-import AccountSelect from './AccountSelect';
-import { useTheme } from '../context/ThemeContext';
+﻿import { useState } from "react";
+import { Bell, Menu, Moon, RefreshCw, Search, Sun, X } from "lucide-react";
+import DateRangePicker from "./DateRangePicker";
+import AccountSelect from "./AccountSelect";
+import { useTheme } from "../context/ThemeContext";
 
 export default function Topbar({
   title,
@@ -12,35 +12,35 @@ export default function Topbar({
   onRefresh,
   refreshing = false,
   lastSync,
+  rightExtras = null,
 }) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const isDark = resolvedTheme === 'dark';
+  const isDark = resolvedTheme === "dark";
 
   const formatLastSync = (value) => {
-    if (!value) return '';
+    if (!value) return "";
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return new Intl.DateTimeFormat('pt-BR', {
-      dateStyle: 'short',
-      timeStyle: 'short',
+    if (Number.isNaN(date.getTime())) return "";
+    return new Intl.DateTimeFormat("pt-BR", {
+      dateStyle: "short",
+      timeStyle: "short",
     }).format(date);
   };
 
   const lastSyncLabel = formatLastSync(lastSync);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    // Implementar lógica de busca de métricas
-    console.log('Buscar:', searchQuery);
+  const handleSearch = (event) => {
+    event.preventDefault();
+    // Espaço reservado para busca futura
+    console.log("Buscar:", searchQuery);
   };
 
   return (
     <>
-      {/* Barra superior de ações */}
       <div className="action-bar">
         <div className="action-bar__left">
           {onToggleSidebar && (
@@ -48,7 +48,7 @@ export default function Topbar({
               type="button"
               className="action-bar__icon-btn"
               onClick={onToggleSidebar}
-              aria-label={sidebarOpen ? 'Recolher menu lateral' : 'Expandir menu lateral'}
+              aria-label={sidebarOpen ? "Recolher menu lateral" : "Expandir menu lateral"}
             >
               {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
@@ -60,6 +60,7 @@ export default function Topbar({
         </div>
 
         <div className="action-bar__right">
+          {rightExtras && <div className="action-bar__extra">{rightExtras}</div>}
           {onRefresh && (
             <div className="action-bar__refresh">
               <button
@@ -68,20 +69,15 @@ export default function Topbar({
                 onClick={onRefresh}
                 disabled={refreshing}
                 aria-label="Atualizar dados"
-                aria-busy={refreshing ? 'true' : undefined}
+                aria-busy={refreshing ? "true" : undefined}
                 data-loading={refreshing || undefined}
               >
                 <RefreshCw size={18} />
               </button>
-              {lastSyncLabel && (
-                <span className="action-bar__sync-text">
-                  Atualizado {lastSyncLabel}
-                </span>
-              )}
+              {lastSyncLabel && <span className="action-bar__sync-text">Atualizado {lastSyncLabel}</span>}
             </div>
           )}
 
-          {/* Busca de métricas */}
           <div className="action-bar__search-wrapper">
             {showSearch && (
               <form onSubmit={handleSearch} className="action-bar__search-form">
@@ -98,19 +94,18 @@ export default function Topbar({
             <button
               type="button"
               className="action-bar__icon-btn"
-              onClick={() => setShowSearch(!showSearch)}
+              onClick={() => setShowSearch((prev) => !prev)}
               aria-label="Buscar métricas"
             >
               <Search size={18} />
             </button>
           </div>
 
-          {/* Notificações */}
           <div className="action-bar__notifications">
             <button
               type="button"
               className="action-bar__icon-btn action-bar__icon-btn--badge"
-              onClick={() => setShowNotifications(!showNotifications)}
+              onClick={() => setShowNotifications((prev) => !prev)}
               aria-label="Notificações"
             >
               <Bell size={18} />
@@ -120,31 +115,27 @@ export default function Topbar({
               <div className="action-bar__dropdown">
                 <div className="action-bar__dropdown-header">
                   <h3>Notificações</h3>
-                  <button
-                    type="button"
-                    onClick={() => setShowNotifications(false)}
-                    className="action-bar__close-btn"
-                  >
+                  <button type="button" onClick={() => setShowNotifications(false)} className="action-bar__close-btn">
                     <X size={14} />
                   </button>
                 </div>
                 <div className="action-bar__dropdown-content">
                   <div className="notification-item">
-                    <div className="notification-item__dot"></div>
+                    <div className="notification-item__dot" />
                     <div className="notification-item__content">
                       <p className="notification-item__title">Novo post com alto engajamento</p>
                       <span className="notification-item__time">5 min atrás</span>
                     </div>
                   </div>
                   <div className="notification-item">
-                    <div className="notification-item__dot"></div>
+                    <div className="notification-item__dot" />
                     <div className="notification-item__content">
                       <p className="notification-item__title">Meta de alcance atingida</p>
                       <span className="notification-item__time">1 hora atrás</span>
                     </div>
                   </div>
                   <div className="notification-item">
-                    <div className="notification-item__dot notification-item__dot--read"></div>
+                    <div className="notification-item__dot notification-item__dot--read" />
                     <div className="notification-item__content">
                       <p className="notification-item__title">Relatório mensal disponível</p>
                       <span className="notification-item__time">2 horas atrás</span>
@@ -155,19 +146,12 @@ export default function Topbar({
             )}
           </div>
 
-          {/* Tema */}
-          <button
-            type="button"
-            className="action-bar__icon-btn"
-            onClick={toggleTheme}
-            aria-label='Alternar tema'
-          >
+          <button type="button" className="action-bar__icon-btn" onClick={toggleTheme} aria-label="Alternar tema">
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
         </div>
       </div>
 
-      {/* Barra de filtros - apenas em páginas específicas */}
       {showFilters && (
         <div className="filter-bar">
           <AccountSelect />
