@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.*
+.git
+.gitignore
+.vscode
+node_modules
+dist
+build
+.cache

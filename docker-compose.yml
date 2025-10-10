@@ -1,0 +1,65 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: dashboardsocial-backend:latest
+    env_file:
+      - ./deploy/backend.env
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3001/api/instagram/posts?limit=1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: ./backend
+    env_file:
+      - ./deploy/backend.env
+    command: >
+      sh -c "python - << 'PY'
+      from scheduler import MetaSyncScheduler
+      import time
+      s = MetaSyncScheduler()
+      s.start()
+      while True:
+        time.sleep(3600)
+      PY"
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        REACT_APP_SUPABASE_URL: ${REACT_APP_SUPABASE_URL}
+        REACT_APP_SUPABASE_ANON_KEY: ${REACT_APP_SUPABASE_ANON_KEY}
+        # Deixe REACT_APP_API_URL vazio para usar o mesmo domínio (proxy):
+        REACT_APP_API_URL: ""
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
