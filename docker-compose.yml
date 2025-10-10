@@ -8,8 +8,6 @@ services:
     image: dashboardsocial-backend:latest
     env_file:
       - ./deploy/backend.env
-    ports:
-      - "3001:3001"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3001/api/instagram/posts?limit=1"]
@@ -49,8 +47,8 @@ services:
   caddy:
     image: caddy:2
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:80"
+      - "8443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
