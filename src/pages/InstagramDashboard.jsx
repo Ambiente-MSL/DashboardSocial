@@ -112,7 +112,6 @@ export default function InstagramDashboard() {
   const until = get("until");
 
   const [metrics, setMetrics] = useState([]);
-  const [metricsMeta, setMetricsMeta] = useState({ followerCounts: null });
   const [loadingMetrics, setLoadingMetrics] = useState(false);
   const [metricsError, setMetricsError] = useState("");
 
@@ -126,7 +125,6 @@ export default function InstagramDashboard() {
   useEffect(() => {
     if (!accountConfig?.instagramUserId) {
       setMetrics([]);
-      setMetricsMeta({ followerCounts: null });
       setFollowerSeries([]);
       setMetricsError("Conta do Instagram nao configurada.");
       return;
@@ -146,7 +144,6 @@ export default function InstagramDashboard() {
         const json = safeParseJson(raw) || {};
         if (!resp.ok) throw new Error(describeApiError(json, "Falha ao carregar metricas do Instagram."));
         setMetrics(json.metrics || []);
-        setMetricsMeta({ followerCounts: json.follower_counts || null });
         setFollowerSeries(Array.isArray(json.follower_series) ? json.follower_series : []);
       } catch (err) {
         if (err.name === "AbortError") {
@@ -154,7 +151,6 @@ export default function InstagramDashboard() {
         }
         console.error(err);
         setMetrics([]);
-        setMetricsMeta({ followerCounts: null });
         setFollowerSeries([]);
         setMetricsError(err.message || "Nao foi possivel atualizar os indicadores do Instagram.");
       } finally {
@@ -201,41 +197,30 @@ export default function InstagramDashboard() {
   }, [accountConfig?.instagramUserId]);
 
   const metricsByKey = useMemo(() => mapByKey(metrics), [metrics]);
-  const profileViewsMetric = metricsByKey.profile_views;
   const interactionsMetric = metricsByKey.interactions;
   const likesMetric = metricsByKey.likes;
   const commentsMetric = metricsByKey.comments;
   const sharesMetric = metricsByKey.shares;
   const savesMetric = metricsByKey.saves;
 
-  const followerCounts = metricsMeta.followerCounts || {};
-  const followerDeltaValue = extractNumber(followerCounts.end) - extractNumber(followerCounts.start);
   const interactionsValue = extractNumber(interactionsMetric?.value);
 
-  const engagementBreakdown = metricsByKey.engagement_rate?.breakdown || {
-    likes: extractNumber(likesMetric?.value),
-    comments: extractNumber(commentsMetric?.value),
-    shares: extractNumber(sharesMetric?.value),
-    saves: extractNumber(savesMetric?.value),
-  };
+  const engagementBreakdown = useMemo(
+    () => metricsByKey.engagement_rate?.breakdown || {
+      likes: extractNumber(likesMetric?.value),
+      comments: extractNumber(commentsMetric?.value),
+      shares: extractNumber(sharesMetric?.value),
+      saves: extractNumber(savesMetric?.value),
+    },
+    [metricsByKey.engagement_rate?.breakdown, likesMetric, commentsMetric, sharesMetric, savesMetric],
+  );
 
   const primaryCards = useMemo(
     () => [
       {
-        key: "profile_views",
-        title: "Visitas no perfil",
-        metric: profileViewsMetric,
-      },
-      {
         key: "interactions",
         title: "Interacoes",
         metric: interactionsMetric,
-      },
-      {
-        key: "followers",
-        title: "Seguidores",
-        metric: { value: followerCounts.end },
-        deltaValue: followerDeltaValue,
       },
       {
         key: "engagement",
@@ -243,7 +228,7 @@ export default function InstagramDashboard() {
         metric: { value: interactionsValue },
       },
     ],
-    [followerCounts.end, followerDeltaValue, interactionsMetric, interactionsValue, profileViewsMetric],
+    [interactionsMetric, interactionsValue],
   );
 
   const engagementDetails = useMemo(

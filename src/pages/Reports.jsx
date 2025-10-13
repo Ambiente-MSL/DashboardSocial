@@ -186,7 +186,7 @@ export default function Reports() {
   const renderHtmlPreview = (report, data) => {
     // preview simples; personalize com HTML/CSS do seu template
     return `
-      <div style="padding:24px;color:#e6edf3;font-family:'Touche','Inter',system-ui,Arial,sans-serif;background:#0b1220;width:900px">
+      <div style="padding:24px;color:#e6edf3;font-family:Inter,system-ui,Arial;background:#0b1220;width:900px">
         <h2 style="margin:0 0 8px 0">${report?.name || "Relatório"}</h2>
         <p style="margin:0 0 24px 0;opacity:.75">Conta: ${account || "Padrão"} | Período: ${since || "-"} → ${until || "-"}</p>
         <h3>Resumo</h3>

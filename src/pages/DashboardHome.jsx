@@ -14,7 +14,14 @@ const safeNumber = (value) => {
   return Number.isFinite(num) ? num : 0;
 };
 
+const parseFiniteNumber = (value) => {
+  if (value == null || value === '') return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
 const formatNumber = (value, fallback = 'N/A') => {
+  if (value == null) return fallback;
   const num = Number(value);
   if (!Number.isFinite(num)) return fallback;
   return num.toLocaleString('pt-BR');
@@ -74,6 +81,7 @@ export default function DashboardHome() {
 
   useEffect(() => {
     let active = true;
+    const accountKey = accountConfig?.id || null;
 
     const fetchJson = async (url) => {
       const response = await fetch(url);
@@ -122,6 +130,7 @@ export default function DashboardHome() {
           const followersTotal = safeNumber(followersMetric?.value ?? data.page_overview?.followers_total);
 
           nextFacebook = {
+            accountId: accountKey,
             reach: safeNumber(reachMetric?.value),
             reachGrowth: reachMetric?.deltaPct,
             engagement: safeNumber(engagementMetric?.value),
@@ -148,14 +157,40 @@ export default function DashboardHome() {
           const interactionsMetric = getMetric(data, 'interactions');
           const profileViewsMetric = getMetric(data, 'profile_views');
           const followerMetric = getMetric(data, 'followers_total');
+          const followerCountsRaw = data.follower_counts || {};
+          const followersTotal =
+            parseFiniteNumber(followerCountsRaw?.end) ?? parseFiniteNumber(followerMetric?.value);
+          const followerCounts = {
+            start: parseFiniteNumber(followerCountsRaw?.start),
+            end: parseFiniteNumber(followerCountsRaw?.end),
+            follows: parseFiniteNumber(followerCountsRaw?.follows),
+            unfollows: parseFiniteNumber(followerCountsRaw?.unfollows),
+          };
+          let accountFollowers = null;
+          try {
+            const postsParams = new URLSearchParams({
+              igUserId: accountConfig.instagramUserId,
+              limit: '1',
+            });
+            const postsData = await fetchJson(`${API_BASE_URL}/api/instagram/posts?${postsParams.toString()}`);
+            accountFollowers = parseFiniteNumber(postsData?.account?.followers_count);
+          } catch (err) {
+            warnings.push(`Instagram account: ${err.message}`);
+          }
+          const resolvedFollowersTotal = accountFollowers ?? followersTotal ?? null;
+          if (resolvedFollowersTotal != null && followerCounts.end == null) {
+            followerCounts.end = resolvedFollowersTotal;
+          }
 
           nextInstagram = {
+            accountId: accountKey,
             reach: safeNumber(reachMetric?.value),
             reachGrowth: reachMetric?.deltaPct,
             engagement: safeNumber(interactionsMetric?.value),
             engagementGrowth: interactionsMetric?.deltaPct,
             profileViews: safeNumber(profileViewsMetric?.value),
-            followersTotal: safeNumber(followerMetric?.value),
+            followersTotal: resolvedFollowersTotal,
+            followerCounts,
             cacheAt: data.cache?.fetched_at || null,
           };
         } catch (err) {
@@ -163,7 +198,7 @@ export default function DashboardHome() {
         }
       }
 
-  if (accountConfig?.adAccountId) {
+      if (accountConfig?.adAccountId) {
         try {
           const params = new URLSearchParams({ actId: accountConfig.adAccountId });
           const isoSince = toIsoDate(since);
@@ -173,6 +208,7 @@ export default function DashboardHome() {
 
           const data = await fetchJson(`${API_BASE_URL}/api/ads/highlights?${params.toString()}`);
           nextAds = {
+            accountId: accountKey,
             spend: safeNumber(data.totals?.spend),
             clicks: safeNumber(data.totals?.clicks),
             reach: safeNumber(data.totals?.reach),
@@ -199,6 +235,7 @@ export default function DashboardHome() {
       active = false;
     };
   }, [
+    accountConfig?.id,
     accountConfig?.facebookPageId,
     accountConfig?.instagramUserId,
     accountConfig?.adAccountId,
@@ -206,8 +243,19 @@ export default function DashboardHome() {
     until,
   ]);
 
+  const currentAccountId = accountConfig?.id;
+  const currentFacebookSummary =
+    facebookSummary?.accountId === currentAccountId ? facebookSummary : null;
+  const currentInstagramSummary =
+    instagramSummary?.accountId === currentAccountId ? instagramSummary : null;
+  const currentAdsSummary = adsSummary?.accountId === currentAccountId ? adsSummary : null;
+
   const lastSyncAt = useMemo(() => {
-    const timestamps = [facebookSummary?.cacheAt, instagramSummary?.cacheAt, adsSummary?.cacheAt]
+    const timestamps = [
+      currentFacebookSummary?.cacheAt,
+      currentInstagramSummary?.cacheAt,
+      currentAdsSummary?.cacheAt,
+    ]
       .map((value) => {
         if (!value) return null;
         const time = Date.parse(value);
@@ -216,7 +264,11 @@ export default function DashboardHome() {
       .filter((value) => value != null);
     if (!timestamps.length) return null;
     return new Date(Math.max(...timestamps)).toISOString();
-  }, [facebookSummary?.cacheAt, instagramSummary?.cacheAt, adsSummary?.cacheAt]);
+  }, [
+    currentFacebookSummary?.cacheAt,
+    currentInstagramSummary?.cacheAt,
+    currentAdsSummary?.cacheAt,
+  ]);
 
   return (
     <>
@@ -239,26 +291,26 @@ export default function DashboardHome() {
           title="Resumo geral da conta"
           description="Principais indicadores da página e perfil selecionados."
           right={<span className="overview-current-account">{accountConfig?.label}</span>}>
-          {loading && !facebookSummary && !instagramSummary ? (
+          {loading && !currentFacebookSummary && !currentInstagramSummary ? (
             <div className="overview-loading">Carregando visao geral...</div>
           ) : (
             <div className="overview-highlight">
               <div className="overview-highlight-card overview-highlight-card--instagram">
                 <span className="overview-highlight-label">Seguidores no Instagram</span>
                 <span className="overview-highlight-value">
-                  {formatNumber(instagramSummary?.followersTotal)}
+                  {formatNumber(currentInstagramSummary?.followersTotal)}
                 </span>
                 <span className="overview-highlight-foot">
-                  Atualizado em {formatDateTime(instagramSummary?.cacheAt)}
+                  Atualizado em {formatDateTime(currentInstagramSummary?.cacheAt)}
                 </span>
               </div>
               <div className="overview-highlight-card overview-highlight-card--facebook">
                 <span className="overview-highlight-label">Curtidas da pagina</span>
                 <span className="overview-highlight-value">
-                  {formatNumber(facebookSummary?.followersTotal)}
+                  {formatNumber(currentFacebookSummary?.followersTotal)}
                 </span>
                 <span className="overview-highlight-foot">
-                  Atualizado em {formatDateTime(facebookSummary?.cacheAt)}
+                  Atualizado em {formatDateTime(currentFacebookSummary?.cacheAt)}
                 </span>
               </div>
             </div>
