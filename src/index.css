@@ -16,7 +16,7 @@
 
 :root {
   color-scheme: dark;
-  --font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+  --font-family: 'Touche', 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
   --bg: #05080f;
   --bg-gradient: radial-gradient(120% 110% at 50% 0%, #13243a 0%, #05080f 55%, #02040a 100%);
   --surface-50: rgba(14, 22, 35, 0.65);
@@ -85,6 +85,56 @@
   --sidebar-bg: linear-gradient(195deg, rgba(18, 38, 44, 0.96) 0%, rgba(14, 32, 22, 0.92) 45%, rgba(7, 21, 12, 0.98) 100%);
   --sidebar-border: rgba(86, 226, 140, 0.24);
   --sidebar-shadow: 0 32px 64px rgba(3, 12, 8, 0.46);
+}
+
+/* Touche font-family registration.
+   Coloque os arquivos convertidos em public/fonts/touche (WOFF2 recomendado). */
+@font-face {
+  font-family: 'Touche';
+  src:
+    local('Touche Regular'),
+    local('Touche-Regular'),
+    url('/fonts/touche/Touche-Regular.woff2') format('woff2'),
+    url('/fonts/touche/Touche-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Touche';
+  src:
+    local('Touche Medium'),
+    local('Touche-Medium'),
+    url('/fonts/touche/Touche-Medium.woff2') format('woff2'),
+    url('/fonts/touche/Touche-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Touche';
+  src:
+    local('Touche SemiBold'),
+    local('Touche-SemiBold'),
+    url('/fonts/touche/Touche-SemiBold.woff2') format('woff2'),
+    url('/fonts/touche/Touche-SemiBold.woff') format('woff');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Touche';
+  src:
+    local('Touche Bold'),
+    local('Touche-Bold'),
+    url('/fonts/touche/Touche-Bold.woff2') format('woff2'),
+    url('/fonts/touche/Touche-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
 }
 
 :root[data-theme="light"] {
@@ -188,7 +238,8 @@ body.theme-light {
 .ig-ranking__item,
 .ig-top-posts__item,
 .overview-status-item {
-  background: linear-gradient(160deg, rgba(18, 28, 46, 0.92) 0%, rgba(10, 17, 30, 0.96) 100%);
+  background: var(--surface-gradient);
+  background-color: var(--panel);
   border: 1px solid var(--stroke);
   border-radius: var(--card-radius);
   box-shadow: var(--shadow-md);
@@ -1573,8 +1624,9 @@ body.theme-light {
 /* Component classes */
 
 .card {
-  background: linear-gradient(160deg, rgba(18, 28, 46, 0.92) 0%, rgba(8, 14, 26, 0.96) 100%);
-  border: 1px solid rgba(103, 123, 170, 0.22);
+  background: var(--surface-gradient);
+  background-color: var(--panel);
+  border: 1px solid var(--stroke);
   border-radius: var(--radius-xl);
   padding: 24px;
   box-shadow: var(--shadow-md);
@@ -2328,8 +2380,9 @@ input:focus {
 }
 
 .section--surface {
-  background: linear-gradient(165deg, rgba(18, 28, 46, 0.92) 0%, rgba(8, 14, 26, 0.95) 100%);
-  border: 1px solid rgba(103, 123, 170, 0.22);
+  background: var(--surface-gradient);
+  background-color: var(--panel);
+  border: 1px solid var(--stroke);
   border-radius: var(--radius-xl);
   padding: 24px 26px;
   box-shadow: var(--shadow-md);
