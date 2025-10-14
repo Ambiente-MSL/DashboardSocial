@@ -18,7 +18,7 @@
   color-scheme: dark;
   --font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
   --bg: #05080f;
-  --bg-gradient: radial-gradient(120% 110% at 50% 0%, #13243a 0%, #05080f 55%, #02040a 100%);
+  --bg-gradient: #05080f;
   --surface-50: rgba(14, 22, 35, 0.65);
   --surface-100: #0b101d;
   --surface-200: #11192a;
@@ -90,7 +90,7 @@
 :root[data-theme="light"] {
   color-scheme: light;
   --bg: #f4f6fb;
-  --bg-gradient: radial-gradient(110% 90% at 50% 0%, #ffffff 0%, #eef4ff 55%, #dbe7ff 100%);
+  --bg-gradient: #f4f6fb;
   --surface-50: rgba(255, 255, 255, 0.9);
   --surface-100: #ffffff;
   --surface-200: #fcfdff;
@@ -104,12 +104,12 @@
   --surface-overlay-strong: rgba(230, 245, 240, 0.9);
   --panel: var(--surface-100);
   --panel-elevated: var(--surface-200);
-  --panel-hover: rgba(74, 222, 128, 0.12);
+  --panel-hover: rgba(103, 123, 170, 0.12);
   --panel-muted: rgba(233, 239, 255, 0.92);
   --panel-strong: rgba(213, 229, 255, 0.9);
   --border-soft: rgba(78, 90, 125, 0.12);
-  --border-strong: rgba(34, 197, 94, 0.42);
-  --border-glow: rgba(34, 197, 94, 0.28);
+  --border-strong: rgba(103, 123, 170, 0.42);
+  --border-glow: rgba(103, 123, 170, 0.28);
   --stroke: rgba(78, 90, 125, 0.18);
   --stroke-light: rgba(78, 90, 125, 0.12);
   --stroke-40: rgba(78, 90, 125, 0.16);
@@ -161,7 +161,7 @@ body,
 
 
 body {
-  background: var(--bg-gradient), var(--bg);
+  background: var(--bg);
   background-color: var(--bg);
   color: var(--text-primary);
   font-family: var(--font-family);
@@ -173,7 +173,7 @@ body {
 }
 
 body.theme-light {
-  background: var(--bg-gradient), var(--bg);
+  background: var(--bg);
 }
 
 .card,
@@ -282,9 +282,9 @@ body.theme-light {
   object-fit: contain;
   border-radius: 12px;
   padding: 8px;
-  background: rgba(74, 222, 128, 0.15);
-  border: 1px solid rgba(74, 222, 128, 0.2);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(74, 222, 128, 0.1);
+  background: rgba(103, 123, 170, 0.15);
+  border: 1px solid rgba(103, 123, 170, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(103, 123, 170, 0.1);
 }
 
 .sidebar__brand-text {
@@ -396,7 +396,7 @@ body.theme-light {
 
 .sidebar__nav-item--active {
   color: var(--text-primary);
-  background: rgba(74, 222, 128, 0.12);
+  background: rgba(103, 123, 170, 0.18);
   box-shadow: none;
   font-weight: 600;
 }
@@ -522,12 +522,12 @@ body.theme-light {
   border: none;
   border-radius: 0;
   box-shadow: none;
-  padding: 28px 32px;
+  padding: 0 32px 28px 32px;
   min-height: 100vh;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--grid-gap);
+  gap: 0;
   transition: margin-left var(--transition), background var(--transition), border-color var(--transition), box-shadow var(--transition), padding var(--transition);
 }
 
@@ -571,16 +571,23 @@ body.theme-light {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding: 20px 28px;
-  border-radius: var(--radius-xl);
-  background: linear-gradient(120deg, rgba(16, 27, 44, 0.88), rgba(7, 13, 24, 0.92));
-  border: 1px solid rgba(103, 123, 170, 0.16);
-  box-shadow: 0 18px 40px rgba(5, 10, 20, 0.45);
-  backdrop-filter: blur(calc(var(--blur-strong) / 1.8));
+  padding: 18px 0;
+  border-radius: 0;
+  background: linear-gradient(120deg, rgba(16, 27, 44, 0.95), rgba(7, 13, 24, 0.98));
+  border: none;
+  border-bottom: 1px solid rgba(103, 123, 170, 0.28);
+  box-shadow: 0 4px 12px rgba(5, 10, 20, 0.3);
+  backdrop-filter: blur(var(--blur-strong));
   position: sticky;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 60;
-  margin-bottom: 6px;
+  margin-left: -32px;
+  margin-right: -32px;
+  padding-left: 32px;
+  padding-right: 32px;
+  margin-bottom: 28px;
 }
 
 .action-bar__left {
@@ -635,9 +642,9 @@ body.theme-light {
 }
 
 .action-bar__icon-btn:hover {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.28), rgba(16, 185, 129, 0.18));
+  background: rgba(103, 123, 170, 0.2);
   color: var(--text-primary);
-  border-color: rgba(74, 222, 128, 0.45);
+  border-color: rgba(103, 123, 170, 0.45);
   transform: translateY(-2px);
 }
 
@@ -708,7 +715,7 @@ body.theme-light {
   justify-content: center;
   padding: 0 4px;
   border: 2px solid rgba(8, 18, 28, 0.65);
-  box-shadow: 0 6px 14px rgba(34, 197, 94, 0.35);
+  box-shadow: 0 6px 14px rgba(103, 123, 170, 0.35);
 }
 
 
@@ -779,9 +786,9 @@ body.theme-light {
 }
 
 .action-bar__search-input:focus {
-  border-color: rgba(74, 222, 128, 0.55);
+  border-color: var(--accent);
   background: rgba(18, 32, 44, 0.95);
-  box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.18);
+  box-shadow: 0 0 0 4px rgba(103, 123, 170, 0.18);
 }
 
 
@@ -866,9 +873,9 @@ body.theme-light {
 }
 
 .action-bar__close-btn:hover {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(16, 185, 129, 0.2));
+  background: rgba(103, 123, 170, 0.2);
   color: var(--text-primary);
-  border-color: rgba(74, 222, 128, 0.45);
+  border-color: rgba(103, 123, 170, 0.45);
   transform: translateY(-2px);
 }
 
@@ -899,8 +906,8 @@ body.theme-light {
 }
 
 .notification-item:hover {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(16, 185, 129, 0.12));
-  border-color: rgba(74, 222, 128, 0.32);
+  background: rgba(103, 123, 170, 0.15);
+  border-color: rgba(103, 123, 170, 0.32);
   transform: translateY(-2px);
 }
 
@@ -911,7 +918,7 @@ body.theme-light {
   background: var(--accent-strong);
   margin-top: 6px;
   flex-shrink: 0;
-  box-shadow: 0 0 12px rgba(74, 222, 128, 0.55);
+  box-shadow: 0 0 12px var(--accent);
 }
 
 .notification-item__dot--read {
@@ -1028,17 +1035,17 @@ body.theme-light {
 }
 
 .date-range-preset:hover {
-  border-color: rgba(74, 222, 128, 0.4);
+  border-color: rgba(103, 123, 170, 0.4);
   color: var(--text-primary);
   background: rgba(18, 36, 28, 0.72);
   transform: translateY(-1px);
 }
 
 .date-range-preset--active {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.32), rgba(16, 185, 129, 0.22));
+  background: rgba(103, 123, 170, 0.28);
   color: var(--text-primary);
-  border-color: rgba(74, 222, 128, 0.55);
-  box-shadow: 0 12px 24px rgba(22, 163, 74, 0.32);
+  border-color: var(--accent);
+  box-shadow: 0 12px 24px rgba(103, 123, 170, 0.32);
 }
 
 .date-range-btn {
@@ -1059,16 +1066,16 @@ body.theme-light {
 }
 
 .date-range-btn:hover {
-  border-color: rgba(74, 222, 128, 0.45);
+  border-color: rgba(103, 123, 170, 0.45);
   background: rgba(18, 36, 28, 0.72);
   transform: translateY(-1px);
 }
 
 .date-range-btn[data-open] {
-  border-color: rgba(74, 222, 128, 0.65);
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.32), rgba(16, 185, 129, 0.2));
+  border-color: var(--accent);
+  background: rgba(103, 123, 170, 0.28);
   color: var(--text-primary);
-  box-shadow: 0 14px 30px rgba(22, 163, 74, 0.32);
+  box-shadow: 0 14px 30px rgba(103, 123, 170, 0.32);
 }
 
 .date-range-btn__text {
@@ -1150,8 +1157,8 @@ body.theme-light {
 }
 
 .date-range-dropdown__close:hover {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(16, 185, 129, 0.2));
-  border-color: rgba(74, 222, 128, 0.45);
+  background: rgba(103, 123, 170, 0.25);
+  border-color: var(--accent);
   color: var(--text-primary);
   transform: translateY(-2px);
 }
@@ -1190,9 +1197,9 @@ body.theme-light {
 
 .date-input:focus {
   outline: none;
-  border-color: rgba(74, 222, 128, 0.55);
+  border-color: var(--accent);
   background: rgba(18, 36, 44, 0.85);
-  box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.18);
+  box-shadow: 0 0 0 4px rgba(103, 123, 170, 0.18);
 }
 
 .date-input::-webkit-calendar-picker-indicator {
@@ -1279,7 +1286,7 @@ body.theme-light {
 
   transform: translateY(-1px);
 
-  box-shadow: 0 8px 16px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 8px 16px rgba(103, 123, 170, 0.25);
 
 }
 
@@ -1318,9 +1325,9 @@ body.theme-light {
 }
 
 .filter-select__input:focus {
-  border-color: rgba(74, 222, 128, 0.55);
+  border-color: var(--accent);
   background: rgba(18, 36, 44, 0.85);
-  box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.18);
+  box-shadow: 0 0 0 4px rgba(103, 123, 170, 0.18);
   outline: none;
 }
 
@@ -1350,8 +1357,8 @@ body.theme-light {
 
 .filter-pill:hover {
   transform: translateY(-1px);
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.28), rgba(16, 185, 129, 0.18));
-  border-color: rgba(74, 222, 128, 0.45);
+  background: rgba(103, 123, 170, 0.22);
+  border-color: var(--accent);
   color: var(--text-primary);
 }
 
@@ -1684,9 +1691,9 @@ body.theme-light {
 
 .btn:hover {
 
-  background-color: rgba(34, 197, 94, 0.12);
+  background-color: rgba(103, 123, 170, 0.2);
 
-  border-color: rgba(34, 197, 94, 0.45);
+  border-color: var(--accent);
 
   color: var(--text-primary);
 
@@ -1726,9 +1733,9 @@ body.theme-light {
 
   color: var(--text-primary);
 
-  border-color: rgba(34, 197, 94, 0.45);
+  border-color: var(--accent);
 
-  background: rgba(34, 197, 94, 0.12);
+  background: rgba(103, 123, 170, 0.2);
 
 }
 
@@ -1744,7 +1751,7 @@ body.theme-light {
 
 .btn--ghost:hover {
 
-  background: rgba(34, 197, 94, 0.12);
+  background: rgba(103, 123, 170, 0.15);
 
   border-color: transparent;
 
@@ -2154,13 +2161,7 @@ input:focus {
 }
 
 .metric-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(90% 120% at 0% 0%, rgba(74, 222, 128, 0.18) 0%, transparent 60%);
-  opacity: 0.7;
-  pointer-events: none;
-  z-index: 0;
+  content: none !important;
 }
 
 .metric-card::after {
@@ -2216,15 +2217,15 @@ input:focus {
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(16, 185, 129, 0.12));
+  background: rgba(34, 197, 94, 0.12);
   color: var(--success);
-  border: 1px solid rgba(34, 197, 94, 0.4);
+  border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
 .metric-card__delta--down {
-  background: linear-gradient(135deg, rgba(248, 113, 113, 0.22), rgba(239, 68, 68, 0.14));
+  background: rgba(248, 113, 113, 0.12);
   color: var(--danger);
-  border-color: rgba(248, 113, 113, 0.4);
+  border-color: rgba(248, 113, 113, 0.3);
 }
 
 .metric-card__extra {
@@ -2236,6 +2237,73 @@ input:focus {
   border-top: 1px solid rgba(103, 123, 170, 0.28);
   position: relative;
   z-index: 1;
+}
+
+/* QuickBar - Visualização rápida */
+.quick-bar {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 768px) {
+  .quick-bar {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.quick-bar__item {
+  background: rgba(18, 28, 46, 0.6);
+  border: 1px solid rgba(103, 123, 170, 0.24);
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 200ms ease;
+}
+
+.quick-bar__item:hover {
+  border-color: rgba(103, 123, 170, 0.4);
+  background: rgba(18, 28, 46, 0.8);
+}
+
+.quick-bar__label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.quick-bar__value-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quick-bar__value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.quick-bar__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.quick-bar__delta--up {
+  color: var(--success);
+}
+
+.quick-bar__delta--down {
+  color: var(--danger);
 }
 
 .metric-card--compact {
@@ -2326,27 +2394,7 @@ input:focus {
 
 
 
-@media (min-width: 1280px) {
-
-  .kpi-grid {
-
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-
-  }
-
-}
-
-
-
-@media (min-width: 1536px) {
-
-  .kpi-grid {
-
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-
-  }
-
-}
+/* Mantém 3 colunas no desktop (1024px+) para melhor organização */
 
 .section {
   display: flex;
@@ -2368,12 +2416,7 @@ input:focus {
 }
 
 .section--surface::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(120% 90% at 10% -20%, rgba(74, 222, 128, 0.16) 0%, transparent 60%);
-  pointer-events: none;
-  z-index: -1;
+  content: none !important;
 }
 
 .section__body {
@@ -2413,7 +2456,7 @@ input:focus {
   height: 4px;
   width: 28px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(74, 222, 128, 0.9), rgba(16, 185, 129, 0.35));
+  background: var(--accent);
 }
 
 .section__description {
@@ -2921,11 +2964,21 @@ input:focus {
 
 .chart-card__title {
 
-  font-size: 15px;
+  font-size: 0.7rem;
 
   font-weight: 600;
 
+  letter-spacing: 0.08em;
+
+  text-transform: none;
+
   color: var(--text-primary);
+
+}
+
+.chart-card__title::first-letter {
+
+  text-transform: uppercase;
 
   display: flex;
 
@@ -5717,11 +5770,21 @@ input:focus {
 
 .fb-insight-card__header h3 {
 
-  font-size: 16px;
+  font-size: 0.7rem;
 
   font-weight: 600;
 
+  letter-spacing: 0.08em;
+
+  text-transform: none;
+
   color: var(--text-primary);
+
+}
+
+.fb-insight-card__header h3::first-letter {
+
+  text-transform: uppercase;
 
 }
 
@@ -6289,15 +6352,30 @@ input:focus {
 
 }
 
+.page-content {
+  transform: scale(0.9);
+  transform-origin: top center;
+  width: 100%;
+}
 
 
 .fb-summary__group-header h3 {
 
-  font-size: 0.95rem;
+  font-size: 0.7rem;
 
   font-weight: 600;
 
+  letter-spacing: 0.08em;
+
+  text-transform: none;
+
   color: var(--text-primary);
+
+}
+
+.fb-summary__group-header h3::first-letter {
+
+  text-transform: uppercase;
 
 }
 
@@ -6335,7 +6413,7 @@ input:focus {
 
 }
 
-
+dashboard
 
 .fb-line-card {
 
@@ -6375,11 +6453,21 @@ input:focus {
 
 .fb-line-card__header h3 {
 
-  font-size: 1rem;
+  font-size: 0.7rem;
 
   font-weight: 600;
 
+  letter-spacing: 0.08em;
+
+  text-transform: none;
+
   color: var(--text-primary);
+
+}
+
+.fb-line-card__header h3::first-letter {
+
+  text-transform: uppercase;
 
 }
 
@@ -6409,7 +6497,7 @@ input:focus {
 
   border-radius: 999px;
 
-  background-color: rgba(34, 197, 94, 0.15);
+  background-color: rgba(34, 197, 94, 0.12);
 
   color: var(--success);
 
@@ -7951,75 +8039,7 @@ input:focus {
 
 
 
-.overview-highlight-card {
-
-  min-width: 220px;
-
-  padding: 18px 20px;
-
-  border-radius: 18px;
-
-  background: var(--text-muted);
-
-  color: #05080f;
-
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25);
-
-  display: flex;
-
-  flex-direction: column;
-
-  gap: 6px;
-
-}
-
-
-
-.overview-highlight-card--instagram {
-
-  border-left: 6px solid var(--accent);
-
-}
-
-
-
-.overview-highlight-card--facebook {
-
-  border-left: 6px solid #4e4e4e;
-
-}
-
-
-
-.overview-highlight-label {
-
-  font-size: 0.8rem;
-
-  text-transform: uppercase;
-
-  letter-spacing: 0.05em;
-
-}
-
-
-
-.overview-highlight-value {
-
-  font-size: 1.6rem;
-
-  font-weight: 700;
-
-}
-
-
-
-.overview-highlight-foot {
-
-  font-size: 0.78rem;
-
-  color: rgba(8, 8, 8, 0.7);
-
-}
+/* Estilos antigos removidos - veja versão atualizada mais abaixo no arquivo */
 
 
 
@@ -8461,33 +8481,58 @@ input:focus {
   min-width: 240px;
   padding: 22px 24px;
   border-radius: var(--radius-xl);
-  background: var(--surface-gradient);
+  background: rgba(18, 28, 46, 0.95);
   border: 1px solid rgba(103, 123, 170, 0.24);
   box-shadow: var(--shadow-md);
   color: var(--text-primary);
+  cursor: pointer;
+  transition: all 300ms ease;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.overview-highlight-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  border-color: var(--accent);
 }
 
 .overview-highlight-card--instagram {
   border-inline-start: 6px solid var(--accent);
 }
 
+.overview-highlight-card--instagram:hover {
+  background: rgba(18, 28, 46, 0.98);
+  border-color: var(--accent);
+}
+
 .overview-highlight-card--facebook {
   border-inline-start: 6px solid var(--purple);
 }
 
+.overview-highlight-card--facebook:hover {
+  background: rgba(18, 28, 46, 0.98);
+  border-color: var(--purple);
+}
+
 .overview-highlight-label {
-  color: var(--text-soft);
+  color: rgba(255, 255, 255, 0.85);
   letter-spacing: 0.18em;
   text-transform: uppercase;
+  font-weight: 600;
+  font-size: 0.75rem;
 }
 
 .overview-highlight-value {
   font-size: 1.9rem;
-  color: var(--text-primary);
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .overview-highlight-foot {
-  color: var(--text-soft);
+  color: rgba(255, 255, 255, 0.6);
   font-size: 0.78rem;
 }
 
@@ -8522,15 +8567,15 @@ input:focus {
 
 .content-filter__btn:hover {
   color: var(--text-primary);
-  border-color: rgba(74, 222, 128, 0.28);
+  border-color: rgba(103, 123, 170, 0.35);
   transform: translateY(-1px);
 }
 
 .content-filter__btn--active {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.32), rgba(16, 185, 129, 0.2));
+  background: rgba(103, 123, 170, 0.28);
   color: var(--text-primary);
-  border-color: rgba(74, 222, 128, 0.45);
-  box-shadow: 0 12px 24px rgba(22, 163, 74, 0.28);
+  border-color: var(--accent);
+  box-shadow: 0 12px 24px rgba(103, 123, 170, 0.28);
 }
 
 .posts-table-container {
@@ -8613,8 +8658,8 @@ input:focus {
 
 .posts-table__link:hover {
   transform: translateY(-2px);
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.32), rgba(16, 185, 129, 0.2));
-  border-color: rgba(74, 222, 128, 0.45);
+  background: rgba(103, 123, 170, 0.25);
+  border-color: var(--accent);
 }
 
 .fb-line-card,
@@ -8625,16 +8670,24 @@ input:focus {
   border: 1px solid rgba(103, 123, 170, 0.24);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
+  font-family: var(--font-family) !important;
+}
+
+.fb-line-card *,
+.fb-insight-card *,
+.best-ad-card *,
+.chart-card * {
+  font-family: var(--font-family) !important;
 }
 
 .fb-line-card__badge {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.28), rgba(16, 185, 129, 0.18));
+  background: rgba(103, 123, 170, 0.22);
   color: var(--text-primary);
-  border: none;
+  border: 1px solid rgba(103, 123, 170, 0.3);
 }
 
 .fb-line-card__badge--down {
-  background: linear-gradient(135deg, rgba(248, 113, 113, 0.24), rgba(239, 68, 68, 0.16));
+  background: rgba(248, 113, 113, 0.15);
   color: #fecaca;
 }
 
@@ -8656,8 +8709,8 @@ input:focus {
 }
 
 .ig-dashboard .ig-primary-cards .metric-card {
-  background: linear-gradient(135deg, rgba(74, 222, 128, 0.18), rgba(16, 185, 129, 0.12));
-  border: 1px solid rgba(74, 222, 128, 0.45);
+  background: rgba(18, 28, 46, 0.8);
+  border: 1px solid rgba(103, 123, 170, 0.3);
 }
 
 .ig-dashboard .audience-ranking__position {
@@ -8684,14 +8737,14 @@ input:focus {
 .btn:hover {
   transform: translateY(-1px);
   color: var(--text-primary);
-  border-color: rgba(74, 222, 128, 0.35);
+  border-color: rgba(103, 123, 170, 0.35);
 }
 
 .btn--primary {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.32), rgba(16, 185, 129, 0.2));
-  border-color: rgba(74, 222, 128, 0.55);
+  background: rgba(103, 123, 170, 0.28);
+  border-color: var(--accent);
   color: var(--text-primary);
-  box-shadow: 0 14px 28px rgba(22, 163, 74, 0.28);
+  box-shadow: 0 14px 28px rgba(103, 123, 170, 0.28);
 }
 
 .btn--primary:hover {
@@ -8726,5 +8779,477 @@ input:focus {
   }
 }
 
+/* ========== Filtros em linha (FacebookDashboard) ========== */
+.dashboard-filters-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  padding: 18px 24px;
+  background: var(--surface-gradient);
+  border: 1px solid rgba(103, 123, 170, 0.24);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+}
 
+.view-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.view-filter-group__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.view-filter-group__buttons {
+  display: flex;
+  gap: 8px;
+  background: rgba(103, 123, 170, 0.12);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(103, 123, 170, 0.18);
+}
+
+.view-filter-btn {
+  padding: 8px 18px;
+  border-radius: calc(var(--radius-md) - 2px);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition);
+  letter-spacing: 0.01em;
+}
+
+.view-filter-btn:hover {
+  color: var(--text-secondary);
+  background: rgba(103, 123, 170, 0.15);
+}
+
+.view-filter-btn--active {
+  color: var(--accent);
+  background: var(--surface-gradient);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  box-shadow: 0 4px 12px rgba(74, 222, 128, 0.15);
+}
+
+.view-filter-btn--active:hover {
+  color: var(--accent-strong);
+}
+
+/* ========== Melhorias nos cards ========== */
+.metric-card,
+.metric-card * {
+  font-family: var(--font-family) !important;
+}
+
+.metric-card__title {
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+  letter-spacing: 0.08em !important;
+  text-transform: none !important;
+  font-family: var(--font-family) !important;
+  line-height: 1.4 !important;
+}
+
+.metric-card__title::first-letter {
+  text-transform: uppercase !important;
+}
+
+.metric-card__value {
+  font-size: 2.3rem !important;
+  font-weight: 700 !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-family) !important;
+}
+
+.metric-card__list--icons {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(103, 123, 170, 0.22);
+}
+
+.metric-card__list--icons li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-family: var(--font-family) !important;
+}
+
+.metric-card__list--icons li svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.metric-card__list--icons li span {
+  color: var(--text-muted);
+  font-family: var(--font-family) !important;
+}
+
+.metric-card__list--icons li strong {
+  margin-left: auto;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-family: var(--font-family) !important;
+}
+
+/* ========== Igualar altura dos cards ========== */
+.fb-summary__insights {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.fb-summary__insights > .card {
+  flex: 1 1 0;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+.fb-engagement-chart {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 1280px) {
+  .dashboard-filters-row {
+    gap: 12px;
+  }
+
+  .view-filter-group__label {
+    font-size: 0.8125rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-filters-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .view-filter-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .view-filter-group__buttons {
+    width: 100%;
+  }
+
+  .view-filter-btn {
+    flex: 1;
+  }
+
+  .fb-summary__insights > .card {
+    min-height: auto;
+  }
+}
+
+/* ========== Novo Layout Facebook Dashboard (4x2 Grid + Donut + Line Chart) ========== */
+.fb-summary-new {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.fb-summary-new__top {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  width: 100%;
+}
+
+.fb-summary-new__cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 16px;
+  min-height: 0;
+}
+
+.fb-summary-new__donut {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.fb-summary-new__bottom {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Card backgrounds - cinza médio e tamanho compacto */
+.fb-summary-new__cards .metric-card,
+.fb-summary-new__cards .card {
+  background: rgba(55, 65, 81, 0.5) !important;
+  padding: 14px 16px !important;
+  min-height: auto !important;
+}
+
+.fb-summary-new__cards .metric-card__value {
+  font-size: 1.5rem !important;
+}
+
+.fb-summary-new__cards .metric-card__title {
+  font-size: 0.7rem !important;
+}
+
+.fb-summary-new__donut.card,
+.fb-summary-new__bottom.card {
+  background: rgba(18, 28, 46, 0.75) !important;
+}
+
+/* Responsive adjustments for new layout */
+@media (max-width: 1400px) {
+  .fb-summary-new__top {
+    grid-template-columns: 1fr;
+  }
+
+  .fb-summary-new__cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .fb-summary-new__cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .fb-summary-new__cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========== Layout Tráfego Pago (3x3x2 Grid + Melhor Anúncio) ========== */
+.fb-ads-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  width: 100%;
+}
+
+.fb-ads-layout__cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, auto);
+  gap: 12px;
+  min-height: 0;
+}
+
+.fb-ads-layout__cards .metric-card {
+  background: rgba(55, 65, 81, 0.5) !important;
+  padding: 14px 16px !important;
+  min-height: auto !important;
+}
+
+.fb-ads-layout__cards .metric-card__value {
+  font-size: 1.4rem !important;
+}
+
+.fb-ads-layout__cards .metric-card__title {
+  font-size: 0.7rem !important;
+}
+
+.fb-ads-layout__best-ad {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* Responsive adjustments for ads layout */
+@media (max-width: 1400px) {
+  .fb-ads-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .fb-ads-layout__cards {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .fb-ads-layout__cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .fb-ads-layout__cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* =============================
+   PADRONIZAÇÃO – FUNDOS CLAROS
+   ============================= */
+
+/* Mantém as variáveis e estilos existentes... */
+
+/* --- Overrides específicos da tela do Instagram para ficar igual ao Facebook --- */
+.page-content.ig-dashboard{
+  /* remove o “box” verde e deixa igual ao resto do sistema */
+  background: var(--bg);
+  padding: calc(var(--grid-gap) + 6px) calc(var(--grid-gap) + 8px);
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--text-primary);
+}
+
+/* Cards mais claros (mesma base dos cards do Facebook) */
+.ig-dashboard .card,
+.ig-dashboard .section--surface,
+.ig-dashboard .metric-card,
+.ig-dashboard .ig-chart-card,
+.ig-dashboard .posts-table-container,
+.ig-dashboard .best-time-card,
+.ig-dashboard .overview-layout__chart,
+.ig-dashboard .ig-ranking__item {
+  background: var(--surface-gradient) !important;
+  background-color: var(--panel) !important;
+  border: 1px solid var(--stroke) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+/* Títulos e textos padronizados */
+.ig-dashboard .section__title,
+.ig-dashboard .ig-chart-card__header h3 { 
+  color: var(--text-primary);
+}
+.ig-dashboard .section__description,
+.ig-dashboard .ig-chart-card__header span {
+  color: var(--text-muted);
+}
+
+/* Avatar/conta – sem gradiente esverdeado */
+.ig-dashboard .media-account{
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-overlay);
+  border: 1px solid var(--stroke);
+  box-shadow: var(--shadow-sm);
+}
+.ig-dashboard .media-account__name{ font-weight: 600; color: var(--text-primary); }
+.ig-dashboard .media-account__followers{ color: var(--text-muted); }
+
+/* KPI tiles compactos (iguais ao Facebook – claros) */
+.ig-kpi-grid{
+  display:grid;
+  gap:12px;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+}
+@media (max-width:1200px){ .ig-kpi-grid{ grid-template-columns:repeat(3,1fr);} }
+@media (max-width:900px){ .ig-kpi-grid{ grid-template-columns:repeat(2,1fr);} }
+@media (max-width:600px){ .ig-kpi-grid{ grid-template-columns:1fr;} }
+
+.ig-kpi-grid .metric-card{
+  padding:14px 16px !important;
+}
+.ig-kpi-grid .metric-card__title{
+  font-size:.7rem !important;
+  letter-spacing:.08em !important;
+  text-transform:none !important;
+}
+.ig-kpi-grid .metric-card__value{
+  font-size:1.6rem !important;
+}
+
+/* Layout “Facebook-like”: KPIs + Donut à direita */
+.ig-summary-top{
+  display:grid;
+  grid-template-columns:minmax(0,1.7fr) minmax(320px,.9fr);
+  gap:20px;
+  align-items:stretch;
+}
+@media (max-width:1200px){ .ig-summary-top{ grid-template-columns:1fr; } }
+
+/* Donut card (com centro e legenda) */
+.ig-donut-card{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  padding:20px;
+  border-radius:var(--radius-xl);
+}
+.ig-donut-card__center{
+  position:absolute; inset:auto; 
+}
+
+tbody
+
+.ig-donut-legend{
+  display:flex; flex-direction:column; gap:8px; font-size:.8rem; color:var(--text-muted);
+}
+.ig-donut-legend li{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.ig-dot{ width:10px; height:10px; border-radius:50%; display:inline-block; }
+
+/* Cartões de linha/coluna como no Facebook */
+.ig-line-card, .ig-bar-card{
+  display:flex; flex-direction:column; gap:16px;
+  padding:20px; border-radius:var(--radius-xl);
+  background:var(--surface-gradient); border:1px solid var(--stroke); box-shadow:var(--shadow-md);
+}
+.ig-line-card__header h3,
+.ig-bar-card__header h3{
+  font-size:.7rem; letter-spacing:.08em; color:var(--text-primary);
+}
+.ig-line-card__header p, .ig-bar-card__header p{ color:var(--text-muted); }
+
+/* Grid de gráficos inferior (2 cards) */
+.ig-charts-grid{
+  display:grid; gap:20px; grid-template-columns:repeat(2,minmax(0,1fr));
+}
+@media (max-width:1000px){ .ig-charts-grid{ grid-template-columns:1fr; } }
+
+/* Tabela de posts – mantém padrão dos demais cards */
+.ig-dashboard .posts-table-container{
+  background: transparent !important;
+}
+
+/* Remove/neutraliza antigos estilos esverdeados específicos do IG */
+.ig-dashboard .metric-card,
+.ig-dashboard .ig-primary-cards .metric-card,
+.ig-dashboard .ig-chart-card,
+.ig-dashboard .ig-ranking__item{
+  background: var(--surface-gradient) !important;
+  border-color: var(--stroke) !important;
+  color: var(--text-primary) !important;
+}
+.ig-dashboard .metric-card__value,
+.ig-dashboard .metric-card__delta{ color: var(--text-primary) !important; }
+
+/* Área do cabeçalho secundário (indicador de período) mantém o look */
+.date-range-indicator{ margin-bottom: 16px; }
+
+/* Ajuste pequeno de tabela para ficar mais arejada em fundo claro */
+.posts-table thead{ background: var(--surface-overlay-strong); }
+.posts-table tbody tr:hover{ background: var(--panel-hover); }
+
+/* (mantém todo o restante do seu CSS original) */
 

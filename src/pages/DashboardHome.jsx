@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, Link } from 'react-router-dom';
 import Topbar from '../components/Topbar';
 import Section from '../components/Section';
 import AccountSelect from '../components/AccountSelect';
@@ -295,7 +295,7 @@ export default function DashboardHome() {
             <div className="overview-loading">Carregando visao geral...</div>
           ) : (
             <div className="overview-highlight">
-              <div className="overview-highlight-card overview-highlight-card--instagram">
+              <Link to="/instagram" className="overview-highlight-card overview-highlight-card--instagram">
                 <span className="overview-highlight-label">Seguidores no Instagram</span>
                 <span className="overview-highlight-value">
                   {formatNumber(currentInstagramSummary?.followersTotal)}
@@ -303,8 +303,8 @@ export default function DashboardHome() {
                 <span className="overview-highlight-foot">
                   Atualizado em {formatDateTime(currentInstagramSummary?.cacheAt)}
                 </span>
-              </div>
-              <div className="overview-highlight-card overview-highlight-card--facebook">
+              </Link>
+              <Link to="/facebook" className="overview-highlight-card overview-highlight-card--facebook">
                 <span className="overview-highlight-label">Curtidas da pagina</span>
                 <span className="overview-highlight-value">
                   {formatNumber(currentFacebookSummary?.followersTotal)}
@@ -312,7 +312,7 @@ export default function DashboardHome() {
                 <span className="overview-highlight-foot">
                   Atualizado em {formatDateTime(currentFacebookSummary?.cacheAt)}
                 </span>
-              </div>
+              </Link>
             </div>
           )}
         </Section>

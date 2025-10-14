@@ -1,5 +1,5 @@
 ﻿import { useState } from "react";
-import { Bell, Menu, Moon, RefreshCw, Search, Sun, X } from "lucide-react";
+import { Bell, Menu, Moon, RefreshCw, Sun, X } from "lucide-react";
 import DateRangePicker from "./DateRangePicker";
 import AccountSelect from "./AccountSelect";
 import { useTheme } from "../context/ThemeContext";
@@ -16,8 +16,6 @@ export default function Topbar({
 }) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
 
   const isDark = resolvedTheme === "dark";
 
@@ -32,12 +30,6 @@ export default function Topbar({
   };
 
   const lastSyncLabel = formatLastSync(lastSync);
-
-  const handleSearch = (event) => {
-    event.preventDefault();
-    // Espaço reservado para busca futura
-    console.log("Buscar:", searchQuery);
-  };
 
   return (
     <>
@@ -77,29 +69,6 @@ export default function Topbar({
               {lastSyncLabel && <span className="action-bar__sync-text">Atualizado {lastSyncLabel}</span>}
             </div>
           )}
-
-          <div className="action-bar__search-wrapper">
-            {showSearch && (
-              <form onSubmit={handleSearch} className="action-bar__search-form">
-                <input
-                  type="text"
-                  placeholder="Buscar métricas..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="action-bar__search-input"
-                  autoFocus
-                />
-              </form>
-            )}
-            <button
-              type="button"
-              className="action-bar__icon-btn"
-              onClick={() => setShowSearch((prev) => !prev)}
-              aria-label="Buscar métricas"
-            >
-              <Search size={18} />
-            </button>
-          </div>
 
           <div className="action-bar__notifications">
             <button

@@ -12,6 +12,9 @@ import {
   Tooltip,
   BarChart,
   Bar,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 
 import Topbar from "../components/Topbar";
@@ -27,46 +30,24 @@ const DEFAULT_ACCOUNT_ID = accounts[0]?.id || "";
 const mapByKey = (items) => {
   const map = {};
   (items || []).forEach((item) => {
-    if (item && item.key) {
-      map[item.key] = item;
-    }
+    if (item && item.key) map[item.key] = item;
   });
   return map;
 };
 
 const safeParseJson = (text) => {
   if (!text) return null;
-  try {
-    return JSON.parse(text);
-  } catch (err) {
-    console.error("Falha ao converter resposta JSON", err);
-    return null;
-  }
+  try { return JSON.parse(text); } catch { return null; }
 };
 
 const describeApiError = (payload, fallback) => {
   if (!payload) return fallback;
-  if (payload.error) {
-    const graph = payload.graph;
-    if (graph?.code) {
-      return `${payload.error} (Graph code ${graph.code})`;
-    }
-    return payload.error;
-  }
-  if (payload.message) return payload.message;
-  return fallback;
+  if (payload.error) return payload.graph?.code ? `${payload.error} (Graph code ${payload.graph.code})` : payload.error;
+  return payload.message || fallback;
 };
 
-const truncate = (text, length = 120) => {
-  if (!text) return "";
-  if (text.length <= length) return text;
-  return `${text.slice(0, length - 3)}...`;
-};
-
-const extractNumber = (value, fallback = 0) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-};
+const truncate = (text, length = 120) => !text ? "" : (text.length <= length ? text : `${text.slice(0, length - 3)}...`);
+const extractNumber = (v,f=0)=>Number.isFinite(Number(v))?Number(v):f;
 
 const sumInteractions = (post) => {
   const likes = extractNumber(post.likeCount ?? post.likes);
@@ -78,25 +59,13 @@ const sumInteractions = (post) => {
 
 const formatMetricValue = (metric, { loading } = {}) => {
   if (loading) return "...";
-  if (!metric) return "-";
-  const value = metric.value;
-  if (value == null) return "-";
-  if (typeof value === "number") {
-    return value.toLocaleString("pt-BR");
-  }
-  return String(value);
+  if (!metric || metric.value == null) return "-";
+  return typeof metric.value === "number" ? metric.value.toLocaleString("pt-BR") : String(metric.value);
 };
-
-const metricDelta = (metric, { loading } = {}) => {
-  if (loading) return null;
-  return metric?.deltaPct ?? null;
-};
-
+const metricDelta = (metric, { loading } = {}) => (loading ? null : (metric?.deltaPct ?? null));
 const formatDate = (iso) => {
-  if (!iso) return "-";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "-";
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(date);
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "-" : new Intl.DateTimeFormat("pt-BR",{dateStyle:"medium"}).format(d);
 };
 
 export default function InstagramDashboard() {
@@ -104,7 +73,7 @@ export default function InstagramDashboard() {
   const [get] = useQueryState({ account: DEFAULT_ACCOUNT_ID });
   const accountId = get("account") || DEFAULT_ACCOUNT_ID;
   const accountConfig = useMemo(
-    () => accounts.find((item) => item.id === accountId) || accounts[0],
+    () => accounts.find((i) => i.id === accountId) || accounts[0],
     [accountId],
   );
 
@@ -119,20 +88,18 @@ export default function InstagramDashboard() {
   const [visiblePosts, setVisiblePosts] = useState(5);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [postsError, setPostsError] = useState("");
+
   const [accountInfo, setAccountInfo] = useState(null);
   const [followerSeries, setFollowerSeries] = useState([]);
 
   useEffect(() => {
     if (!accountConfig?.instagramUserId) {
-      setMetrics([]);
-      setFollowerSeries([]);
-      setMetricsError("Conta do Instagram nao configurada.");
+      setMetrics([]); setFollowerSeries([]); setMetricsError("Conta do Instagram nao configurada.");
       return;
     }
     const controller = new AbortController();
     (async () => {
-      setLoadingMetrics(true);
-      setMetricsError("");
+      setLoadingMetrics(true); setMetricsError("");
       try {
         const params = new URLSearchParams();
         if (since) params.set("since", since);
@@ -140,58 +107,38 @@ export default function InstagramDashboard() {
         params.set("igUserId", accountConfig.instagramUserId);
         const url = `${API_BASE_URL}/api/instagram/metrics?${params.toString()}`;
         const resp = await fetch(url, { signal: controller.signal });
-        const raw = await resp.text();
-        const json = safeParseJson(raw) || {};
+        const json = safeParseJson(await resp.text()) || {};
         if (!resp.ok) throw new Error(describeApiError(json, "Falha ao carregar metricas do Instagram."));
         setMetrics(json.metrics || []);
         setFollowerSeries(Array.isArray(json.follower_series) ? json.follower_series : []);
       } catch (err) {
-        if (err.name === "AbortError") {
-          return;
+        if (err.name !== "AbortError") {
+          setMetrics([]); setFollowerSeries([]); setMetricsError(err.message || "Nao foi possivel atualizar.");
         }
-        console.error(err);
-        setMetrics([]);
-        setFollowerSeries([]);
-        setMetricsError(err.message || "Nao foi possivel atualizar os indicadores do Instagram.");
-      } finally {
-        setLoadingMetrics(false);
-      }
+      } finally { setLoadingMetrics(false); }
     })();
     return () => controller.abort();
   }, [accountConfig?.instagramUserId, since, until]);
 
   useEffect(() => {
     if (!accountConfig?.instagramUserId) {
-      setPosts([]);
-      setAccountInfo(null);
-      setPostsError("Conta do Instagram nao configurada.");
-      return;
+      setPosts([]); setAccountInfo(null); setPostsError("Conta do Instagram nao configurada."); return;
     }
     const controller = new AbortController();
     (async () => {
-      setLoadingPosts(true);
-      setPostsError("");
+      setLoadingPosts(true); setPostsError("");
       try {
         const params = new URLSearchParams({ igUserId: accountConfig.instagramUserId, limit: "15" });
         const url = `${API_BASE_URL}/api/instagram/posts?${params.toString()}`;
         const resp = await fetch(url, { signal: controller.signal });
-        const raw = await resp.text();
-        const json = safeParseJson(raw) || {};
+        const json = safeParseJson(await resp.text()) || {};
         if (!resp.ok) throw new Error(describeApiError(json, "Falha ao carregar posts do Instagram."));
-        setPosts(json.posts || []);
-        setAccountInfo(json.account || null);
-        setVisiblePosts(5);
+        setPosts(json.posts || []); setAccountInfo(json.account || null); setVisiblePosts(5);
       } catch (err) {
-        if (err.name === "AbortError") {
-          return;
+        if (err.name !== "AbortError") {
+          setPosts([]); setAccountInfo(null); setPostsError(err.message || "Nao foi possivel carregar os posts.");
         }
-        console.error(err);
-        setPosts([]);
-        setAccountInfo(null);
-        setPostsError(err.message || "Nao foi possivel carregar os posts recentes.");
-      } finally {
-        setLoadingPosts(false);
-      }
+      } finally { setLoadingPosts(false); }
     })();
     return () => controller.abort();
   }, [accountConfig?.instagramUserId]);
@@ -204,7 +151,6 @@ export default function InstagramDashboard() {
   const savesMetric = metricsByKey.saves;
 
   const interactionsValue = extractNumber(interactionsMetric?.value);
-
   const engagementBreakdown = useMemo(
     () => metricsByKey.engagement_rate?.breakdown || {
       likes: extractNumber(likesMetric?.value),
@@ -215,37 +161,33 @@ export default function InstagramDashboard() {
     [metricsByKey.engagement_rate?.breakdown, likesMetric, commentsMetric, sharesMetric, savesMetric],
   );
 
-  const primaryCards = useMemo(
-    () => [
-      {
-        key: "interactions",
-        title: "Interacoes",
-        metric: interactionsMetric,
-      },
-      {
-        key: "engagement",
-        title: "Engajamento total",
-        metric: { value: interactionsValue },
-      },
-    ],
-    [interactionsMetric, interactionsValue],
+  // ===== KPIs padronizados (mesmo look do FB) =====
+  const kpiCards = useMemo(
+    () => ([
+      { key: "interactions", title: "Interações", metric: interactionsMetric },
+      { key: "engagement_total", title: "Engajamento total", metric: { value: interactionsValue } },
+      { key: "likes", title: "Curtidas", metric: likesMetric },
+      { key: "comments", title: "Comentários", metric: commentsMetric },
+      { key: "shares", title: "Compart.", metric: sharesMetric },
+      { key: "saves", title: "Salvos", metric: savesMetric },
+      // Preencha com mais KPIs se o endpoint fornecer (alcance, impressões etc.)
+    ]),
+    [interactionsMetric, interactionsValue, likesMetric, commentsMetric, sharesMetric, savesMetric],
   );
 
-  const engagementDetails = useMemo(
-    () => [
-      { key: "likes", label: "Curtidas", value: extractNumber(engagementBreakdown.likes) },
-      { key: "comments", label: "Comentarios", value: extractNumber(engagementBreakdown.comments) },
-      { key: "shares", label: "Compart.", value: extractNumber(engagementBreakdown.shares) },
-      { key: "saves", label: "Salvos", value: extractNumber(engagementBreakdown.saves) },
-    ],
-    [engagementBreakdown],
-  );
+  // ===== Donut (composição do engajamento) =====
+  const donutData = useMemo(() => ([
+    { name: "Curtidas", value: extractNumber(engagementBreakdown.likes) },
+    { name: "Comentários", value: extractNumber(engagementBreakdown.comments) },
+    { name: "Compart.", value: extractNumber(engagementBreakdown.shares) },
+    { name: "Salvos", value: extractNumber(engagementBreakdown.saves) },
+  ]), [engagementBreakdown]);
 
+  const DONUT_COLORS = ["#60a5fa", "#a855f7", "#f59e0b", "#34d399"];
+
+  // ===== Gráficos =====
   const followerLineData = useMemo(
-    () => followerSeries.map((entry) => ({
-      label: formatDate(entry.date ?? entry.end_time),
-      value: extractNumber(entry.value),
-    })),
+    () => followerSeries.map((e) => ({ label: formatDate(e.date ?? e.end_time), value: extractNumber(e.value) })),
     [followerSeries],
   );
 
@@ -260,20 +202,13 @@ export default function InstagramDashboard() {
 
   const rankingMetrics = useMemo(() => {
     const builders = [
-      { key: "reach", label: "Maior alcance", extractor: (post) => extractNumber(post.reach) },
-      { key: "interactions", label: "Maior engajamento", extractor: (post) => sumInteractions(post) },
-      { key: "saves", label: "Maior salvamento", extractor: (post) => extractNumber(post.saved ?? post.saves ?? post.saveCount) },
+      { key: "reach", label: "Maior alcance", extractor: (p) => extractNumber(p.reach) },
+      { key: "interactions", label: "Maior engajamento", extractor: (p) => sumInteractions(p) },
+      { key: "saves", label: "Maior salvamento", extractor: (p) => extractNumber(p.saved ?? p.saves ?? p.saveCount) },
     ];
     return builders.map(({ key, label, extractor }) => {
-      let topPost = null;
-      let topValue = -1;
-      posts.forEach((post) => {
-        const value = extractor(post);
-        if (value > topValue) {
-          topPost = post;
-          topValue = value;
-        }
-      });
+      let topPost = null; let topValue = -1;
+      posts.forEach((p) => { const v = extractor(p); if (v > topValue) { topPost = p; topValue = v; } });
       return { key, label, post: topPost, value: topValue };
     });
   }, [posts]);
@@ -302,87 +237,133 @@ export default function InstagramDashboard() {
 
   return (
     <>
-      <Topbar title="Instagram" sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} showFilters={true} />
+      <Topbar title="Instagram" sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} showFilters />
       <div className="page-content ig-dashboard">
         <DateRangeIndicator />
-        {accountBadge && <div className="ig-account-highlight">{accountBadge}</div>}
+        {accountBadge && <div className="mb-6">{accountBadge}</div>}
         {metricsError && <div className="alert alert--error">{metricsError}</div>}
 
-        <Section title="Visao geral do perfil">
-          <div className="ig-primary-cards">
-            {primaryCards.map(({ key, title, metric, deltaValue }) => (
-              <MetricCard
-                key={key}
-                title={title}
-                value={formatMetricValue(metric, { loading: loadingMetrics })}
-                delta={typeof deltaValue === "number" ? deltaValue : metricDelta(metric, { loading: loadingMetrics })}
-                variant="compact"
-              />
-            ))}
-          </div>
-          <div className="ig-engagement-details">
-            {engagementDetails.map((detail) => (
-              <div key={detail.key} className="ig-engagement-details__item">
-                <span className="ig-engagement-details__label">{detail.label}</span>
-                <span className="ig-engagement-details__value">{detail.value.toLocaleString("pt-BR")}</span>
-              </div>
-            ))}
-          </div>
-        </Section>
-
-        <Section title="Tendencias da conta" description="Comparativos rápidos para análise diária.">
-          <div className="ig-charts">
-            <div className="ig-chart-card">
-              <div className="ig-chart-card__header">
-                <h3>Evolucao de seguidores</h3>
-                <span>Serie diária informada pelo Instagram.</span>
-              </div>
-              <div className="ig-chart-card__body">
-                {loadingMetrics ? (
-                  <div className="chart-card__empty">Carregando...</div>
-                ) : followerLineData.length ? (
-                  <ResponsiveContainer width="100%" height={220}>
-                    <LineChart data={followerLineData} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
-                      <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: "var(--text-muted)", fontSize: 12 }} />
-                      <YAxis stroke="var(--text-muted)" tickFormatter={(value) => value.toLocaleString("pt-BR")} />
-                      <Tooltip formatter={(value) => Number(value).toLocaleString("pt-BR")} />
-                      <Line type="monotone" dataKey="value" stroke="#34d399" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="chart-card__empty">Sem dados suficientes.</div>
-                )}
-              </div>
-            </div>
-
-            <div className="ig-chart-card">
-              <div className="ig-chart-card__header">
-                <h3>Interacoes por post</h3>
-                <span>Comparativo entre alcance e interacoes.</span>
-              </div>
-              <div className="ig-chart-card__body">
-                {loadingPosts ? (
-                  <div className="chart-card__empty">Carregando...</div>
-                ) : barChartData.length ? (
-                  <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={barChartData} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
-                      <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: "var(--text-muted)", fontSize: 12 }} />
-                      <YAxis stroke="var(--text-muted)" tickFormatter={(value) => value.toLocaleString("pt-BR")} />
-                      <Tooltip formatter={(value) => Number(value).toLocaleString("pt-BR")} />
-                      <Bar dataKey="interactions" fill="#34d399" radius={[6, 6, 0, 0]} />
-                      <Bar dataKey="reach" fill="#4e4e4e" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="chart-card__empty">Sem interacoes recentes.</div>
-                )}
-              </div>
+        {/* ====== TOPO (KPIs + DONUT) – idêntico ao “molde” do Facebook ====== */}
+        <div className="ig-summary-top">
+          <div className="card">
+            <div className="ig-kpi-grid">
+              {kpiCards.map(({ key, title, metric }) => (
+                <MetricCard
+                  key={key}
+                  title={title}
+                  value={formatMetricValue(metric, { loading: loadingMetrics })}
+                  delta={metricDelta(metric, { loading: loadingMetrics })}
+                  variant="compact"
+                />
+              ))}
             </div>
           </div>
-        </Section>
 
+          <div className="card ig-donut-card">
+            <div className="fb-insight-card__header">
+              <h3>Composição de resultados</h3>
+              <span className="text-xs muted">Distribuição do engajamento no período</span>
+            </div>
+            <div style={{ position: "relative", width: "100%", height: 240 }}>
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie
+                    data={donutData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={2}
+                  >
+                    {donutData.map((_, i) => (
+                      <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => Number(v).toLocaleString("pt-BR")} />
+                </PieChart>
+              </ResponsiveContainer>
+              {/* Centro do donut */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexDirection: "column",
+                  pointerEvents: "none",
+                  textAlign: "center",
+                }}
+              >
+                <strong style={{ fontSize: 22 }}>{interactionsValue.toLocaleString("pt-BR")}</strong>
+                <span className="muted" style={{ fontSize: 12 }}>Total combinado</span>
+              </div>
+            </div>
+            <ul className="ig-donut-legend">
+              {donutData.map((d, i) => (
+                <li key={d.name}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <span className="ig-dot" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+                    {d.name}
+                  </span>
+                  <strong className="text-sm" style={{ color: "var(--text-primary)" }}>
+                    {d.value.toLocaleString("pt-BR")}
+                  </strong>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* ====== GRÁFICOS (linha + barras) ====== */}
+        <div className="ig-charts-grid">
+          <div className="ig-line-card">
+            <div className="ig-line-card__header">
+              <h3>Evolução de seguidores</h3>
+              <p>Série diária informada pelo Instagram.</p>
+            </div>
+            {loadingMetrics ? (
+              <div className="chart-card__empty">Carregando...</div>
+            ) : followerLineData.length ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={followerLineData} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                  <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: "var(--text-muted)", fontSize: 12 }} />
+                  <YAxis stroke="var(--text-muted)" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <Tooltip formatter={(v) => Number(v).toLocaleString("pt-BR")} />
+                  <Line type="monotone" dataKey="value" stroke="#60a5fa" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="chart-card__empty">Sem dados suficientes.</div>
+            )}
+          </div>
+
+          <div className="ig-bar-card">
+            <div className="ig-bar-card__header">
+              <h3>Interações por post</h3>
+              <p>Comparativo entre alcance e interações.</p>
+            </div>
+            {loadingPosts ? (
+              <div className="chart-card__empty">Carregando...</div>
+            ) : barChartData.length ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={barChartData} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                  <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: "var(--text-muted)", fontSize: 12 }} />
+                  <YAxis stroke="var(--text-muted)" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <Tooltip formatter={(v) => Number(v).toLocaleString("pt-BR")} />
+                  <Bar dataKey="interactions" fill="#34d399" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="reach" fill="#4b5563" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="chart-card__empty">Sem interações recentes.</div>
+            )}
+          </div>
+        </div>
+
+        {/* ====== RANKING ====== */}
         <Section title="Ranking de posts" description="Destaques do período atual.">
           <div className="ig-ranking">
             {rankingMetrics.map(({ key, label, post, value }) => (
@@ -423,6 +404,7 @@ export default function InstagramDashboard() {
           </div>
         </Section>
 
+        {/* ====== ÚLTIMOS POSTS ====== */}
         <Section title="Últimos posts" description="Acompanhe o desempenho recente.">
           {postsError && <div className="alert alert--error">{postsError}</div>}
           {loadingPosts && posts.length === 0 ? (
@@ -440,6 +422,7 @@ export default function InstagramDashboard() {
                       <th>Qtd comentários</th>
                       <th>Compartilhamentos</th>
                       <th>Salvos</th>
+                      <th>Engajamento</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -468,17 +451,13 @@ export default function InstagramDashboard() {
                             {post.mediaType === "VIDEO" && <Play size={12} className="posts-table__badge" />}
                           </td>
                           <td className="posts-table__caption">{truncate(post.caption, 80) || "Sem legenda"}</td>
-                          <td className="posts-table__metric">
-                            <Heart size={14} /> {likes.toLocaleString("pt-BR")}
-                          </td>
-                          <td className="posts-table__metric">
-                            <MessageCircle size={14} /> {comments.toLocaleString("pt-BR")}
-                          </td>
-                          <td className="posts-table__metric">
-                            <TrendingUp size={14} /> {shares.toLocaleString("pt-BR")}
-                          </td>
-                          <td className="posts-table__metric">
-                            <Bookmark size={14} /> {saves.toLocaleString("pt-BR")}
+                          <td className="posts-table__metric"><Heart size={14} /> {likes.toLocaleString("pt-BR")}</td>
+                          <td className="posts-table__metric"><MessageCircle size={14} /> {comments.toLocaleString("pt-BR")}</td>
+                          <td className="posts-table__metric"><TrendingUp size={14} /> {shares.toLocaleString("pt-BR")}</td>
+                          <td className="posts-table__metric"><Bookmark size={14} /> {saves.toLocaleString("pt-BR")}</td>
+                          <td className="posts-table__metric-group">
+                           <span><Heart size={13}/> {likes.toLocaleString("pt-BR")}</span>
+                           <span><MessageCircle size={13}/> {comments.toLocaleString("pt-BR")}</span>
                           </td>
                         </tr>
                       );

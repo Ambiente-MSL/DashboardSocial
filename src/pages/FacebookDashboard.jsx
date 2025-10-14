@@ -1,7 +1,7 @@
 // pages/FacebookDashboard.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { ArrowDown, ArrowUp, Trophy } from "lucide-react";
+import { ArrowDown, ArrowUp, Trophy, Heart, MessageCircle, Share2 } from "lucide-react";
 import {
   ResponsiveContainer,
   PieChart,
@@ -19,15 +19,15 @@ import {
 } from "recharts";
 import Topbar from "../components/Topbar";
 import Section from "../components/Section";
-import KpiGrid from "../components/KpiGrid";
 import MetricCard from "../components/MetricCard";
-import DateRangeIndicator from "../components/DateRangeIndicator";
+import DateRangePicker from "../components/DateRangePicker";
+import AccountSelect from "../components/AccountSelect";
 import useQueryState from "../hooks/useQueryState";
 import { accounts } from "../data/accounts";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const DEFAULT_ACCOUNT_ID = accounts[0]?.id || "";
-const FB_DONUT_COLORS = ['#22c55e', '#1120f8ff', '#f97316', '#a855f7', '#eab308'];
+const FB_DONUT_COLORS = ['#06b6d4', '#1120f8ff', '#f97316', '#a855f7', '#eab308'];
 const CACHE_KEYS = {
   facebook_metrics: "facebookMetrics",
   ads_highlights: "adsHighlights",
@@ -110,22 +110,22 @@ const FACEBOOK_CARD_CONFIG = [
   {
     key: "post_engagement_total",
     title: "Engajamento total",
-    hint: "Reações, comentarios e compartilhamentos em posts.",
+    hint: "Reações, comentários e compartilhamentos em posts.",
     type: "engagement",
     group: "primary",
     order: 2,
   },
   {
     key: "page_views",
-    title: "Visualizações da pagina",
-    hint: "Visualizacoes registradas na pagina.",
+    title: "Visualizações da página",
+    hint: "Visualizações registradas na página.",
     group: "primary",
     order: 3,
   },
   {
     key: "content_activity",
     title: "Interações totais",
-    hint: "Somatorio de cliques, reacoes e engajamentos.",
+    hint: "Somatório de cliques, reações e engajamentos.",
     group: "engagement",
     order: 1,
     hidden: true,
@@ -133,7 +133,7 @@ const FACEBOOK_CARD_CONFIG = [
   {
     key: "cta_clicks",
     title: "Cliques em CTA",
-    hint: "Cliques em botoes de call-to-action.",
+    hint: "Cliques em botões de call-to-action.",
     group: "engagement",
     order: 2,
     hidden: true,
@@ -156,14 +156,14 @@ const FACEBOOK_CARD_CONFIG = [
   {
     key: "followers_gained",
     title: "Novos seguidores",
-    hint: "Seguidores ganhos no periodo.",
+    hint: "Seguidores ganhos no período.",
     group: "audience",
     order: 1,
   },
   {
     key: "followers_lost",
     title: "Deixaram de seguir",
-    hint: "Seguidores perdidos no periodo.",
+    hint: "Seguidores perdidos no período.",
     group: "audience",
     order: 2,
   },
@@ -177,7 +177,7 @@ const FACEBOOK_CARD_CONFIG = [
   {
     key: "video_watch_time_total",
     title: "Tempo total assistido",
-    hint: "Tempo acumulado de visualizacao dos videos.",
+    hint: "Tempo acumulado de visualização dos vídeos.",
     format: "duration",
     group: "video",
     order: 1,
@@ -185,14 +185,14 @@ const FACEBOOK_CARD_CONFIG = [
   {
     key: "video_views_total",
     title: "Video views",
-    hint: "Total de visualizacoes de videos no periodo.",
+    hint: "Total de visualizações de vídeos no período.",
     group: "video",
     order: 2,
   },
   {
     key: "video_engagement_total",
     title: "Vídeos (reações, comentários, compartilhamentos)",
-    hint: "Engajamento gerado pelos videos: reações, comentários e compartilhamentos.",
+    hint: "Engajamento gerado pelos vídeos: reações, comentários e compartilhamentos.",
     type: "engagement",
     group: "video",
     order: 3,
@@ -293,7 +293,7 @@ export default function FacebookDashboard() {
       setPageMetrics([]);
       setPageOverview({});
       setNetFollowersSeries([]);
-      setPageError("Página do Facebook nÃ£o configurada.");
+      setPageError("Página do Facebook não configurada.");
       return;
     }
 
@@ -459,7 +459,7 @@ export default function FacebookDashboard() {
       setRefreshToken(Date.now());
     } catch (err) {
       console.error('Erro ao atualizar dados manualmente', err);
-      setPageError(err?.message || 'Não foi possivel atualizar os dados.');
+      setPageError(err?.message || 'Não foi possível atualizar os dados.');
     } finally {
       setRefreshing(false);
     }
@@ -489,20 +489,25 @@ export default function FacebookDashboard() {
   const renderEngagementBreakdown = (metric) => {
     const breakdown = metric?.breakdown || {};
     const items = [
-      { key: "reactions", label: "Reações" },
-      { key: "comments", label: "Comentários" },
-      { key: "shares", label: "Compart." },
+      { key: "reactions", label: "Reações", icon: Heart },
+      { key: "comments", label: "Comentários", icon: MessageCircle },
+      { key: "shares", label: "Compart.", icon: Share2 },
     ]
       .map((item) => ({ ...item, value: Number(breakdown[item.key] || 0) }))
       .filter((item) => item.value > 0);
     if (!items.length) return null;
     return (
-      <ul className="metric-card__list">
-        {items.map((item) => (
-          <li key={item.key}>
-            {item.label}: {formatNumber(item.value)}
-          </li>
-        ))}
+      <ul className="metric-card__list metric-card__list--icons">
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <li key={item.key}>
+              <Icon size={14} />
+              <span>{item.label}:</span>
+              <strong>{formatNumber(item.value)}</strong>
+            </li>
+          );
+        })}
       </ul>
     );
   };
@@ -520,7 +525,7 @@ export default function FacebookDashboard() {
       }),
     [pageMetricsByKey, loadingPage],
   );
-
+  
   const cardGroups = useMemo(() => {
     const groups = {};
     cardItems.forEach((item) => {
@@ -604,32 +609,7 @@ export default function FacebookDashboard() {
     };
   }, [pageOverview]);
 
-  const reachVsInteractionsData = useMemo(() => {
-    const reachMetric = Number(pageMetricsByKey.reach?.value ?? pageOverview?.reach ?? 0);
-    const interactionsMetric = Number(
-      pageOverview?.content_activity ?? pageMetricsByKey.post_engagement_total?.value ?? 0,
-    );
-
-    return [
-      {
-        key: 'reach',
-        name: 'Alcance total',
-        description: 'Pessoas alcançadas no perí­odo selecionado',
-        value: Number.isFinite(reachMetric) && reachMetric > 0 ? reachMetric : 0,
-        color: '#22c55e',
-      },
-      {
-        key: 'interactions',
-        name: 'Interações totais',
-        description: 'Soma de reações, comentários, compartilhamentos e cliques',
-        value: Number.isFinite(interactionsMetric) && interactionsMetric > 0 ? interactionsMetric : 0,
-        color: '#f97316',
-      },
-    ].filter((item) => item.value > 0);
-  }, [pageOverview, pageMetricsByKey]);
-
   const hasInsightDonut = insightDonutData.items.length > 0;
-  const hasReachVsInteractions = reachVsInteractionsData.length > 0;
 
   // ======= MÃ©tricas de ADS com porcentagens e setas =======
   const adsTotalsCards = useMemo(() => {
@@ -768,32 +748,44 @@ export default function FacebookDashboard() {
         title="Facebook"
         sidebarOpen={sidebarOpen}
         onToggleSidebar={toggleSidebar}
-        showFilters={true}
+        showFilters={false}
         onRefresh={handleManualRefresh}
         refreshing={refreshing}
         lastSync={lastSyncAt}
       />
 
       <div className="page-content">
-        <DateRangeIndicator />
+        {/* Filtros reorganizados em uma linha única */}
+        <div className="dashboard-filters-row">
+          <AccountSelect />
+          
+          <DateRangePicker />
 
-        <div className="content-filter">
-          <span className="content-filter__label">Visualizar</span>
-          <div className="content-filter__buttons">
-            {[
-              { value: "all", label: "Tudo" },
-              { value: "organic", label: "Orgânico" },
-              { value: "paid", label: "Pago" },
-            ].map((option) => (
+          <div className="view-filter-group">
+            <span className="view-filter-group__label">Visualizar:</span>
+            <div className="view-filter-group__buttons">
               <button
-                key={option.value}
                 type="button"
-                className={`content-filter__btn ${performanceScope === option.value ? "content-filter__btn--active" : ""}`}
-                onClick={() => setPerformanceScope(option.value)}
+                className={`view-filter-btn ${performanceScope === "all" ? "view-filter-btn--active" : ""}`}
+                onClick={() => setPerformanceScope("all")}
               >
-                {option.label}
+                Tudo
               </button>
-            ))}
+              <button
+                type="button"
+                className={`view-filter-btn ${performanceScope === "organic" ? "view-filter-btn--active" : ""}`}
+                onClick={() => setPerformanceScope("organic")}
+              >
+                Orgânico
+              </button>
+              <button
+                type="button"
+                className={`view-filter-btn ${performanceScope === "paid" ? "view-filter-btn--active" : ""}`}
+                onClick={() => setPerformanceScope("paid")}
+              >
+                Pago
+              </button>
+            </div>
           </div>
         </div>
 
@@ -801,121 +793,34 @@ export default function FacebookDashboard() {
 
         {showOrganicSections && (
           <Section
-            title="Resumo organico da página"
-            description="Indicadores principais do periodo selecionado."
+            title="Resumo orgânico da página"
+            description="Indicadores principais do período selecionado."
           >
-            <div className="fb-summary">
-              <div className="fb-summary__metrics">
-                {primaryCards.length > 0 && (
-                  <div className="fb-summary__primary">
-                    {primaryCards.map((card) => (
-                      <MetricCard
-                        key={card.key}
-                        title={card.title}
-                        value={card.value}
-                        delta={card.delta}
-                        hint={card.hint}
-                        variant="compact"
-                      >
-                        {card.extra}
-                      </MetricCard>
-                    ))}
-                  </div>
-                )}
-
-                {supportingGroups.map((group) => (
-                  <div key={group.key} className="fb-summary__group">
-                    <div className="fb-summary__group-header">
-                      <h3>{group.title}</h3>
-                    </div>
-                    <div className="fb-summary__group-grid">
-                      {group.items.map((item) => (
-                        <MetricCard
-                          key={item.key}
-                          title={item.title}
-                          value={item.value}
-                          delta={item.delta}
-                          hint={item.hint}
-                          variant="compact"
-                        >
-                          {item.extra}
-                        </MetricCard>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="fb-summary__insights">
-                <div className="card fb-line-card">
-                  <div className="fb-line-card__header">
-                    <div>
-                      <h3>Crescimento liquido</h3>
-                      <p>Acompanhamento diario do saldo de seguidores.</p>
-                    </div>
-                    {netFollowersSummary && (
-                      <div className={`fb-line-card__badge${netFollowersSummary.total < 0 ? ' fb-line-card__badge--down' : ''}`}>
-                        {formatSignedNumber(netFollowersSummary.total)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="fb-line-card__chart">
-                    {loadingPage ? (
-                      <div className="chart-card__empty">Carregando dados...</div>
-                    ) : hasNetFollowersTrend ? (
-                      <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={netFollowersTrend} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
-                          <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-                          <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={formatShortNumber} width={64} />
-                          <Tooltip
-                            labelFormatter={(label, payload) => {
-                              const rawDate = payload && payload[0]?.payload?.date;
-                              return rawDate ? formatDateFull(rawDate) : label;
-                            }}
-                            formatter={(value, name) => {
-                              const numeric = Number(value);
-                              if (name === 'net') {
-                                return [formatSignedNumber(numeric), 'Liquido'];
-                              }
-                              return [formatNumber(Number(numeric)), 'Total acumulado'];
-                            }}
-                            contentStyle={{
-                              backgroundColor: 'var(--panel)',
-                              border: '1px solid var(--stroke)',
-                              borderRadius: '12px',
-                              padding: '8px 12px',
-                              boxShadow: 'var(--shadow-lg)',
-                            }}
-                          />
-                          <Line type="monotone" dataKey="cumulative" stroke="var(--accent)" strokeWidth={2.5} dot={false} />
-                          <Line type="monotone" dataKey="net" stroke="#0ea5e9" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="chart-card__empty">Sem dados suficientes para o periodo.</div>
-                    )}
-                  </div>
-                  {netFollowersSummary && (
-                    <div className="fb-line-card__footer">
-                      <span>
-                        Ultimo dia {netFollowersSummary.lastDate ? formatDateLabel(netFollowersSummary.lastDate) : '---'}: {formatSignedNumber(netFollowersSummary.latestNet)}
-                      </span>
-                      <span>
-                        Entradas {formatNumber(netFollowersSummary.adds)} - Saidas {formatNumber(netFollowersSummary.removes)}
-                      </span>
-                    </div>
-                  )}
+            <div className="fb-summary-new">
+              <div className="fb-summary-new__top">
+                <div className="fb-summary-new__cards">
+                  {cardItems.slice(0, 8).map((card) => (
+                    <MetricCard
+                      key={card.key}
+                      title={card.title}
+                      value={card.value}
+                      delta={card.delta}
+                      hint={card.hint}
+                      variant="compact"
+                    >
+                      {card.extra}
+                    </MetricCard>
+                  ))}
                 </div>
 
-                <div className="card fb-insight-card fb-insight-card--donut">
+                <div className="fb-summary-new__donut card fb-insight-card fb-insight-card--donut">
                   <div className="fb-insight-card__header">
-                    <h3>Composicao de resultados</h3>
-                    <span>Distribuicao das metricas principais do periodo</span>
+                    <h3>Composição de resultados</h3>
+                    <span>Distribuição das métricas principais do período</span>
                   </div>
 
                   {loadingPage ? (
-                    <div className="fb-insight-card__empty">Carregando distribuicao...</div>
+                    <div className="fb-insight-card__empty">Carregando distribuição...</div>
                   ) : hasInsightDonut ? (
                     <>
                       <div className="fb-donut-card__chart">
@@ -958,174 +863,91 @@ export default function FacebookDashboard() {
                       </ul>
                     </>
                   ) : (
-                    <div className="fb-insight-card__empty">Sem dados suficientes para exibir o grafico.</div>
+                    <div className="fb-insight-card__empty">Sem dados suficientes para exibir o gráfico.</div>
                   )}
                 </div>
+              </div>
 
-                <div className="card fb-insight-card fb-insight-card--bars">
-                  <div className="fb-insight-card__header">
-                    <h3>Alcance vs. Interacoes</h3>
-                    <span>Comparativo visual do periodo atual</span>
+              <div className="fb-summary-new__bottom card fb-insight-card fb-insight-card--bars">
+                <div className="fb-insight-card__header">
+                  <h3>Crescimento líquido de seguidores</h3>
+                  <span>Evolução do número de seguidores ao longo do período</span>
+                </div>
+
+                {loadingPage ? (
+                  <div className="fb-insight-card__empty">Carregando evolução...</div>
+                ) : hasNetFollowersTrend ? (
+                  <div className="fb-engagement-chart">
+                    <ResponsiveContainer width="100%" height={240}>
+                      <LineChart data={netFollowersTrend} margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                        <XAxis
+                          dataKey="label"
+                          stroke="var(--text-muted)"
+                          tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+                        />
+                        <YAxis
+                          stroke="var(--text-muted)"
+                          tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+                          tickFormatter={formatShortNumber}
+                          width={64}
+                        />
+                        <Tooltip
+                          labelFormatter={(label, payload) => {
+                            const rawDate = payload && payload[0]?.payload?.date;
+                            return rawDate ? formatDateFull(rawDate) : label;
+                          }}
+                          formatter={(value, name) => {
+                            const labels = {
+                              cumulative: 'Total de seguidores',
+                              net: 'Crescimento líquido',
+                            };
+                            return [formatSignedNumber(Number(value)), labels[name] || name];
+                          }}
+                          contentStyle={{
+                            backgroundColor: 'var(--panel)',
+                            border: '1px solid var(--stroke)',
+                            borderRadius: '12px',
+                            padding: '8px 12px',
+                            boxShadow: 'var(--shadow-lg)',
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="net"
+                          stroke="#4ade80"
+                          strokeWidth={2.5}
+                          dot={{ fill: '#4ade80', r: 3 }}
+                          activeDot={{ r: 5 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
-
-                  {loadingPage ? (
-                    <div className="fb-insight-card__empty">Carregando comparativo...</div>
-                  ) : hasReachVsInteractions ? (
-                    <>
-                      <div className="fb-bar-card__chart">
-                        <ResponsiveContainer width="100%" height={220}>
-                          <BarChart data={reachVsInteractionsData} layout="vertical" margin={{ left: 24, right: 24, bottom: 8 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" horizontal={false} />
-                            <XAxis
-                              type="number"
-                              tickFormatter={formatShortNumber}
-                              stroke="var(--text-muted)"
-                              tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
-                            />
-                            <YAxis
-                              type="category"
-                              dataKey="name"
-                              width={120}
-                              stroke="var(--text-muted)"
-                              tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
-                            />
-                            <Tooltip formatter={(value) => formatNumber(Number(value))} cursor={{ fill: 'rgba(34, 197, 94, 0.12)' }} />
-                            <Bar dataKey="value" radius={[8, 8, 8, 8]}>
-                              {reachVsInteractionsData.map((entry) => (
-                                <Cell key={entry.key} fill={entry.color} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-
-                      <ul className="fb-bar-card__legend">
-                        {reachVsInteractionsData.map((item) => (
-                          <li key={item.key}>
-                            <span className="fb-donut-card__dot" style={{ backgroundColor: item.color }}></span>
-                            <div className="fb-bar-card__legend-text">
-                              <strong>{item.name}</strong>
-                              <span>{item.description}</span>
-                            </div>
-                            <span className="fb-bar-card__value">{formatShortNumber(item.value)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : (
-                    <div className="fb-insight-card__empty">Sem dados suficientes para exibir o comparativo.</div>
-                  )}
-                </div>
+                ) : (
+                  <div className="fb-insight-card__empty">Sem dados suficientes para exibir a evolução.</div>
+                )}
               </div>
             </div>
           </Section>
         )}
       {showPaidSections && (
         <Section
-        title="Desempenho de anúncios"
-        description="Resumo das campanhas no perí­odo selecionado."
+        title="Tráfego Pago"
+        description="Resumo das campanhas no período selecionado."
       >
         {adsError && <div className="alert alert--error">{adsError}</div>}
 
-        <KpiGrid>
-          {adsTotalsCards.map(({ key, title, value, change }) => (
-            <MetricCard key={key} title={title} value={loadingAds ? "..." : value}>
-              {!loadingAds && renderChangeIndicator(change)}
-            </MetricCard>
-          ))}
-        </KpiGrid>
-
-        <KpiGrid>
-          {adsAverageCards.map(({ key, title, value, change }) => (
-            <MetricCard key={key} title={title} value={loadingAds ? "..." : value}>
-              {!loadingAds && renderChangeIndicator(change)}
-            </MetricCard>
-          ))}
-        </KpiGrid>
-
-        <div className="ads-insights-grid">
-          <div className="card chart-card" style={{ minHeight: '280px' }}>
-            <div>
-              <h3 className="chart-card__title">Volume por indicador</h3>
-              <p className="chart-card__subtitle">Comparativo de impressÃµes, alcance e cliques</p>
-            </div>
-            <div className="chart-card__viz" style={{ minHeight: '200px' }}>
-              {loadingAds ? (
-                <div className="chart-card__empty">Carregando dados...</div>
-              ) : hasVolumeData ? (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={volumeBarData} layout="vertical" margin={{ left: 20, right: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" horizontal={false} />
-                    <XAxis type="number" tickFormatter={formatShortNumber} stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-                    <YAxis type="category" dataKey="name" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} width={100} />
-                    <Tooltip
-                      formatter={(value) => formatNumber(Number(value))}
-                      contentStyle={{
-                        backgroundColor: 'var(--panel)',
-                        border: '1px solid var(--stroke)',
-                        borderRadius: '12px',
-                        padding: '8px 12px',
-                        boxShadow: 'var(--shadow-lg)'
-                      }}
-                      cursor={{ fill: 'var(--panel-hover)' }}
-                    />
-                    <Bar dataKey="value" radius={[0, 12, 12, 0]}>
-                      {volumeBarData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="chart-card__empty">Sem dados suficientes no perí­odo.</div>
-              )}
-            </div>
-          </div>
-
-          <div className="card best-ad-card" style={{ minHeight: '280px' }}>
-            <div className="best-ad-card__header">
-              <span className="best-ad-card__title">
-                <Trophy size={18} />
-                Melhor anúncio
-              </span>
-              <span className="best-ad-card__subtitle">
-                {loadingAds ? "..." : bestAd?.ad_name || "Sem dados"}
-              </span>
-            </div>
-            {loadingAds ? (
-              <p className="muted">Carregando dados do Gerenciador de Anúncios...</p>
-            ) : bestAd ? (
-              <div className="best-ad-card__metrics">
-                {bestAdMetrics.map((metric) => (
-                  <div key={metric.label} className="best-ad-card__metric">
-                    <span className="best-ad-card__metric-label">{metric.label}</span>
-                    <span className="best-ad-card__metric-value">{metric.value}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="muted">Nenhum anúncio disponí­vel para o perí­odo.</p>
-            )}
-          </div>
-        </div>
-      </Section>
-      )}
-
-
-      <Section
-        title="Orgânico x Pago"
-        description="Comparativo de desempenho entre conteúdo orgânico e anúncios pagos."
-      >
-        <div className="card chart-card">
+        {/* Gráfico Orgânico x Pago no topo */}
+        <div className="card chart-card" style={{ marginBottom: '24px' }}>
           <div>
-            <h3 className="chart-card__title">Alcance e Engajamento</h3>
-            <p className="chart-card__subtitle">Comparação entre orgânico e pago</p>
+            <h3 className="chart-card__title">Orgânico x Pago</h3>
+            <p className="chart-card__subtitle">Comparação de alcance e engajamento</p>
           </div>
           <div className="chart-card__viz">
             {(loadingPage || loadingAds) ? (
               <div className="chart-card__empty">Carregando dados...</div>
             ) : hasFilteredOrgVsPaidData ? (
-              <ResponsiveContainer width="100%" height={260}>
+              <ResponsiveContainer width="100%" height={200}>
                 <BarChart
                   data={filteredOrganicVsPaidData}
                   layout="vertical"
@@ -1157,7 +979,7 @@ export default function FacebookDashboard() {
                     cursor={{ fill: 'var(--panel-hover)' }}
                   />
                   <Legend />
-                  <Bar dataKey="Orgânico" fill="#10b981" radius={[0, 12, 12, 0]} />
+                  <Bar dataKey="Orgânico" fill="#06b6d4" radius={[0, 12, 12, 0]} />
                   <Bar dataKey="Pago" fill="#6366f1" radius={[0, 12, 12, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -1166,7 +988,45 @@ export default function FacebookDashboard() {
             )}
           </div>
         </div>
+
+        {/* Layout 3x3x2 para os cards + gráfico do melhor anúncio */}
+        <div className="fb-ads-layout">
+          <div className="fb-ads-layout__cards">
+            {[...adsTotalsCards, ...adsAverageCards].map(({ key, title, value, change }) => (
+              <MetricCard key={key} title={title} value={loadingAds ? "..." : value} variant="compact">
+                {!loadingAds && renderChangeIndicator(change)}
+              </MetricCard>
+            ))}
+          </div>
+
+          <div className="card best-ad-card fb-ads-layout__best-ad">
+            <div className="best-ad-card__header">
+              <span className="best-ad-card__title">
+                <Trophy size={18} />
+                Melhor anúncio
+              </span>
+              <span className="best-ad-card__subtitle">
+                {loadingAds ? "..." : bestAd?.ad_name || "Sem dados"}
+              </span>
+            </div>
+            {loadingAds ? (
+              <p className="muted">Carregando dados do Gerenciador de Anúncios...</p>
+            ) : bestAd ? (
+              <div className="best-ad-card__metrics">
+                {bestAdMetrics.map((metric) => (
+                  <div key={metric.label} className="best-ad-card__metric">
+                    <span className="best-ad-card__metric-label">{metric.label}</span>
+                    <span className="best-ad-card__metric-value">{metric.value}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">Nenhum anúncio disponível para o período.</p>
+            )}
+          </div>
+        </div>
       </Section>
+      )}
       </div>
     </>
   );
