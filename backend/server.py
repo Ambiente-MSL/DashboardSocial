@@ -364,7 +364,7 @@ def fetch_instagram_metrics(
     _extra: Optional[Dict[str, Any]],
 ) -> Dict[str, Any]:
     if since_ts is None or until_ts is None:
-        raise ValueError("since_ts e until_ts sǭo obrigat��rios para instagram_metrics")
+        raise ValueError("since_ts e until_ts são obrigatórios para instagram_metrics")
 
     cur = ig_window(ig_id, since_ts, until_ts)
     prev = ig_window(ig_id, since_ts - _duration(since_ts, until_ts), since_ts)
@@ -514,7 +514,7 @@ def fetch_instagram_organic(
     _extra: Optional[Dict[str, Any]],
 ) -> Dict[str, Any]:
     if since_ts is None or until_ts is None:
-        raise ValueError("since_ts e until_ts sǭo obrigat��rios para instagram_organic")
+        raise ValueError("since_ts e until_ts sǭo obrigatórios para instagram_organic")
     data = ig_organic_summary(ig_id, since_ts, until_ts)
     data.update({"since": since_ts, "until": until_ts})
     return data

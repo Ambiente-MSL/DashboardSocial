@@ -23,7 +23,7 @@ class MetaSyncScheduler:
             return
 
         if get_supabase_client() is None:
-            logger.warning("Supabase nǜo configurado. Scheduler de sincroniza��ǜo nǜo iniciado.")
+            logger.warning("Supabase não configurado. Scheduler de sincronização não iniciado.")
             return
 
         self._scheduler.add_job(
@@ -36,7 +36,7 @@ class MetaSyncScheduler:
         )
         self._scheduler.start()
         self._started = True
-        logger.info("Scheduler de sincroniza��ǜo iniciado (intervalo %s minutos).", self.interval_minutes)
+        logger.info("Scheduler de sincronização iniciado (intervalo %s minutos).", self.interval_minutes)
 
     def shutdown(self) -> None:
         if self._started:

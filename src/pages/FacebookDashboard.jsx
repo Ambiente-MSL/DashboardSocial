@@ -1,14 +1,11 @@
 // pages/FacebookDashboard.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { ArrowDown, ArrowUp, Trophy, Heart, MessageCircle, Share2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Heart, MessageCircle, Share2 } from "lucide-react";
 import {
   ResponsiveContainer,
-  PieChart,
-  Pie,
   Cell,
   Tooltip,
-  Legend,
   BarChart,
   Bar,
   XAxis,
@@ -18,16 +15,16 @@ import {
   Line
 } from "recharts";
 import Topbar from "../components/Topbar";
-import Section from "../components/Section";
 import MetricCard from "../components/MetricCard";
+import Section from "../components/Section";
 import DateRangePicker from "../components/DateRangePicker";
 import AccountSelect from "../components/AccountSelect";
+import FilterButton from "../components/FilterButton";
 import useQueryState from "../hooks/useQueryState";
 import { accounts } from "../data/accounts";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const DEFAULT_ACCOUNT_ID = accounts[0]?.id || "";
-const FB_DONUT_COLORS = ['#06b6d4', '#1120f8ff', '#f97316', '#a855f7', '#eab308'];
 const CACHE_KEYS = {
   facebook_metrics: "facebookMetrics",
   ads_highlights: "adsHighlights",
@@ -512,50 +509,37 @@ export default function FacebookDashboard() {
     );
   };
 
-  const cardItems = useMemo(
-    () =>
-      FACEBOOK_CARD_CONFIG.filter((config) => !config.hidden).map((config) => {
-        const metric = pageMetricsByKey[config.key];
-        return {
-          ...config,
-          value: loadingPage ? "..." : formatMetricValue(metric, config),
-          delta: loadingPage ? null : metric?.deltaPct ?? null,
-          extra: !loadingPage && config.type === "engagement" ? renderEngagementBreakdown(metric) : null,
-        };
-      }),
-    [pageMetricsByKey, loadingPage],
-  );
-  
-  const cardGroups = useMemo(() => {
-    const groups = {};
-    cardItems.forEach((item) => {
-      const groupKey = item.group || "other";
-      if (!groups[groupKey]) groups[groupKey] = [];
-      groups[groupKey].push(item);
-    });
-    Object.values(groups).forEach((items) => {
-      items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    });
-    return groups;
-  }, [cardItems]);
+  // Unused variables - kept for potential future use
+  // const cardGroups = useMemo(() => {
+  //   const groups = {};
+  //   cardItems.forEach((item) => {
+  //     const groupKey = item.group || "other";
+  //     if (!groups[groupKey]) groups[groupKey] = [];
+  //     groups[groupKey].push(item);
+  //   });
+  //   Object.values(groups).forEach((items) => {
+  //     items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  //   });
+  //   return groups;
+  // }, [cardItems]);
 
-  const primaryCards = cardGroups.primary || [];
+  // const primaryCards = cardGroups.primary || [];
 
-  const supportingGroups = useMemo(() => {
-    const baseGroups = [
-      { key: "audience", title: "Audiência", items: cardGroups.audience || [] },
-      { key: "engagement", title: "Interações", items: cardGroups.engagement || [] },
-      { key: "video", title: "Vídeos", items: cardGroups.video || [] },
-    ];
-    const extraGroups = Object.entries(cardGroups)
-      .filter(([key]) => !["primary", "audience", "engagement", "video"].includes(key))
-      .map(([key, items]) => ({
-        key,
-        title: key === "other" ? "Outros" : key.charAt(0).toUpperCase() + key.slice(1),
-        items,
-      }));
-    return [...baseGroups, ...extraGroups].filter((group) => group.items.length > 0);
-  }, [cardGroups]);
+  // const supportingGroups = useMemo(() => {
+  //   const baseGroups = [
+  //     { key: "audience", title: "Audiência", items: cardGroups.audience || [] },
+  //     { key: "engagement", title: "Interações", items: cardGroups.engagement || [] },
+  //     { key: "video", title: "Vídeos", items: cardGroups.video || [] },
+  //   ];
+  //   const extraGroups = Object.entries(cardGroups)
+  //     .filter(([key]) => !["primary", "audience", "engagement", "video"].includes(key))
+  //     .map(([key, items]) => ({
+  //       key,
+  //       title: key === "other" ? "Outros" : key.charAt(0).toUpperCase() + key.slice(1),
+  //       items,
+  //     }));
+  //   return [...baseGroups, ...extraGroups].filter((group) => group.items.length > 0);
+  // }, [cardGroups]);
 
   const netFollowersTrend = useMemo(() => {
     if (!Array.isArray(netFollowersSeries)) return [];
@@ -575,41 +559,61 @@ export default function FacebookDashboard() {
       .filter(Boolean);
   }, [netFollowersSeries]);
 
-  const netFollowersSummary = useMemo(() => {
-    if (!Array.isArray(netFollowersSeries) || !netFollowersSeries.length) return null;
-    const last = netFollowersSeries[netFollowersSeries.length - 1] || {};
-    const total = Number(last.cumulative ?? 0);
-    const latestNet = Number(last.net ?? 0);
-    const adds = Number(last.adds ?? 0);
-    const removes = Number(last.removes ?? 0);
-    const lastDate = last.date || null;
-    return {
-      total: Number.isFinite(total) ? total : 0,
-      latestNet: Number.isFinite(latestNet) ? latestNet : 0,
-      adds: Number.isFinite(adds) ? adds : 0,
-      removes: Number.isFinite(removes) ? removes : 0,
-      lastDate,
-    };
-  }, [netFollowersSeries]);
+  // Unused variable - kept for potential future use
+  // const netFollowersSummary = useMemo(() => {
+  //   if (!Array.isArray(netFollowersSeries) || !netFollowersSeries.length) return null;
+  //   const last = netFollowersSeries[netFollowersSeries.length - 1] || {};
+  //   const total = Number(last.cumulative ?? 0);
+  //   const latestNet = Number(last.net ?? 0);
+  //   const adds = Number(last.adds ?? 0);
+  //   const removes = Number(last.removes ?? 0);
+  //   const lastDate = last.date || null;
+  //   return {
+  //     total: Number.isFinite(total) ? total : 0,
+  //     latestNet: Number.isFinite(latestNet) ? latestNet : 0,
+  //     adds: Number.isFinite(adds) ? adds : 0,
+  //     removes: Number.isFinite(removes) ? removes : 0,
+  //     lastDate,
+  //   };
+  // }, [netFollowersSeries]);
 
   const hasNetFollowersTrend = netFollowersTrend.length > 0;
 
-  const insightDonutData = useMemo(() => {
-    const segments = [
-      { key: 'content_activity', label: 'Interações', value: Number(pageOverview?.content_activity ?? 0) || 0 },
-      { key: 'video_views', label: 'Views de vídeo', value: Number(pageOverview?.video_views ?? 0) || 0 },
-      { key: 'page_views', label: 'Visualizações de página', value: Number(pageOverview?.page_views ?? 0) || 0 },
-      { key: 'followers_gained', label: 'Novos seguidores', value: Number(pageOverview?.followers_gained ?? 0) || 0 },
-    ].filter((item) => Number.isFinite(item.value) && item.value > 0);
+  const dailyEngagementData = useMemo(() => {
+    const series =
+      Array.isArray(pageOverview?.daily_engagement_series)
+        ? pageOverview.daily_engagement_series
+        : Array.isArray(pageOverview?.engagement_series)
+          ? pageOverview.engagement_series
+          : [];
 
-    const total = segments.reduce((sum, item) => sum + item.value, 0);
-    return {
-      items: segments,
-      total,
-    };
+    return series
+      .map((point) => {
+        const date = point?.date || point?.day;
+        if (!date) return null;
+        const total = Number(point?.total ?? point?.value ?? 0) || 0;
+        const reactions = Number(point?.reactions ?? 0) || 0;
+        const comments = Number(point?.comments ?? 0) || 0;
+        const shares = Number(point?.shares ?? 0) || 0;
+        return {
+          date,
+          label: formatDateLabel(date),
+          total,
+          reactions,
+          comments,
+          shares,
+        };
+      })
+      .filter(Boolean);
   }, [pageOverview]);
 
-  const hasInsightDonut = insightDonutData.items.length > 0;
+  const hasDailyEngagement = dailyEngagementData.some(
+    (point) =>
+      (point?.total ?? 0) > 0 ||
+      (point?.reactions ?? 0) > 0 ||
+      (point?.comments ?? 0) > 0 ||
+      (point?.shares ?? 0) > 0,
+  );
 
   // ======= MÃ©tricas de ADS com porcentagens e setas =======
   const adsTotalsCards = useMemo(() => {
@@ -693,44 +697,16 @@ export default function FacebookDashboard() {
 
   const bestAd = adsData.best_ad;
 
-  // GrÃ¡fico horizontal de barras (ImpressÃµes, Alcance, Cliques)
   const volumeBarData = useMemo(() => {
     const totals = adsData?.totals || {};
     return [
-      { name: "Impressões", value: Number(totals.impressions) || 0, color: "#06b6d4" },
-      { name: "Alcance", value: Number(totals.reach) || 0, color: "#6366f1" },
-      { name: "Cliques", value: Number(totals.clicks) || 0, color: "#8b5cf6" },
+      { name: "Impressões", value: Number(totals.impressions) || 0, color: "var(--chart-1)" },
+      { name: "Alcance", value: Number(totals.reach) || 0, color: "var(--chart-2)" },
+      { name: "Cliques", value: Number(totals.clicks) || 0, color: "var(--chart-3)" },
     ];
   }, [adsData?.totals]);
 
   const hasVolumeData = volumeBarData.some((item) => item.value > 0);
-
-  // Comparação orgânico x pago
-  const organicVsPaidData = useMemo(() => {
-    const organicReach = Number(pageMetricsByKey.reach?.value || 0);
-    const organicEngagement = Number(pageMetricsByKey.post_engagement_total?.value || 0);
-    const paidReach = Number(adsData.totals?.reach || 0);
-    const paidClicks = Number(adsData.totals?.clicks || 0);
-
-    return [
-      { name: "Alcance", "Orgânico": organicReach, Pago: paidReach },
-      { name: "Engajamento/Cliques", "Orgânico": organicEngagement, Pago: paidClicks },
-    ];
-  }, [pageMetricsByKey, adsData.totals]);
-
-  const filteredOrganicVsPaidData = useMemo(() => {
-    if (performanceScope === "organic") {
-      return organicVsPaidData.map((item) => ({ ...item, Pago: 0 }));
-    }
-    if (performanceScope === "paid") {
-      return organicVsPaidData.map((item) => ({ ...item, "Orgânico": 0 }));
-    }
-    return organicVsPaidData;
-  }, [organicVsPaidData, performanceScope]);
-
-  const hasFilteredOrgVsPaidData = filteredOrganicVsPaidData.some(
-    (item) => ((item["Orgânico"] || 0) > 0) || ((item.Pago || 0) > 0),
-  );
 
   const bestAdMetrics = useMemo(() => {
     if (!bestAd) return [];
@@ -742,6 +718,24 @@ export default function FacebookDashboard() {
     ];
   }, [bestAd]);
 
+  const filterOptions = [
+    { value: "all", label: "Tudo" },
+    { value: "organic", label: "Orgânico" },
+    { value: "paid", label: "Pago" },
+  ];
+
+  const topbarFilters = (
+    <>
+      <AccountSelect />
+      <DateRangePicker />
+      <FilterButton
+        value={performanceScope}
+        onChange={setPerformanceScope}
+        options={filterOptions}
+      />
+    </>
+  );
+
   return (
     <>
       <Topbar
@@ -752,280 +746,172 @@ export default function FacebookDashboard() {
         onRefresh={handleManualRefresh}
         refreshing={refreshing}
         lastSync={lastSyncAt}
+        customFilters={topbarFilters}
       />
 
-      <div className="page-content">
-        {/* Filtros reorganizados em uma linha única */}
-        <div className="dashboard-filters-row">
-          <AccountSelect />
-          
-          <DateRangePicker />
-
-          <div className="view-filter-group">
-            <span className="view-filter-group__label">Visualizar:</span>
-            <div className="view-filter-group__buttons">
-              <button
-                type="button"
-                className={`view-filter-btn ${performanceScope === "all" ? "view-filter-btn--active" : ""}`}
-                onClick={() => setPerformanceScope("all")}
-              >
-                Tudo
-              </button>
-              <button
-                type="button"
-                className={`view-filter-btn ${performanceScope === "organic" ? "view-filter-btn--active" : ""}`}
-                onClick={() => setPerformanceScope("organic")}
-              >
-                Orgânico
-              </button>
-              <button
-                type="button"
-                className={`view-filter-btn ${performanceScope === "paid" ? "view-filter-btn--active" : ""}`}
-                onClick={() => setPerformanceScope("paid")}
-              >
-                Pago
-              </button>
-            </div>
-          </div>
-        </div>
-
+      <div className="page-content page-content--unified">
         {pageError && <div className="alert alert--error">{pageError}</div>}
 
         {showOrganicSections && (
-          <Section
-            title="Resumo orgânico da página"
-            description="Indicadores principais do período selecionado."
-          >
-            <div className="fb-summary-new">
-              <div className="fb-summary-new__top">
-                <div className="fb-summary-new__cards">
-                  {cardItems.slice(0, 8).map((card) => (
-                    <MetricCard
-                      key={card.key}
-                      title={card.title}
-                      value={card.value}
-                      delta={card.delta}
-                      hint={card.hint}
-                      variant="compact"
-                    >
-                      {card.extra}
-                    </MetricCard>
-                  ))}
-                </div>
-
-                <div className="fb-summary-new__donut card fb-insight-card fb-insight-card--donut">
-                  <div className="fb-insight-card__header">
-                    <h3>Composição de resultados</h3>
-                    <span>Distribuição das métricas principais do período</span>
-                  </div>
-
-                  {loadingPage ? (
-                    <div className="fb-insight-card__empty">Carregando distribuição...</div>
-                  ) : hasInsightDonut ? (
-                    <>
-                      <div className="fb-donut-card__chart">
-                        <ResponsiveContainer width="100%" height={240}>
-                          <PieChart>
-                            <Pie
-                              data={insightDonutData.items}
-                              dataKey="value"
-                              nameKey="label"
-                              innerRadius="60%"
-                              outerRadius="95%"
-                              paddingAngle={2}
-                              stroke="none"
-                            >
-                              {insightDonutData.items.map((entry, index) => (
-                                <Cell key={entry.key} fill={FB_DONUT_COLORS[index % FB_DONUT_COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip formatter={(value) => formatNumber(Number(value))} />
-                          </PieChart>
-                        </ResponsiveContainer>
-
-                        <div className="fb-donut-card__center">
-                          <strong>{formatShortNumber(insightDonutData.total)}</strong>
-                          <span>Total combinado</span>
-                        </div>
-                      </div>
-
-                      <ul className="fb-donut-card__legend">
-                        {insightDonutData.items.map((segment, index) => (
-                          <li key={segment.key}>
-                            <span
-                              className="fb-donut-card__dot"
-                              style={{ backgroundColor: FB_DONUT_COLORS[index % FB_DONUT_COLORS.length] }}
-                            ></span>
-                            <span className="fb-donut-card__legend-label">{segment.label}</span>
-                            <span className="fb-donut-card__legend-value">{formatShortNumber(segment.value)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : (
-                    <div className="fb-insight-card__empty">Sem dados suficientes para exibir o gráfico.</div>
-                  )}
-                </div>
+          <>
+            {/* ====== TOP CARDS (4) ====== */}
+            <Section title="Visão rápida" description="Principais KPIs do período.">
+              <div className="dash-grid dash-4up">
+                {['reach','post_engagement_total','page_views','net_followers'].map((k) => {
+                  const cfg = FACEBOOK_CARD_CONFIG.find(c => c.key === k);
+                  const metric = pageMetricsByKey[k];
+                  if (!cfg) return null;
+                  return (
+                    <div className="dash-card" key={k}>
+                      <MetricCard
+                        title={cfg.title}
+                        value={loadingPage ? '...' : formatMetricValue(metric, cfg)}
+                        delta={loadingPage ? null : metric?.deltaPct ?? null}
+                        hint={cfg.hint}
+                        variant="compact"
+                      >
+                        {!loadingPage && cfg.type === 'engagement' ? renderEngagementBreakdown(metric) : null}
+                      </MetricCard>
+                    </div>
+                  );
+                })}
               </div>
+            </Section>
 
-              <div className="fb-summary-new__bottom card fb-insight-card fb-insight-card--bars">
-                <div className="fb-insight-card__header">
-                  <h3>Crescimento líquido de seguidores</h3>
-                  <span>Evolução do número de seguidores ao longo do período</span>
-                </div>
-
-                {loadingPage ? (
-                  <div className="fb-insight-card__empty">Carregando evolução...</div>
-                ) : hasNetFollowersTrend ? (
-                  <div className="fb-engagement-chart">
-                    <ResponsiveContainer width="100%" height={240}>
-                      <LineChart data={netFollowersTrend} margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
+            {/* ====== CHARTS ROW (2) ====== */}
+            <Section title="Tendências" description="Evolução diária no período.">
+              <div className="dash-grid dash-2col">
+                {/* Chart 1 — Crescimento líquido (seguidores) */}
+                <div className="dash-chart">
+                  <div className="fb-line-card__header" style={{marginBottom:12}}>
+                    <h3>Crescimento líquido</h3>
+                    <p className="muted">Saldo diário de seguidores</p>
+                  </div>
+                  {loadingPage ? (
+                    <div className="chart-card__empty">Carregando dados...</div>
+                  ) : hasNetFollowersTrend ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <LineChart data={netFollowersTrend} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
-                        <XAxis
-                          dataKey="label"
-                          stroke="var(--text-muted)"
-                          tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
-                        />
-                        <YAxis
-                          stroke="var(--text-muted)"
-                          tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
-                          tickFormatter={formatShortNumber}
-                          width={64}
-                        />
+                        <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                        <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={formatShortNumber} width={64} />
                         <Tooltip
                           labelFormatter={(label, payload) => {
                             const rawDate = payload && payload[0]?.payload?.date;
                             return rawDate ? formatDateFull(rawDate) : label;
                           }}
                           formatter={(value, name) => {
-                            const labels = {
-                              cumulative: 'Total de seguidores',
-                              net: 'Crescimento líquido',
-                            };
-                            return [formatSignedNumber(Number(value)), labels[name] || name];
-                          }}
-                          contentStyle={{
-                            backgroundColor: 'var(--panel)',
-                            border: '1px solid var(--stroke)',
-                            borderRadius: '12px',
-                            padding: '8px 12px',
-                            boxShadow: 'var(--shadow-lg)',
+                            const numeric = Number(value);
+                            if (name === 'net') return [formatSignedNumber(numeric), 'Líquido'];
+                            return [formatNumber(Number(numeric)), 'Acumulado'];
                           }}
                         />
-                        <Line
-                          type="monotone"
-                          dataKey="net"
-                          stroke="#4ade80"
-                          strokeWidth={2.5}
-                          dot={{ fill: '#4ade80', r: 3 }}
-                          activeDot={{ r: 5 }}
-                        />
+                        <Line type="monotone" dataKey="cumulative" stroke="var(--accent)" strokeWidth={2.5} dot={false} />
+                        <Line type="monotone" dataKey="net" stroke="#0ea5e9" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
                       </LineChart>
                     </ResponsiveContainer>
+                  ) : (
+                    <div className="chart-card__empty">Sem dados suficientes para o período.</div>
+                  )}
+                </div>
+
+                {/* Chart 2 — Evolução do engajamento diário */}
+                <div className="dash-chart">
+                  <div className="fb-insight-card__header" style={{marginBottom:12}}>
+                    <h3>Evolução do engajamento</h3>
+                    <span className="muted">Reações + comentários + compartilhamentos</span>
                   </div>
-                ) : (
-                  <div className="fb-insight-card__empty">Sem dados suficientes para exibir a evolução.</div>
-                )}
+                  {loadingPage ? (
+                    <div className="chart-card__empty">Carregando evolução...</div>
+                  ) : hasDailyEngagement ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <LineChart data={dailyEngagementData} margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                        <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                        <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={formatShortNumber} width={64} />
+                        <Tooltip
+                          labelFormatter={(label, payload) => {
+                            const rawDate = payload && payload[0]?.payload?.date;
+                            return rawDate ? formatDateFull(rawDate) : label;
+                          }}
+                          formatter={(value, name) => {
+                            const labels = { total: 'Engajamento total', reactions: 'Reações', comments: 'Comentários', shares: 'Compartilhamentos' };
+                            return [formatNumber(Number(value)), labels[name] || name];
+                          }}
+                        />
+                        <Line type="monotone" dataKey="total" stroke="#06b6d4" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="chart-card__empty">Sem dados suficientes para exibir a evolução.</div>
+                  )}
+                </div>
               </div>
-            </div>
-          </Section>
+            </Section>
+          </>
         )}
       {showPaidSections && (
-        <Section
-        title="Tráfego Pago"
-        description="Resumo das campanhas no período selecionado."
-      >
-        {adsError && <div className="alert alert--error">{adsError}</div>}
-
-        {/* Gráfico Orgânico x Pago no topo */}
-        <div className="card chart-card" style={{ marginBottom: '24px' }}>
-          <div>
-            <h3 className="chart-card__title">Orgânico x Pago</h3>
-            <p className="chart-card__subtitle">Comparação de alcance e engajamento</p>
-          </div>
-          <div className="chart-card__viz">
-            {(loadingPage || loadingAds) ? (
-              <div className="chart-card__empty">Carregando dados...</div>
-            ) : hasFilteredOrgVsPaidData ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart
-                  data={filteredOrganicVsPaidData}
-                  layout="vertical"
-                  margin={{ left: 24, right: 24, bottom: 12 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" horizontal={false} />
-                  <XAxis
-                    type="number"
-                    tickFormatter={formatShortNumber}
-                    stroke="var(--text-muted)"
-                    tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    width={140}
-                    stroke="var(--text-muted)"
-                    tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
-                  />
-                  <Tooltip
-                    formatter={(value) => formatNumber(Number(value))}
-                    contentStyle={{
-                      backgroundColor: 'var(--panel)',
-                      border: '1px solid var(--stroke)',
-                      borderRadius: '12px',
-                      padding: '8px 12px',
-                      boxShadow: 'var(--shadow-lg)'
-                    }}
-                    cursor={{ fill: 'var(--panel-hover)' }}
-                  />
-                  <Legend />
-                  <Bar dataKey="Orgânico" fill="#06b6d4" radius={[0, 12, 12, 0]} />
-                  <Bar dataKey="Pago" fill="#6366f1" radius={[0, 12, 12, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="chart-card__empty">Sem dados suficientes no período.</div>
-            )}
-          </div>
-        </div>
-
-        {/* Layout 3x3x2 para os cards + gráfico do melhor anúncio */}
-        <div className="fb-ads-layout">
-          <div className="fb-ads-layout__cards">
-            {[...adsTotalsCards, ...adsAverageCards].map(({ key, title, value, change }) => (
-              <MetricCard key={key} title={title} value={loadingAds ? "..." : value} variant="compact">
-                {!loadingAds && renderChangeIndicator(change)}
-              </MetricCard>
-            ))}
-          </div>
-
-          <div className="card best-ad-card fb-ads-layout__best-ad">
-            <div className="best-ad-card__header">
-              <span className="best-ad-card__title">
-                <Trophy size={18} />
-                Melhor anúncio
-              </span>
-              <span className="best-ad-card__subtitle">
-                {loadingAds ? "..." : bestAd?.ad_name || "Sem dados"}
-              </span>
+        <Section title="Desempenho de anúncios" description="Resumo das campanhas no período selecionado.">
+          {adsError && <div className="alert alert--error">{adsError}</div>}
+          <div className="dash-grid dash-paid">
+            {/* Bloco A — Volume por indicador */}
+            <div className="dash-card dash-chart" style={{minHeight:320}}>
+              <div style={{marginBottom:12}}>
+                <h3>Volume por indicador</h3>
+                <p className="muted">Impressões, alcance e cliques</p>
+              </div>
+              {loadingAds ? (
+                <div className="chart-card__empty">Carregando dados...</div>
+              ) : hasVolumeData ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={volumeBarData} layout="vertical" margin={{ left: 20, right: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" horizontal={false} />
+                    <XAxis type="number" tickFormatter={formatShortNumber} stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                    <YAxis type="category" dataKey="name" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} width={110} />
+                    <Tooltip formatter={(value) => formatNumber(Number(value))} />
+                    <Bar dataKey="value" radius={[0,12,12,0]}>
+                      {volumeBarData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="chart-card__empty">Sem dados no período.</div>
+              )}
             </div>
-            {loadingAds ? (
-              <p className="muted">Carregando dados do Gerenciador de Anúncios...</p>
-            ) : bestAd ? (
-              <div className="best-ad-card__metrics">
-                {bestAdMetrics.map((metric) => (
-                  <div key={metric.label} className="best-ad-card__metric">
-                    <span className="best-ad-card__metric-label">{metric.label}</span>
-                    <span className="best-ad-card__metric-value">{metric.value}</span>
-                  </div>
+
+            {/* Bloco B — Melhor anúncio + KPIs médios (cards compactos) */}
+            <div className="dash-card" style={{display:'flex', flexDirection:'column', gap:12}}>
+              <div className="best-ad-card__header">
+                <span className="best-ad-card__title">Melhor anúncio</span>
+                <span className="best-ad-card__subtitle">{loadingAds ? '...' : (bestAd?.ad_name || 'Sem dados')}</span>
+              </div>
+
+              <div className="dash-grid dash-4up" style={{gridTemplateColumns:'repeat(4,minmax(0,1fr))'}}>
+                {adsTotalsCards.slice(0,2).map(({ key, title, value, change }) => (
+                  <MetricCard key={key} title={title} value={loadingAds ? '...' : value} variant="compact">
+                    {!loadingAds && renderChangeIndicator(change)}
+                  </MetricCard>
+                ))}
+                {adsAverageCards.slice(0,2).map(({ key, title, value, change }) => (
+                  <MetricCard key={key} title={title} value={loadingAds ? '...' : value} variant="compact">
+                    {!loadingAds && renderChangeIndicator(change)}
+                  </MetricCard>
                 ))}
               </div>
-            ) : (
-              <p className="muted">Nenhum anúncio disponível para o período.</p>
-            )}
+
+              {!loadingAds && bestAd && (
+                <div className="best-ad-card__metrics">
+                  {bestAdMetrics.map(m => (
+                    <div key={m.label} className="best-ad-card__metric">
+                      <span className="best-ad-card__metric-label">{m.label}</span>
+                      <span className="best-ad-card__metric-value">{m.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </Section>
+        </Section>
       )}
       </div>
     </>

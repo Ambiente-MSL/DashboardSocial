@@ -1,4 +1,4 @@
-﻿import { ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import useQueryState from "../hooks/useQueryState";
 import { accounts } from "../data/accounts";
 

@@ -145,7 +145,9 @@ export default function Reports() {
       el.innerHTML = renderHtmlPreview(report, data);
       await new Promise((res) => setTimeout(res, 50)); // deixa o browser pintar
     }
-    const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#0b1220" });
+    const rootStyles = getComputedStyle(document.documentElement);
+    const backgroundColor = rootStyles.getPropertyValue("--bg")?.trim() || "transparent";
+    const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor });
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF({
       orientation: "portrait",
@@ -186,11 +188,11 @@ export default function Reports() {
   const renderHtmlPreview = (report, data) => {
     // preview simples; personalize com HTML/CSS do seu template
     return `
-      <div style="padding:24px;color:#e6edf3;font-family:Inter,system-ui,Arial;background:#0b1220;width:900px">
+      <div style="padding:24px;color:var(--fg);font-family:'Plus Jakarta Sans',system-ui,Arial;background:var(--bg);width:900px">
         <h2 style="margin:0 0 8px 0">${report?.name || "Relatório"}</h2>
         <p style="margin:0 0 24px 0;opacity:.75">Conta: ${account || "Padrão"} | Período: ${since || "-"} → ${until || "-"}</p>
         <h3>Resumo</h3>
-        <pre style="white-space:pre-wrap;background:#0e1729;border:1px solid #1a2340;border-radius:12px;padding:12px">${JSON.stringify(data, null, 2)}</pre>
+        <pre style="white-space:pre-wrap;background:var(--panel);border:1px solid var(--stroke);border-radius:12px;padding:12px;color:var(--fg)">${JSON.stringify(data, null, 2)}</pre>
       </div>
     `;
   };
