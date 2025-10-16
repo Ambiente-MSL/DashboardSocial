@@ -279,7 +279,16 @@ export default function InstagramDashboard() {
                       <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v) => Number(v).toLocaleString("pt-BR")} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#f7fafc',
+                      color: '#0f1720',
+                      border: '1px solid #e3e8ef',
+                      borderRadius: '10px',
+                      boxShadow: '0 6px 20px rgba(0,0,0,.25)'
+                    }}
+                    formatter={(v) => Number(v).toLocaleString("pt-BR")}
+                  />
                 </PieChart>
               </ResponsiveContainer>
               {/* Centro do donut */}
@@ -330,7 +339,16 @@ export default function InstagramDashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                   <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: "var(--text-muted)", fontSize: 12 }} />
                   <YAxis stroke="var(--text-muted)" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                  <Tooltip formatter={(v) => Number(v).toLocaleString("pt-BR")} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#f7fafc',
+                      color: '#0f1720',
+                      border: '1px solid #e3e8ef',
+                      borderRadius: '10px',
+                      boxShadow: '0 6px 20px rgba(0,0,0,.25)'
+                    }}
+                    formatter={(v) => Number(v).toLocaleString("pt-BR")}
+                  />
                   <Line type="monotone" dataKey="value" stroke="#60a5fa" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -352,7 +370,16 @@ export default function InstagramDashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                   <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: "var(--text-muted)", fontSize: 12 }} />
                   <YAxis stroke="var(--text-muted)" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                  <Tooltip formatter={(v) => Number(v).toLocaleString("pt-BR")} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#f7fafc',
+                      color: '#0f1720',
+                      border: '1px solid #e3e8ef',
+                      borderRadius: '10px',
+                      boxShadow: '0 6px 20px rgba(0,0,0,.25)'
+                    }}
+                    formatter={(v) => Number(v).toLocaleString("pt-BR")}
+                  />
                   <Bar dataKey="interactions" fill="#34d399" radius={[6, 6, 0, 0]} />
                   <Bar dataKey="reach" fill="#4b5563" radius={[6, 6, 0, 0]} />
                 </BarChart>

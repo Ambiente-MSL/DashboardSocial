@@ -1,52 +1,53 @@
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { memo } from "react";
 
-export default function MetricCard({
+export default memo(function MetricCard({
   title,
-  value = '-',
-  delta = null,
-  hint = null,
-  variant = 'default',
-  compact = false,
-  className = '',
-  children,
+  value,
+  delta,               // número (positivo/negativo) ou string
+  compact = false,     // oculta o corpo para padronizar altura
+  variant,
+  className = "",
+  children,            // conteúdo extra (quando não compacto)
+  onOpen,              // se passado, card fica “clicável” para abrir modal
 }) {
-  const up = typeof delta === 'number' ? delta >= 0 : null;
-  const displayValue = Number.isFinite(value) ? value.toLocaleString('pt-BR') : value;
-  const deltaLabel = up !== null ? `${Math.abs(delta).toFixed(2)}%` : null;
+  const hasDelta = delta !== null && delta !== undefined && delta !== "";
+  const isDown = typeof delta === "number" ? delta < 0 : String(delta).trim().startsWith("-");
+  const deltaText =
+    typeof delta === "number" ? `${Math.abs(delta).toFixed(1)}%` : String(delta);
 
-  const classes = ['card', 'metric-card'];
-  const isCompact = compact || variant === 'compact';
-  if (variant && variant !== 'default') {
-    classes.push(`metric-card--${variant}`);
-  }
-  if (isCompact) {
-    classes.push('metric-card--compact');
-  }
-  if (className) {
-    classes.push(...className.split(' ').filter(Boolean));
-  }
+  const isCompact = compact || variant === "compact";
+  const cardClasses = ["metric-card"];
+  if (isCompact) cardClasses.push("metric-card--compact");
+  if (className) cardClasses.push(className);
 
-  return (
-    <div className={classes.join(' ')} style={{ overflow: 'hidden' }}>
-      <div className="metric-card__header">
-        <h4
-          className="metric-card__title"
-          style={{ fontFamily: 'var(--font-sans, "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto)', letterSpacing: '.1px' }}
-        >
-          {title}
-        </h4>
-        {hint && <span className="metric-card__hint muted">{hint}</span>}
-      </div>
-      <div className="metric-card__value-row">
-        <span className="metric-card__value value">{displayValue}</span>
-        {deltaLabel && (
-          <span className={`metric-card__delta${up ? '' : ' metric-card__delta--down'}`}>
-            {up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-            {deltaLabel}
+  const Cmp = (
+    <div className={cardClasses.join(" ")}>
+      <div className="metric-card__title">{title}</div>
+      <div style={{display:"flex", alignItems:"center", gap:8}}>
+        <div className="metric-card__value">{value ?? "-"}</div>
+        {hasDelta && (
+          <span className={`metric-card__delta ${isDown ? "metric-card__delta--down":""}`}>
+            {deltaText}
           </span>
         )}
       </div>
-      {children ? <div className="metric-card__body">{children}</div> : null}
+      {!isCompact && children && (
+        <div className="metric-card__body">{children}</div>
+      )}
     </div>
   );
-}
+
+  if (onOpen) {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        style={{all:"unset", cursor:"pointer", display:"block"}}
+        aria-label={`Abrir detalhes de ${title}`}
+      >
+        {Cmp}
+      </button>
+    );
+  }
+  return Cmp;
+});

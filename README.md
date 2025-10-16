@@ -52,7 +52,7 @@ pip install -r requirements.txt
 
 Copiar .env.example → .env e preencher:
 
-META_GRAPH_VERSION=v19.0
+META_GRAPH_VERSION=v23.0
 META_SYSTEM_USER_TOKEN=SEU_TOKEN
 META_APP_SECRET=SEU_SECRET
 META_PAGE_ID=123456789

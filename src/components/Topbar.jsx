@@ -48,7 +48,7 @@ export default function Topbar({
           )}
           <div className="action-bar__title">
             <h1>{title}</h1>
-            <span className="action-bar__breadcrumb">InÌcio &gt; {title}</span>
+            <span className="action-bar__breadcrumb">In√≠cio &gt; {title}</span>
           </div>
         </div>
 
@@ -77,7 +77,7 @@ export default function Topbar({
               type="button"
               className="action-bar__icon-btn action-bar__icon-btn--badge"
               onClick={() => setShowNotifications((prev) => !prev)}
-              aria-label="NotificaÁıes"
+              aria-label="Notifica√ß√µes"
             >
               <Bell size={18} />
               <span className="action-bar__badge">3</span>
@@ -85,7 +85,7 @@ export default function Topbar({
             {showNotifications && (
               <div className="action-bar__dropdown">
                 <div className="action-bar__dropdown-header">
-                  <h3>NotificaÁıes</h3>
+                  <h3>Notifica√ß√µes</h3>
                   <button type="button" onClick={() => setShowNotifications(false)} className="action-bar__close-btn">
                     <X size={14} />
                   </button>
@@ -95,21 +95,21 @@ export default function Topbar({
                     <div className="notification-item__dot" />
                     <div className="notification-item__content">
                       <p className="notification-item__title">Novo post com alto engajamento</p>
-                      <span className="notification-item__time">5 min atr·s</span>
+                      <span className="notification-item__time">5 min atr√°s</span>
                     </div>
                   </div>
                   <div className="notification-item">
                     <div className="notification-item__dot" />
                     <div className="notification-item__content">
                       <p className="notification-item__title">Meta de alcance atingida</p>
-                      <span className="notification-item__time">1 hora atr·s</span>
+                      <span className="notification-item__time">1 hora atr√°s</span>
                     </div>
                   </div>
                   <div className="notification-item">
                     <div className="notification-item__dot notification-item__dot--read" />
                     <div className="notification-item__content">
-                      <p className="notification-item__title">RelatÛrio mensal disponÌvel</p>
-                      <span className="notification-item__time">2 horas atr·s</span>
+                      <p className="notification-item__title">Relat√≥rio mensal dispon√≠vel</p>
+                      <span className="notification-item__time">2 horas atr√°s</span>
                     </div>
                   </div>
                 </div>

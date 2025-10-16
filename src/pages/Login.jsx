@@ -55,7 +55,7 @@ export default function Login() {
   return (
     <div className="auth-screen">
       <div className="auth-card">
-        <div className="auth-brand">DASHBOARD SOCIAL</div>
+        <div className="auth-brand">Monitor MSL</div>
         <h1 className="auth-heading">Login</h1>
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-label" htmlFor="email">E-mail</label>
@@ -63,7 +63,7 @@ export default function Login() {
             id="email"
             type="email"
             autoComplete="email"
-            placeholder="Digite seu email"
+            placeholder="Digite seu e-mail"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required

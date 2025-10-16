@@ -1,20 +1,24 @@
 // pages/FacebookDashboard.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { ArrowDown, ArrowUp, Heart, MessageCircle, Share2 } from "lucide-react";
+import { Heart, MessageCircle, Share2 } from "lucide-react";
 import {
   ResponsiveContainer,
-  Cell,
-  Tooltip,
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
+  CartesianGrid,
   XAxis,
   YAxis,
-  CartesianGrid,
-  LineChart,
-  Line
+  Tooltip,
+  Legend,
+  BarChart,
+  Bar,
+  Cell,
+  PieChart,
+  Pie
 } from "recharts";
 import Topbar from "../components/Topbar";
+import Modal from "../components/Modal";
 import MetricCard from "../components/MetricCard";
 import Section from "../components/Section";
 import DateRangePicker from "../components/DateRangePicker";
@@ -99,30 +103,30 @@ const formatSignedNumber = (value) => {
 const FACEBOOK_CARD_CONFIG = [
   {
     key: "reach",
-    title: "Alcance orgânico",
-    hint: "Pessoas alcancadas no período.",
+    title: "Alcance org�nico",
+    hint: "Pessoas alcancadas no per�odo.",
     group: "primary",
     order: 1,
   },
   {
     key: "post_engagement_total",
     title: "Engajamento total",
-    hint: "Reações, comentários e compartilhamentos em posts.",
+    hint: "Rea��es, coment�rios e compartilhamentos em posts.",
     type: "engagement",
     group: "primary",
     order: 2,
   },
   {
     key: "page_views",
-    title: "Visualizações da página",
-    hint: "Visualizações registradas na página.",
+    title: "Visualiza��es da p�gina",
+    hint: "Visualiza��es registradas na p�gina.",
     group: "primary",
     order: 3,
   },
   {
     key: "content_activity",
-    title: "Interações totais",
-    hint: "Somatório de cliques, reações e engajamentos.",
+    title: "Intera��es totais",
+    hint: "Somat�rio de cliques, rea��es e engajamentos.",
     group: "engagement",
     order: 1,
     hidden: true,
@@ -130,7 +134,7 @@ const FACEBOOK_CARD_CONFIG = [
   {
     key: "cta_clicks",
     title: "Cliques em CTA",
-    hint: "Cliques em botões de call-to-action.",
+    hint: "Cliques em bot�es de call-to-action.",
     group: "engagement",
     order: 2,
     hidden: true,
@@ -145,28 +149,28 @@ const FACEBOOK_CARD_CONFIG = [
   },
   {
     key: "followers_total",
-    title: "Seguidores da página",
-    hint: "Total de seguidores no final do período selecionado.",
+    title: "Seguidores da p�gina",
+    hint: "Total de seguidores no final do per�odo selecionado.",
     group: "audience",
     order: 0,
   },
   {
     key: "followers_gained",
     title: "Novos seguidores",
-    hint: "Seguidores ganhos no período.",
+    hint: "Seguidores ganhos no per�odo.",
     group: "audience",
     order: 1,
   },
   {
     key: "followers_lost",
     title: "Deixaram de seguir",
-    hint: "Seguidores perdidos no período.",
+    hint: "Seguidores perdidos no per�odo.",
     group: "audience",
     order: 2,
   },
   {
     key: "net_followers",
-    title: "Crescimento líquido",
+    title: "Crescimento l�quido",
     hint: "Saldo entre ganhos e perdas de seguidores.",
     group: "audience",
     order: 3,
@@ -174,7 +178,7 @@ const FACEBOOK_CARD_CONFIG = [
   {
     key: "video_watch_time_total",
     title: "Tempo total assistido",
-    hint: "Tempo acumulado de visualização dos vídeos.",
+    hint: "Tempo acumulado de visualiza��o dos v�deos.",
     format: "duration",
     group: "video",
     order: 1,
@@ -182,14 +186,14 @@ const FACEBOOK_CARD_CONFIG = [
   {
     key: "video_views_total",
     title: "Video views",
-    hint: "Total de visualizações de vídeos no período.",
+    hint: "Total de visualiza��es de v�deos no per�odo.",
     group: "video",
     order: 2,
   },
   {
     key: "video_engagement_total",
-    title: "Vídeos (reações, comentários, compartilhamentos)",
-    hint: "Engajamento gerado pelos vídeos: reações, comentários e compartilhamentos.",
+    title: "V�deos (rea��es, coment�rios, compartilhamentos)",
+    hint: "Engajamento gerado pelos v�deos: rea��es, coment�rios e compartilhamentos.",
     type: "engagement",
     group: "video",
     order: 3,
@@ -267,6 +271,7 @@ export default function FacebookDashboard() {
   const [cacheMeta, setCacheMeta] = useState({});
   const [refreshing, setRefreshing] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [openEngagementModal, setOpenEngagementModal] = useState(false);
 
   useEffect(() => {
     setCacheMeta({});
@@ -290,7 +295,7 @@ export default function FacebookDashboard() {
       setPageMetrics([]);
       setPageOverview({});
       setNetFollowersSeries([]);
-      setPageError("Página do Facebook não configurada.");
+      setPageError("P�gina do Facebook n�o configurada.");
       return;
     }
 
@@ -310,7 +315,7 @@ export default function FacebookDashboard() {
         const raw = await response.text();
         const json = safeParseJson(raw) || {};
         if (!response.ok) {
-          throw new Error(describeApiError(json, "Falha ao carregar métricas de página."));
+          throw new Error(describeApiError(json, "Falha ao carregar m�tricas de p�gina."));
         }
         setPageMetrics(json.metrics || []);
         setPageOverview(json.page_overview || {});
@@ -327,7 +332,7 @@ export default function FacebookDashboard() {
           setPageMetrics([]);
           setPageOverview({});
           setNetFollowersSeries([]);
-          setPageError(err.message || "Não foi possível carregar as métricas de página.");
+          setPageError(err.message || "N�o foi poss�vel carregar as m�tricas de p�gina.");
         }
       } finally {
         setLoadingPage(false);
@@ -351,7 +356,7 @@ export default function FacebookDashboard() {
         demographics: {},
         ads_breakdown: [],
       });
-      setAdsError("Conta de anúncios não configurada.");
+      setAdsError("Conta de an�ncios n�o configurada.");
       return;
     }
 
@@ -374,7 +379,7 @@ export default function FacebookDashboard() {
         const raw = await response.text();
         const json = safeParseJson(raw) || {};
         if (!response.ok) {
-          throw new Error(describeApiError(json, "Falha ao carregar métricas de anúncios."));
+          throw new Error(describeApiError(json, "Falha ao carregar m�tricas de an�ncios."));
         }
         setAdsData({
           best_ad: null,
@@ -394,7 +399,7 @@ export default function FacebookDashboard() {
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error(err);
-          setAdsError(err.message || "Não foi possível carregar os destaques de anúncios.");
+          setAdsError(err.message || "N�o foi poss�vel carregar os destaques de an�ncios.");
         }
       } finally {
         setLoadingAds(false);
@@ -456,7 +461,7 @@ export default function FacebookDashboard() {
       setRefreshToken(Date.now());
     } catch (err) {
       console.error('Erro ao atualizar dados manualmente', err);
-      setPageError(err?.message || 'Não foi possível atualizar os dados.');
+      setPageError(err?.message || 'N�o foi poss�vel atualizar os dados.');
     } finally {
       setRefreshing(false);
     }
@@ -486,8 +491,8 @@ export default function FacebookDashboard() {
   const renderEngagementBreakdown = (metric) => {
     const breakdown = metric?.breakdown || {};
     const items = [
-      { key: "reactions", label: "Reações", icon: Heart },
-      { key: "comments", label: "Comentários", icon: MessageCircle },
+      { key: "reactions", label: "Rea��es", icon: Heart },
+      { key: "comments", label: "Coment�rios", icon: MessageCircle },
       { key: "shares", label: "Compart.", icon: Share2 },
     ]
       .map((item) => ({ ...item, value: Number(breakdown[item.key] || 0) }))
@@ -509,37 +514,26 @@ export default function FacebookDashboard() {
     );
   };
 
-  // Unused variables - kept for potential future use
-  // const cardGroups = useMemo(() => {
-  //   const groups = {};
-  //   cardItems.forEach((item) => {
-  //     const groupKey = item.group || "other";
-  //     if (!groups[groupKey]) groups[groupKey] = [];
-  //     groups[groupKey].push(item);
-  //   });
-  //   Object.values(groups).forEach((items) => {
-  //     items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  //   });
-  //   return groups;
-  // }, [cardItems]);
+  const cardGroups = useMemo(() => {
+    const groups = {};
+    FACEBOOK_CARD_CONFIG.forEach((config) => {
+      const metric = pageMetricsByKey[config.key];
+      const groupKey = config.group || "other";
+      if (!groups[groupKey]) groups[groupKey] = [];
+      groups[groupKey].push({
+        ...config,
+        metric,
+        value: loadingPage ? "..." : formatMetricValue(metric, config),
+        delta: loadingPage ? null : metric?.deltaPct ?? null,
+      });
+    });
+    Object.values(groups).forEach((items) => {
+      items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    });
+    return groups;
+  }, [loadingPage, pageMetricsByKey]);
 
-  // const primaryCards = cardGroups.primary || [];
-
-  // const supportingGroups = useMemo(() => {
-  //   const baseGroups = [
-  //     { key: "audience", title: "Audiência", items: cardGroups.audience || [] },
-  //     { key: "engagement", title: "Interações", items: cardGroups.engagement || [] },
-  //     { key: "video", title: "Vídeos", items: cardGroups.video || [] },
-  //   ];
-  //   const extraGroups = Object.entries(cardGroups)
-  //     .filter(([key]) => !["primary", "audience", "engagement", "video"].includes(key))
-  //     .map(([key, items]) => ({
-  //       key,
-  //       title: key === "other" ? "Outros" : key.charAt(0).toUpperCase() + key.slice(1),
-  //       items,
-  //     }));
-  //   return [...baseGroups, ...extraGroups].filter((group) => group.items.length > 0);
-  // }, [cardGroups]);
+  const primaryCards = cardGroups.primary || [];
 
   const netFollowersTrend = useMemo(() => {
     if (!Array.isArray(netFollowersSeries)) return [];
@@ -607,120 +601,133 @@ export default function FacebookDashboard() {
       .filter(Boolean);
   }, [pageOverview]);
 
-  const hasDailyEngagement = dailyEngagementData.some(
-    (point) =>
-      (point?.total ?? 0) > 0 ||
-      (point?.reactions ?? 0) > 0 ||
-      (point?.comments ?? 0) > 0 ||
-      (point?.shares ?? 0) > 0,
+  // Barras empilhadas por tipo de engajamento (reactions/comments/shares)
+  const engagementStackedData = useMemo(() => {
+    const metric = pageMetricsByKey.post_engagement_total;
+    if (metric?.daily_series) {
+      return metric.daily_series
+        .map((point) => {
+          const date = point?.date;
+          if (!date) return null;
+          return {
+            date,
+            label: formatDateLabel(date),
+            reactions: Number(point?.reactions || 0),
+            comments: Number(point?.comments || 0),
+            shares: Number(point?.shares || 0),
+          };
+        })
+        .filter(Boolean);
+    }
+    return dailyEngagementData.map(({ date, label, reactions, comments, shares }) => ({
+      date,
+      label,
+      reactions,
+      comments,
+      shares,
+    }));
+  }, [dailyEngagementData, pageMetricsByKey]);
+  const hasEngagementStacked = engagementStackedData.some(
+    (item) =>
+      (item?.reactions ?? 0) > 0 ||
+      (item?.comments ?? 0) > 0 ||
+      (item?.shares ?? 0) > 0,
   );
 
-  // ======= MÃ©tricas de ADS com porcentagens e setas =======
-  const adsTotalsCards = useMemo(() => {
-    const totals = adsData.totals || {};
-    return [
+  const filteredOrganicVsPaidData = useMemo(() => {
+    const safeNumber = (value) => {
+      const num = Number(value);
+      return Number.isFinite(num) ? num : 0;
+    };
+
+    const totals = adsData?.totals || {};
+    const base = [
       {
-        key: "spend",
-        title: "Investimento",
-        value: formatCurrency(Number(totals.spend)),
-        change: totals.spend_change_pct
+        name: "Alcance",
+        organico: safeNumber(pageMetricsByKey.reach?.value),
+        pago: safeNumber(totals.reach),
       },
       {
-        key: "impressions",
-        title: "Impressões",
-        value: formatNumber(Number(totals.impressions)),
-        change: totals.impressions_change_pct
+        name: "Engajamento",
+        organico: safeNumber(pageMetricsByKey.post_engagement_total?.value),
+        pago: safeNumber(totals.engagement ?? totals.post_engagement ?? totals.clicks),
       },
       {
-        key: "reach",
-        title: "Alcance",
-        value: formatNumber(Number(totals.reach)),
-        change: totals.reach_change_pct
-      },
-      {
-        key: "clicks",
-        title: "Cliques",
-        value: formatNumber(Number(totals.clicks)),
-        change: totals.clicks_change_pct
+        name: "Cliques",
+        organico: safeNumber(pageMetricsByKey.post_clicks?.value),
+        pago: safeNumber(totals.clicks),
       },
     ];
-  }, [adsData.totals]);
 
-  const adsAverageCards = useMemo(() => {
-    const averages = adsData.averages || {};
-    return [
-      {
-        key: "cpc",
-        title: "CPC médio",
-        value: formatCurrency(Number(averages.cpc)),
-        change: averages.cpc_change_pct
-      },
-      {
-        key: "cpm",
-        title: "CPM médio",
-        value: formatCurrency(Number(averages.cpm)),
-        change: averages.cpm_change_pct
-      },
-      {
-        key: "ctr",
-        title: "CTR médio",
-        value: formatPercent(Number(averages.ctr)),
-        change: averages.ctr_change_pct
-      },
-      {
-        key: "frequency",
-        title: "Frequência",
-        value: Number.isFinite(averages.frequency) ? averages.frequency.toFixed(2) : "-",
-        change: averages.frequency_change_pct
-      },
-    ];
-  }, [adsData.averages]);
+    const dataset = base
+      .map((item) => ({
+        name: item.name,
+        Organico: Math.max(0, item.organico || 0),
+        Pago: Math.max(0, item.pago || 0),
+      }))
+      .filter((item) => item.Organico > 0 || item.Pago > 0);
 
-  const renderChangeIndicator = (change) => {
-    if (!Number.isFinite(change)) return null;
-    const isPositive = change >= 0;
-    return (
-      <div style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '4px',
-        fontSize: '12px',
-        fontWeight: '600',
-        color: isPositive ? 'var(--success-bright)' : 'var(--danger)',
-        marginTop: '4px'
-      }}>
-        {isPositive ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-        {Math.abs(change).toFixed(1)}%
-      </div>
-    );
-  };
+    if (performanceScope === "organic") {
+      return dataset
+        .filter((item) => item.Organico > 0)
+        .map((item) => ({ ...item, Pago: 0 }));
+    }
+    if (performanceScope === "paid") {
+      return dataset
+        .filter((item) => item.Pago > 0)
+        .map((item) => ({ ...item, Organico: 0 }));
+    }
+    return dataset;
+  }, [adsData?.totals, pageMetricsByKey, performanceScope]);
+  const hasFilteredOrgVsPaidData = filteredOrganicVsPaidData.length > 0;
 
-  const bestAd = adsData.best_ad;
+  const donutComposition = useMemo(() => {
+    const primaryItems = cardGroups.primary || [];
+    const reachVal = toNumber(primaryItems.find((item) => item.key === "reach")?.metric?.value) ?? 0;
+    const viewsVal = toNumber(primaryItems.find((item) => item.key === "page_views")?.metric?.value) ?? 0;
+    const engageVal = toNumber(primaryItems.find((item) => item.key === "post_engagement_total")?.metric?.value) ?? 0;
 
+    const items = [
+      { key: "reach", label: "Alcance", value: reachVal, color: "#00FFD3" },
+      { key: "views", label: "Visualizacoes", value: viewsVal, color: "#22A3FF" },
+      { key: "eng", label: "Engajamento", value: engageVal, color: "#9B8CFF" },
+    ].filter((item) => item.value > 0);
+
+    const total = items.reduce((sum, item) => sum + item.value, 0);
+    return { items, total };
+  }, [cardGroups]);
+
+  const adsTotals = adsData?.totals || {};
+  const adsAverages = adsData?.averages || {};
+  const frequencyValue = toNumber(adsAverages.frequency);
+  const frequencyDisplay = frequencyValue != null ? frequencyValue.toFixed(2) : "-";
+  const frequencyDelta = toNumber(adsAverages.frequency_change_pct);
   const volumeBarData = useMemo(() => {
     const totals = adsData?.totals || {};
     return [
-      { name: "Impressões", value: Number(totals.impressions) || 0, color: "var(--chart-1)" },
+      { name: "Impressoes", value: Number(totals.impressions) || 0, color: "var(--chart-1)" },
       { name: "Alcance", value: Number(totals.reach) || 0, color: "var(--chart-2)" },
       { name: "Cliques", value: Number(totals.clicks) || 0, color: "var(--chart-3)" },
     ];
   }, [adsData?.totals]);
-
   const hasVolumeData = volumeBarData.some((item) => item.value > 0);
 
-  const bestAdMetrics = useMemo(() => {
-    if (!bestAd) return [];
-    return [
-      { label: "CTR", value: formatPercent(Number(bestAd.ctr)) },
-      { label: "Impressões", value: formatNumber(Number(bestAd.impressions)) },
-      { label: "Cliques", value: formatNumber(Number(bestAd.clicks)) },
-      { label: "Investimento", value: formatCurrency(Number(bestAd.spend)) },
-    ];
-  }, [bestAd]);
+  const adsActionsData = useMemo(() => {
+    const list = Array.isArray(adsData?.actions) ? adsData.actions : [];
+    const map = new Map();
+    list.forEach((action) => {
+      const key = String(action?.action_type || "").replace(/_/g, " ").trim();
+      const value = Number(action?.value || 0);
+      if (!key || !Number.isFinite(value)) return;
+      map.set(key, (map.get(key) || 0) + value);
+    });
+    return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
+  }, [adsData?.actions]);
+  const hasAdsActions = adsActionsData.some((item) => (item?.value ?? 0) > 0);
 
   const filterOptions = [
     { value: "all", label: "Tudo" },
-    { value: "organic", label: "Orgânico" },
+    { value: "organic", label: "Org�nico" },
     { value: "paid", label: "Pago" },
   ];
 
@@ -754,38 +761,107 @@ export default function FacebookDashboard() {
 
         {showOrganicSections && (
           <>
-            {/* ====== TOP CARDS (4) ====== */}
-            <Section title="Visão rápida" description="Principais KPIs do período.">
-              <div className="dash-grid dash-4up">
-                {['reach','post_engagement_total','page_views','net_followers'].map((k) => {
-                  const cfg = FACEBOOK_CARD_CONFIG.find(c => c.key === k);
-                  const metric = pageMetricsByKey[k];
-                  if (!cfg) return null;
-                  return (
-                    <div className="dash-card" key={k}>
-                      <MetricCard
-                        title={cfg.title}
-                        value={loadingPage ? '...' : formatMetricValue(metric, cfg)}
-                        delta={loadingPage ? null : metric?.deltaPct ?? null}
-                        hint={cfg.hint}
-                        variant="compact"
-                      >
-                        {!loadingPage && cfg.type === 'engagement' ? renderEngagementBreakdown(metric) : null}
-                      </MetricCard>
-                    </div>
-                  );
-                })}
+            <Section title="Pagina do Facebook" description="">
+              {/* === 6 KPIs compactos em 2 fileiras === */}
+              <div className="dashboard-kpis">
+                {/* 1. Alcance organico */}
+                <MetricCard
+                  title="Alcance organico"
+                  value={primaryCards.find(c=>c.key==="reach")?.value}
+                  delta={primaryCards.find(c=>c.key==="reach")?.delta}
+                  compact
+                />
+
+                {/* 2. Engajamento total (abre modal com detalhes) */}
+                <MetricCard
+                  title="Engajamento total"
+                  value={primaryCards.find(c=>c.key==="post_engagement_total")?.value}
+                  delta={primaryCards.find(c=>c.key==="post_engagement_total")?.delta}
+                  compact
+                  onOpen={()=>setOpenEngagementModal(true)}
+                />
+
+                {/* 3. Visualizacoes da pagina */}
+                <MetricCard
+                  title="Visualizacoes da pagina"
+                  value={primaryCards.find(c=>c.key==="page_views")?.value}
+                  delta={primaryCards.find(c=>c.key==="page_views")?.delta}
+                  compact
+                />
+
+                {/* 4. Crescimento liquido */}
+                <MetricCard
+                  title="Crescimento liquido"
+                  value={(cardGroups.audience||[]).find(c=>c.key==="net_followers")?.value}
+                  delta={(cardGroups.audience||[]).find(c=>c.key==="net_followers")?.delta}
+                  compact
+                />
+
+                {/* 5. Tempo total assistido */}
+                <MetricCard
+                  title="Tempo total assistido"
+                  value={(cardGroups.video||[]).find(c=>c.key==="video_watch_time_total")?.value}
+                  delta={(cardGroups.video||[]).find(c=>c.key==="video_watch_time_total")?.delta}
+                  compact
+                />
+
+                {/* 6. Novos seguidores */}
+                <MetricCard
+                  title="Novos seguidores"
+                  value={(cardGroups.audience||[]).find(c=>c.key==="followers_gained")?.value}
+                  delta={(cardGroups.audience||[]).find(c=>c.key==="followers_gained")?.delta}
+                  compact
+                />
+              </div>
+
+              {/* === Linha extra de KPIs compactos === */}
+              <div className="dashboard-kpis-extended">
+                <MetricCard
+                  title="Seguidores da pagina"
+                  value={(cardGroups.audience || []).find((c) => c.key === "followers_total")?.value}
+                  delta={(cardGroups.audience || []).find((c) => c.key === "followers_total")?.delta}
+                  compact
+                />
+                <MetricCard
+                  title="Deixaram de seguir"
+                  value={(cardGroups.audience || []).find((c) => c.key === "followers_lost")?.value}
+                  delta={(cardGroups.audience || []).find((c) => c.key === "followers_lost")?.delta}
+                  compact
+                />
+                <MetricCard
+                  title="Video views"
+                  value={(cardGroups.video || []).find((c) => c.key === "video_views_total")?.value}
+                  delta={(cardGroups.video || []).find((c) => c.key === "video_views_total")?.delta}
+                  compact
+                />
+                <MetricCard
+                  title="Video engajamento"
+                  value={(cardGroups.video || []).find((c) => c.key === "video_engagement_total")?.value}
+                  delta={(cardGroups.video || []).find((c) => c.key === "video_engagement_total")?.delta}
+                  compact
+                />
+                <MetricCard
+                  title="Cliques em posts"
+                  value={(cardGroups.engagement || []).find((c) => c.key === "post_clicks")?.value}
+                  delta={(cardGroups.engagement || []).find((c) => c.key === "post_clicks")?.delta}
+                  compact
+                />
+                <MetricCard
+                  title="Cliques no CTA"
+                  value={(cardGroups.engagement || []).find((c) => c.key === "cta_clicks")?.value}
+                  delta={(cardGroups.engagement || []).find((c) => c.key === "cta_clicks")?.delta}
+                  compact
+                />
               </div>
             </Section>
 
-            {/* ====== CHARTS ROW (2) ====== */}
-            <Section title="Tendências" description="Evolução diária no período.">
-              <div className="dash-grid dash-2col">
-                {/* Chart 1 — Crescimento líquido (seguidores) */}
-                <div className="dash-chart">
+            <Section title="" description="">
+              <div className="dashboard-charts">
+                {/* Esquerda: Crescimento liquido (seguidores) */}
+                <div className="chart-card chart-card--sm">
                   <div className="fb-line-card__header" style={{marginBottom:12}}>
-                    <h3>Crescimento líquido</h3>
-                    <p className="muted">Saldo diário de seguidores</p>
+                    <h3>Crescimento liquido</h3>
+                    <p className="muted">Saldo diario de seguidores</p>
                   </div>
                   {loadingPage ? (
                     <div className="chart-card__empty">Carregando dados...</div>
@@ -796,13 +872,20 @@ export default function FacebookDashboard() {
                         <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
                         <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={formatShortNumber} width={64} />
                         <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#f7fafc',
+                            color: '#0f1720',
+                            border: '1px solid #e3e8ef',
+                            borderRadius: '10px',
+                            boxShadow: '0 6px 20px rgba(0,0,0,.25)'
+                          }}
                           labelFormatter={(label, payload) => {
                             const rawDate = payload && payload[0]?.payload?.date;
                             return rawDate ? formatDateFull(rawDate) : label;
                           }}
                           formatter={(value, name) => {
                             const numeric = Number(value);
-                            if (name === 'net') return [formatSignedNumber(numeric), 'Líquido'];
+                            if (name === 'net') return [formatSignedNumber(numeric), 'Liquido'];
                             return [formatNumber(Number(numeric)), 'Acumulado'];
                           }}
                         />
@@ -811,108 +894,227 @@ export default function FacebookDashboard() {
                       </LineChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="chart-card__empty">Sem dados suficientes para o período.</div>
+                    <div className="chart-card__empty">Sem dados suficientes para o periodo.</div>
                   )}
                 </div>
 
-                {/* Chart 2 — Evolução do engajamento diário */}
-                <div className="dash-chart">
-                  <div className="fb-insight-card__header" style={{marginBottom:12}}>
-                    <h3>Evolução do engajamento</h3>
-                    <span className="muted">Reações + comentários + compartilhamentos</span>
-                  </div>
-                  {loadingPage ? (
-                    <div className="chart-card__empty">Carregando evolução...</div>
-                  ) : hasDailyEngagement ? (
+                {/* Direita: Comparativo organico vs pago */}
+                <div className="chart-card chart-card--sm">
+                  <h3>Organico x Pago</h3>
+                  <p>Comparativo de alcance e engajamento/cliques</p>
+                  {(loadingPage || loadingAds) ? (
+                    <div className="chart-card__empty">Carregando...</div>
+                  ) : hasFilteredOrgVsPaidData ? (
                     <ResponsiveContainer width="100%" height={260}>
-                      <LineChart data={dailyEngagementData} margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
-                        <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-                        <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={formatShortNumber} width={64} />
+                      <BarChart data={filteredOrganicVsPaidData} layout="vertical" margin={{ left: 24, right: 24, bottom: 12 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" horizontal={false} />
+                        <XAxis type="number" tickFormatter={formatShortNumber} stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                        <YAxis type="category" dataKey="name" width={140} stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
                         <Tooltip
-                          labelFormatter={(label, payload) => {
-                            const rawDate = payload && payload[0]?.payload?.date;
-                            return rawDate ? formatDateFull(rawDate) : label;
+                          contentStyle={{
+                            backgroundColor: '#f7fafc',
+                            color: '#0f1720',
+                            border: '1px solid #e3e8ef',
+                            borderRadius: '10px',
+                            boxShadow: '0 6px 20px rgba(0,0,0,.25)'
                           }}
-                          formatter={(value, name) => {
-                            const labels = { total: 'Engajamento total', reactions: 'Reações', comments: 'Comentários', shares: 'Compartilhamentos' };
-                            return [formatNumber(Number(value)), labels[name] || name];
-                          }}
+                          formatter={(value) => formatNumber(Number(value))}
                         />
-                        <Line type="monotone" dataKey="total" stroke="#06b6d4" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-                      </LineChart>
+                        <Legend />
+                        <Bar dataKey="Organico" fill="#00FFD3" radius={[0, 12, 12, 0]} />
+                        <Bar dataKey="Pago" fill="#6aa7ff" radius={[0, 12, 12, 0]} />
+                      </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="chart-card__empty">Sem dados suficientes para exibir a evolução.</div>
+                    <div className="chart-card__empty">Sem dados suficientes.</div>
+                  )}
+                </div>
+
+                <div className="chart-card">
+                  <div className="fb-line-card__header" style={{marginBottom:12}}>
+                    <h3>Composicao de resultados</h3>
+                    <span className="muted">Distribuicao entre alcance, visualizacoes e engajamento.</span>
+                  </div>
+                  {donutComposition.items.length ? (
+                    <div className="fb-donut-card__chart">
+                      <ResponsiveContainer width="100%" height={240}>
+                        <PieChart>
+                          <Pie
+                            data={donutComposition.items}
+                            dataKey="value"
+                            nameKey="label"
+                            innerRadius={60}
+                            outerRadius={90}
+                            stroke="none"
+                            isAnimationActive={false}
+                          >
+                            {donutComposition.items.map((item) => (
+                              <Cell key={item.key} fill={item.color} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="fb-donut-card__center">
+                        <strong>{donutComposition.total.toLocaleString("pt-BR")}</strong>
+                        <span>Total combinado</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="chart-card__empty">Sem dados suficientes no periodo.</div>
                   )}
                 </div>
               </div>
+
             </Section>
           </>
         )}
       {showPaidSections && (
-        <Section title="Desempenho de anúncios" description="Resumo das campanhas no período selecionado.">
+        <Section title="Trafego pago" className="ads-section">
           {adsError && <div className="alert alert--error">{adsError}</div>}
-          <div className="dash-grid dash-paid">
-            {/* Bloco A — Volume por indicador */}
-            <div className="dash-card dash-chart" style={{minHeight:320}}>
-              <div style={{marginBottom:12}}>
-                <h3>Volume por indicador</h3>
-                <p className="muted">Impressões, alcance e cliques</p>
+
+          <div className="dashboard-kpis">
+            <MetricCard
+              title="Investimento"
+              value={loadingAds ? "..." : formatCurrency(Number(adsTotals.spend))}
+              delta={loadingAds ? null : toNumber(adsTotals.spend_change_pct)}
+              compact
+            />
+            <MetricCard
+              title="Impressoes"
+              value={loadingAds ? "..." : formatNumber(Number(adsTotals.impressions))}
+              delta={loadingAds ? null : toNumber(adsTotals.impressions_change_pct)}
+              compact
+            />
+            <MetricCard
+              title="Alcance"
+              value={loadingAds ? "..." : formatNumber(Number(adsTotals.reach))}
+              delta={loadingAds ? null : toNumber(adsTotals.reach_change_pct)}
+              compact
+            />
+            <MetricCard
+              title="Cliques"
+              value={loadingAds ? "..." : formatNumber(Number(adsTotals.clicks))}
+              delta={loadingAds ? null : toNumber(adsTotals.clicks_change_pct)}
+              compact
+            />
+            <MetricCard
+              title="CPC medio"
+              value={loadingAds ? "..." : formatCurrency(Number(adsAverages.cpc))}
+              delta={loadingAds ? null : toNumber(adsAverages.cpc_change_pct)}
+              compact
+            />
+            <MetricCard
+              title="CPM medio"
+              value={loadingAds ? "..." : formatCurrency(Number(adsAverages.cpm))}
+              delta={loadingAds ? null : toNumber(adsAverages.cpm_change_pct)}
+              compact
+            />
+            <MetricCard
+              title="CTR medio"
+              value={loadingAds ? "..." : formatPercent(Number(adsAverages.ctr))}
+              delta={loadingAds ? null : toNumber(adsAverages.ctr_change_pct)}
+              compact
+            />
+            <MetricCard
+              title="Frequencia"
+              value={loadingAds ? "..." : frequencyDisplay}
+              delta={loadingAds ? null : frequencyDelta}
+              compact
+            />
+          </div>
+
+          <div className="charts-row charts-row--ads">
+            <div className="card chart-card">
+              <div>
+                <h3 className="chart-card__title">Volume por indicador</h3>
+                <p className="chart-card__subtitle">Impressoes, alcance e cliques</p>
               </div>
-              {loadingAds ? (
-                <div className="chart-card__empty">Carregando dados...</div>
-              ) : hasVolumeData ? (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={volumeBarData} layout="vertical" margin={{ left: 20, right: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" horizontal={false} />
-                    <XAxis type="number" tickFormatter={formatShortNumber} stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-                    <YAxis type="category" dataKey="name" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} width={110} />
-                    <Tooltip formatter={(value) => formatNumber(Number(value))} />
-                    <Bar dataKey="value" radius={[0,12,12,0]}>
-                      {volumeBarData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="chart-card__empty">Sem dados no período.</div>
-              )}
+              <div className="chart-card__viz">
+                {loadingAds ? (
+                  <div className="chart-card__empty">Carregando dados...</div>
+                ) : hasVolumeData ? (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={volumeBarData} layout="vertical" margin={{ left: 20, right: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" horizontal={false} />
+                      <XAxis type="number" tickFormatter={formatShortNumber} stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                      <YAxis type="category" dataKey="name" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} width={100} />
+                      <Tooltip
+                        formatter={(value) => formatNumber(Number(value))}
+                        contentStyle={{
+                          backgroundColor: "var(--panel)",
+                          border: "1px solid var(--stroke)",
+                          borderRadius: "12px",
+                          padding: "8px 12px",
+                          boxShadow: "var(--shadow-lg)",
+                          color: "var(--text-primary)",
+                        }}
+                        cursor={{ fill: "var(--panel-hover)" }}
+                      />
+                      <Bar dataKey="value" radius={[0, 12, 12, 0]}>
+                        {volumeBarData.map((entry, index) => (
+                          <Cell key={`volume-cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="chart-card__empty">Sem dados no periodo.</div>
+                )}
+              </div>
             </div>
 
-            {/* Bloco B — Melhor anúncio + KPIs médios (cards compactos) */}
-            <div className="dash-card" style={{display:'flex', flexDirection:'column', gap:12}}>
-              <div className="best-ad-card__header">
-                <span className="best-ad-card__title">Melhor anúncio</span>
-                <span className="best-ad-card__subtitle">{loadingAds ? '...' : (bestAd?.ad_name || 'Sem dados')}</span>
+            <div className="card chart-card">
+              <div>
+                <h3 className="chart-card__title">Acoes do anuncio</h3>
+                <p className="chart-card__subtitle">Cliques, visualizacoes e outras acoes</p>
               </div>
-
-              <div className="dash-grid dash-4up" style={{gridTemplateColumns:'repeat(4,minmax(0,1fr))'}}>
-                {adsTotalsCards.slice(0,2).map(({ key, title, value, change }) => (
-                  <MetricCard key={key} title={title} value={loadingAds ? '...' : value} variant="compact">
-                    {!loadingAds && renderChangeIndicator(change)}
-                  </MetricCard>
-                ))}
-                {adsAverageCards.slice(0,2).map(({ key, title, value, change }) => (
-                  <MetricCard key={key} title={title} value={loadingAds ? '...' : value} variant="compact">
-                    {!loadingAds && renderChangeIndicator(change)}
-                  </MetricCard>
-                ))}
+              <div className="chart-card__viz">
+                {loadingAds ? (
+                  <div className="chart-card__empty">Carregando dados...</div>
+                ) : hasAdsActions ? (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={adsActionsData} margin={{ left: 12, right: 12 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                      <XAxis dataKey="name" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                      <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={formatShortNumber} width={60} />
+                      <Tooltip
+                        formatter={(value) => formatNumber(Number(value))}
+                        contentStyle={{
+                          backgroundColor: "var(--panel)",
+                          border: "1px solid var(--stroke)",
+                          borderRadius: "12px",
+                          padding: "8px 12px",
+                          boxShadow: "var(--shadow-lg)",
+                          color: "var(--text-primary)",
+                        }}
+                        cursor={{ fill: "var(--panel-hover)" }}
+                      />
+                      <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="#6aa7ff">
+                        {adsActionsData.map((entry, index) => (
+                          <Cell key={`actions-cell-${index}`} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="chart-card__empty">Sem acoes suficientes no periodo.</div>
+                )}
               </div>
-
-              {!loadingAds && bestAd && (
-                <div className="best-ad-card__metrics">
-                  {bestAdMetrics.map(m => (
-                    <div key={m.label} className="best-ad-card__metric">
-                      <span className="best-ad-card__metric-label">{m.label}</span>
-                      <span className="best-ad-card__metric-value">{m.value}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </Section>
       )}
+      <Modal
+        open={openEngagementModal}
+        title="Detalhes - Engajamento total"
+        onClose={()=>setOpenEngagementModal(false)}
+      >
+        <div style={{display:"grid", gap:8}}>
+          {renderEngagementBreakdown(pageMetricsByKey.post_engagement_total) || (
+            <p className="muted">Sem detalhes para o periodo.</p>
+          )}
+        </div>
+      </Modal>
       </div>
     </>
   );
