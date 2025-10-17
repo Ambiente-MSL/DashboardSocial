@@ -1,4 +1,4 @@
-﻿// src/pages/InstagramDashboard.jsx
+// src/pages/InstagramDashboard.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Heart, MessageCircle, Play } from "lucide-react";
@@ -22,10 +22,11 @@ import Section from "../components/Section";
 import MetricCard from "../components/MetricCard";
 import InstagramRanking from "../components/InstagramRanking";
 import useQueryState from "../hooks/useQueryState";
-import { accounts } from "../data/accounts";
+import { useAccounts } from "../context/AccountsContext";
+import { DEFAULT_ACCOUNTS } from "../data/accounts";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
-const DEFAULT_ACCOUNT_ID = accounts[0]?.id || "";
+const FALLBACK_ACCOUNT_ID = DEFAULT_ACCOUNTS[0]?.id || "";
 
 const mapByKey = (items) => {
   const map = {};
@@ -117,11 +118,25 @@ function VideoThumbnail({ src, alt, className = "posts-table__video" }) {
 
 export default function InstagramDashboard() {
   const { sidebarOpen, toggleSidebar } = useOutletContext();
-  const [get] = useQueryState({ account: DEFAULT_ACCOUNT_ID });
-  const accountId = get("account") || DEFAULT_ACCOUNT_ID;
+  const { accounts } = useAccounts();
+  const availableAccounts = accounts.length ? accounts : DEFAULT_ACCOUNTS;
+  const [get, setQuery] = useQueryState({ account: FALLBACK_ACCOUNT_ID });
+  const queryAccountId = get("account");
+
+  useEffect(() => {
+    if (!availableAccounts.length) return;
+    if (!queryAccountId || !availableAccounts.some((account) => account.id === queryAccountId)) {
+      setQuery({ account: availableAccounts[0].id });
+    }
+  }, [availableAccounts, queryAccountId, setQuery]);
+
+  const accountId = queryAccountId && availableAccounts.some((account) => account.id === queryAccountId)
+    ? queryAccountId
+    : availableAccounts[0]?.id || "";
+
   const accountConfig = useMemo(
-    () => accounts.find((i) => i.id === accountId) || accounts[0],
-    [accountId],
+    () => availableAccounts.find((i) => i.id === accountId) || null,
+    [availableAccounts, accountId],
   );
 
   const since = get("since");
@@ -217,7 +232,7 @@ export default function InstagramDashboard() {
       { key: "comments", title: "Comentários", metric: commentsMetric },
       { key: "shares", title: "Compart.", metric: sharesMetric },
       { key: "saves", title: "Salvos", metric: savesMetric },
-      // Preencha com mais KPIs se o endpoint fornecer (alcance, impress�es etc.)
+      // Preencha com mais KPIs se o endpoint fornecer (alcance, impress?es etc.)
     ]),
     [interactionsMetric, interactionsValue, likesMetric, commentsMetric, sharesMetric, savesMetric],
   );
@@ -417,7 +432,7 @@ export default function InstagramDashboard() {
         </Section>
 
         {/* ====== ÚLTIMOS POSTS ====== */}
-        <Section title="Últimos posts" description="Acompanhe o desempenho recente.">
+        <Section title="=Últimos posts" description="Acompanhe o desempenho recente.">
           {postsError && <div className="alert alert--error">{postsError}</div>}
           {loadingPosts && posts.length === 0 ? (
             <div className="table-loading">Carregando posts...</div>
@@ -513,6 +528,10 @@ export default function InstagramDashboard() {
     </>
   );
 }
+
+
+
+
 
 
 

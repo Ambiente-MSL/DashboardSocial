@@ -1,4 +1,4 @@
-export const accounts = [
+export const DEFAULT_ACCOUNTS = [
   {
     id: "mauro",
     label: "Mauro Filho - Deputado",
@@ -7,3 +7,7 @@ export const accounts = [
     adAccountId: "act_653031036533289",
   },
 ];
+
+export function createDefaultAccounts() {
+  return DEFAULT_ACCOUNTS.map((account) => ({ ...account }));
+}
