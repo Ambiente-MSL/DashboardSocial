@@ -14,6 +14,12 @@ export default memo(function MetricCard({
   const isDown = typeof delta === "number" ? delta < 0 : String(delta).trim().startsWith("-");
   const deltaText =
     typeof delta === "number" ? `${Math.abs(delta).toFixed(1)}%` : String(delta);
+  const deltaClass = [
+    "metric-card__delta",
+    "delta-badge",
+    isDown ? "metric-card__delta--down" : "",
+    isDown ? "delta-badge--neg" : "delta-badge--pos",
+  ].filter(Boolean).join(" ");
 
   const isCompact = compact || variant === "compact";
   const cardClasses = ["metric-card"];
@@ -23,10 +29,10 @@ export default memo(function MetricCard({
   const Cmp = (
     <div className={cardClasses.join(" ")}>
       <div className="metric-card__title">{title}</div>
-      <div style={{display:"flex", alignItems:"center", gap:8}}>
+      <div className="metric-card__value-row">
         <div className="metric-card__value">{value ?? "-"}</div>
         {hasDelta && (
-          <span className={`metric-card__delta ${isDown ? "metric-card__delta--down":""}`}>
+          <span className={deltaClass}>
             {deltaText}
           </span>
         )}

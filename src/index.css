@@ -595,24 +595,45 @@ body.theme-light {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding: 18px 0;
+  gap: 16px;
+  padding: 12px 16px;
   border-radius: 0;
   background: var(--topbar-bg);
   color: var(--topbar-fg);
   border-bottom: 1px solid var(--topbar-border);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  backdrop-filter: saturate(140%) blur(6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.topbar--sticky {
   position: sticky;
   top: 0;
+  z-index: 40;
   left: 0;
   right: 0;
-  z-index: 60;
-  margin-left: -32px;
-  margin-right: -32px;
-  padding-left: 32px;
-  padding-right: 32px;
-  margin-bottom: 28px;
+  backdrop-filter: saturate(140%) blur(6px);
+}
+
+.topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex: 1 1 auto;
+}
+
+.topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex: 1 1 auto;
+}
+
+.topbar__filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .action-bar__left {
@@ -2537,15 +2558,7 @@ input:focus {
 
 
 
-.posts-table {
-
-  width: 100%;
-
-  border-collapse: collapse;
-
-  background: var(--panel);
-
-}
+.posts-table { width: 100%; border-collapse: collapse; background: var(--panel); table-layout: fixed; }
 
 
 
@@ -2619,28 +2632,18 @@ input:focus {
 
 
 
-.posts-table__preview {
-
-  position: relative;
-
-  width: 80px;
-
-}
+.posts-table__preview { position: relative; width: 80px; }
 
 
 
-.posts-table__preview img {
-
+.posts-table__preview img,
+.posts-table__video {
   width: 64px;
-
   height: 64px;
-
   object-fit: cover;
-
   border-radius: 12px;
-
   border: 1px solid var(--stroke);
-
+  background: var(--panel-hover);
 }
 
 
@@ -3403,28 +3406,6 @@ input:focus {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* Facebook overview enhancements */
 
 
@@ -4167,7 +4148,8 @@ input:focus {
   flex-shrink: 0;
 }
 
-.ig-dashboard .ig-ranking__preview img {
+.ig-dashboard .ig-ranking__preview img,
+.ig-dashboard .ig-ranking__video {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -4292,7 +4274,8 @@ input:focus {
   position: relative;
 }
 
-.ig-ranking__preview img {
+.ig-ranking__preview img,
+.ig-ranking__video {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -4786,7 +4769,16 @@ tbody
   color: var(--fg) !important;
 }
 .ig-dashboard .metric-card__value,
-.ig-dashboard .metric-card__delta{ color: var(--fg) !important; }
+.ig-dashboard .metric-card__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
 
 /* Ãrea do cabeÃ§alho secundÃ¡rio (indicador de perÃ­odo) mantÃ©m o look */
 .date-range-indicator{ margin-bottom: 16px; }
@@ -4794,6 +4786,236 @@ tbody
 /* Ajuste pequeno de tabela para ficar mais arejada em fundo claro */
 .posts-table thead{ background: var(--panel-hover); }
 .posts-table tbody tr:hover{ background: var(--panel-hover); }
+
+/* ========== Instagram Top Section (KPIs + Ranking Sidebar) ========== */
+.ig-top-section {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1400px) {
+  .ig-top-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ig-ranking-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ig-ranking-sidebar .ig-ranking {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Override para os KPIs do Instagram usarem 3 colunas */
+.ig-top-section .dashboard-kpis {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 1200px) {
+  .ig-top-section .dashboard-kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .ig-top-section .dashboard-kpis {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========== Instagram Ranking Card ========== */
+.ig-ranking-card {
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-md);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.ig-ranking-card__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--fg);
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+}
+
+.ig-ranking-card__subtitle {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 20px 0;
+}
+
+.ig-ranking-card__list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+/* Item individual do ranking */
+.ig-ranking-item {
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  background: var(--panel-hover);
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  transition: all 0.2s ease;
+}
+
+.ig-ranking-item:hover {
+  transform: translateX(4px);
+  border-color: var(--accent);
+  background: var(--panel);
+}
+
+/* Preview da imagem */
+.ig-ranking-item__preview {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+}
+
+.ig-ranking-item__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ig-ranking-item__no-preview {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Badge de posição */
+.ig-ranking-item__position {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  line-height: 1;
+}
+
+.ig-ranking-item__position--1 {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #1a1a1a;
+}
+
+.ig-ranking-item__position--2 {
+  background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
+  color: #1a1a1a;
+}
+
+.ig-ranking-item__position--3 {
+  background: linear-gradient(135deg, #cd7f32, #e8a87c);
+  color: #1a1a1a;
+}
+
+/* Ícone de vídeo */
+.ig-ranking-item__play {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  color: white;
+  background: rgba(0,0,0,0.75);
+  padding: 6px;
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
+}
+
+/* Conteúdo (métricas) */
+.ig-ranking-item__content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ig-ranking-item__stats {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.ig-ranking-item__stats span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ig-ranking-item__total {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Link para o post */
+.ig-ranking-item__link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  color: var(--muted);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.ig-ranking-item__link:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  transform: scale(1.1);
+}
+
+/* Estados de loading e vazio */
+.ig-ranking-loading,
+.ig-ranking-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  border: 2px dashed var(--stroke);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  background: var(--panel-hover);
+}
 
 /* (mantÃ©m todo o restante do seu CSS original) */
 
@@ -4837,68 +5059,6 @@ tbody
 
 /* Cards compactos no scrollable grid */
 
-/* ========== Charts Row ========== */
-.charts-row {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  margin-bottom: 24px;
-  padding: 0 16px 12px 16px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--accent) transparent;
-  position: relative;
-}
-
-.charts-row::-webkit-scrollbar {
-  height: 6px;
-}
-
-.charts-row::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 3px;
-}
-
-.charts-row::-webkit-scrollbar-thumb {
-  background: var(--accent);
-  border-radius: 3px;
-  transition: background var(--transition);
-}
-
-.charts-row::-webkit-scrollbar-thumb:hover {
-  background: var(--accent);
-}
-
-/* Indicador visual de scroll (seta) */
-.charts-row::after {
-  content: 'â€º';
-  position: absolute;
-  right: 24px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 2.5rem;
-  color: var(--accent);
-  opacity: 0.5;
-  pointer-events: none;
-  animation: scrollHint 2s ease-in-out infinite;
-  z-index: 10;
-}
-
-.chart-container {
-  flex: 0 0 auto;
-  min-width: 320px;
-  max-width: 400px;
-}
-
-.chart-container .card {
-  height: 100%;
-  padding: 16px !important;
-}
-
-.chart-container h3 {
-  font-size: 0.85rem !important;
-  margin-bottom: 8px !important;
-}
 
 /* ========== Estilos compactos para cards de grÃ¡ficos ========== */
 .fb-insight-card__header h3,
@@ -5185,12 +5345,17 @@ tbody
 .metric-card--compact .metric-card__body{ display:none; }
 
 /* delta (porcentagens) neutro */
-.metric-card__delta{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600;
-  color: var(--delta-up); background: rgba(255,255,255,.04);
+.metric-card__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
 }
-.metric-card__delta--down{ color: var(--delta-down); }
+.metric-card__delta--down { color: inherit; background: transparent; }
 
 /* grade dos graficos logo abaixo dos KPIs */
 .dashboard-charts{
@@ -5338,21 +5503,198 @@ tbody
   min-height: 260px;
 }
 
-.metric-card__delta{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:4px 8px;
-  border-radius:999px;
-  font-size:12px;
-  line-height:1;
-  font-weight:600;
-  background:#00C389;
-  color:#fff;
-  border:1px solid transparent;
+.metric-card__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
 }
 
-.metric-card__delta--down{
-  background:#E64A4A;
-  color:#fff;
+.metric-card__delta--down { color: inherit; background: transparent; }
+
+/* Instagram KPI grid aligning to Facebook layout */
+/* grade dos KPI (mesma do Facebook) */
+.kpi-section { margin-top: 16px; }
+.ig-kpis { margin-top: 16px; }
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(220px, 1fr));
+  gap: 16px;
 }
+.kpi-grid.kpi-grid--six {
+  margin-top: 12px;
+}
+@media (max-width: 1600px) {
+  .kpi-grid { grid-template-columns: repeat(4, minmax(220px, 1fr)); }
+}
+@media (max-width: 1200px) {
+  .kpi-grid { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+}
+
+/* Cards (MetricCard) – mesmo visual do Facebook */
+.metric-card {
+  background: var(--panel-elevated, #2a2f35);
+  border: 1px solid var(--stroke, #3a4046);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: var(--shadow-md);
+  transition: background .15s ease;
+}
+.metric-card--compact .metric-card__body { display: none; }
+.metric-card__title { color: var(--text-muted); }
+
+.delta-badge--up {
+  background: #0ea5e9;
+  color: #fff;
+  border-color: transparent;
+}
+.delta-badge--pos {
+  background: #16a34a;
+  color: #fff;
+  border-color: transparent;
+}
+.delta-badge--neg {
+  background: #b91c1c;
+  color: #fff;
+  border-color: transparent;
+}
+
+.ig-account-banner { margin-top: 12px; display:flex; align-items:center; gap:16px; }
+.profile-chip { display:flex; align-items:center; gap:12px; }
+.profile-chip__avatar {
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  object-fit:cover;
+  overflow:hidden;
+}
+.profile-chip__avatar--placeholder {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: var(--panel-hover);
+  color: var(--fg);
+  font-weight:600;
+  text-transform: uppercase;
+}
+.profile-chip__text strong { display:block; line-height:1.1; }
+.profile-chip__text span { font-size:12px; color:var(--text-muted); }
+
+
+/* Grade de graficos alinhada ao Facebook */
+.charts-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 16px;
+  margin-top: 18px;
+}
+.chart-card {
+  background: var(--panel-elevated, #2a2f35);
+  border: 1px solid var(--stroke, #3a4046);
+  border-radius: 16px;
+  min-height: 280px;
+  padding: 16px;
+  box-shadow: var(--shadow-md);
+}
+@media (max-width: 1400px) {
+  .charts-row { grid-template-columns: 1fr; }
+}
+
+.section,
+.fb-summary,
+.ig-wrapper,
+.any-outer-card-frame {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+
+
+
+
+.page-content {
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 8px;
+}
+
+.section {
+  margin-top: 16px;
+}
+
+.section__header {
+  margin-bottom: 12px;
+}
+
+
+.segmented {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(34, 39, 43, 0.85);
+  padding: 4px;
+  border-radius: 10px;
+}
+.segmented__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+.segmented__btn:hover {
+  color: var(--text-primary);
+}
+.segmented__btn.is-active {
+  background: rgba(14, 223, 204, 0.08);
+  border-color: #0edfcc;
+  color: #0edfcc;
+}
+
+.delta-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid transparent;
+}
+
+
+
+.posts-table__col--date { width: 140px; }
+.posts-table__col--preview { width: 110px; }
+.posts-table__col--caption { width: auto; }
+.posts-table__col--metric { width: 130px; }
+
+.posts-table__caption {
+  max-width: 100%;
+  color: var(--fg);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  white-space: normal;
+  word-break: break-word;
+}
+
+td.posts-table__metric { text-align: center; }
+.posts-table__metric-content { display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+.posts-table__metric-content svg { margin-right: 0; }
+
+

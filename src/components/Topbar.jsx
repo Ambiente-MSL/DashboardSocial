@@ -14,6 +14,8 @@ export default function Topbar({
   lastSync,
   rightExtras = null,
   customFilters = null,
+  rightContent = null,
+  sticky = true,
 }) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -32,10 +34,17 @@ export default function Topbar({
 
   const lastSyncLabel = formatLastSync(lastSync);
 
+  const filtersContent = rightContent ?? (showFilters ? (
+    <>
+      <AccountSelect />
+      <DateRangePicker />
+    </>
+  ) : null);
+
   return (
     <>
-      <div className="topbar action-bar">
-        <div className="action-bar__left">
+      <div className={`topbar action-bar ${sticky ? "topbar--sticky" : ""}`}>
+        <div className="topbar__left action-bar__left">
           {onToggleSidebar && (
             <button
               type="button"
@@ -52,7 +61,8 @@ export default function Topbar({
           </div>
         </div>
 
-        <div className="action-bar__right">
+        <div className="topbar__right action-bar__right">
+          {filtersContent && <div className="topbar__filters">{filtersContent}</div>}
           {customFilters && <div className="action-bar__custom-filters">{customFilters}</div>}
           {rightExtras && <div className="action-bar__extra">{rightExtras}</div>}
           {onRefresh && (
@@ -122,13 +132,6 @@ export default function Topbar({
           </button>
         </div>
       </div>
-
-      {showFilters && (
-        <div className="filter-bar">
-          <AccountSelect />
-          <DateRangePicker />
-        </div>
-      )}
     </>
   );
 }

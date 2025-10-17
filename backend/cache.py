@@ -63,7 +63,7 @@ def _ts_to_date(ts: Optional[int]) -> Optional[str]:
 def _make_extra(extra: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     if not extra:
         return None
-    # Garantir ordena��o consistente ao criar chaves
+    # Garantir ordenaçãoo consistente ao criar chaves
     return json.loads(json.dumps(extra, sort_keys=True))
 
 

@@ -103,30 +103,30 @@ const formatSignedNumber = (value) => {
 const FACEBOOK_CARD_CONFIG = [
   {
     key: "reach",
-    title: "Alcance org�nico",
-    hint: "Pessoas alcancadas no per�odo.",
+    title: "Alcance orgânico",
+    hint: "Pessoas alcancadas no período.",
     group: "primary",
     order: 1,
   },
   {
     key: "post_engagement_total",
     title: "Engajamento total",
-    hint: "Rea��es, coment�rios e compartilhamentos em posts.",
+    hint: "Reações, comentários e compartilhamentos em posts.",
     type: "engagement",
     group: "primary",
     order: 2,
   },
   {
     key: "page_views",
-    title: "Visualiza��es da p�gina",
-    hint: "Visualiza��es registradas na p�gina.",
+    title: "Visualizações da página",
+    hint: "Visualizações registradas na página.",
     group: "primary",
     order: 3,
   },
   {
     key: "content_activity",
-    title: "Intera��es totais",
-    hint: "Somat�rio de cliques, rea��es e engajamentos.",
+    title: "Interações totais",
+    hint: "Somatório de cliques, reações e engajamentos.",
     group: "engagement",
     order: 1,
     hidden: true,
@@ -134,7 +134,7 @@ const FACEBOOK_CARD_CONFIG = [
   {
     key: "cta_clicks",
     title: "Cliques em CTA",
-    hint: "Cliques em bot�es de call-to-action.",
+    hint: "Cliques em botões de call-to-action.",
     group: "engagement",
     order: 2,
     hidden: true,
@@ -149,28 +149,28 @@ const FACEBOOK_CARD_CONFIG = [
   },
   {
     key: "followers_total",
-    title: "Seguidores da p�gina",
-    hint: "Total de seguidores no final do per�odo selecionado.",
+    title: "Seguidores da página",
+    hint: "Total de seguidores no final do período selecionado.",
     group: "audience",
     order: 0,
   },
   {
     key: "followers_gained",
     title: "Novos seguidores",
-    hint: "Seguidores ganhos no per�odo.",
+    hint: "Seguidores ganhos no período.",
     group: "audience",
     order: 1,
   },
   {
     key: "followers_lost",
     title: "Deixaram de seguir",
-    hint: "Seguidores perdidos no per�odo.",
+    hint: "Seguidores perdidos no período.",
     group: "audience",
     order: 2,
   },
   {
     key: "net_followers",
-    title: "Crescimento l�quido",
+    title: "Crescimento líquido",
     hint: "Saldo entre ganhos e perdas de seguidores.",
     group: "audience",
     order: 3,
@@ -178,7 +178,7 @@ const FACEBOOK_CARD_CONFIG = [
   {
     key: "video_watch_time_total",
     title: "Tempo total assistido",
-    hint: "Tempo acumulado de visualiza��o dos v�deos.",
+    hint: "Tempo acumulado de visualização dos vídeos.",
     format: "duration",
     group: "video",
     order: 1,
@@ -186,14 +186,14 @@ const FACEBOOK_CARD_CONFIG = [
   {
     key: "video_views_total",
     title: "Video views",
-    hint: "Total de visualiza��es de v�deos no per�odo.",
+    hint: "Total de visualizações de vídeos no período.",
     group: "video",
     order: 2,
   },
   {
     key: "video_engagement_total",
-    title: "V�deos (rea��es, coment�rios, compartilhamentos)",
-    hint: "Engajamento gerado pelos v�deos: rea��es, coment�rios e compartilhamentos.",
+    title: "Vídeos (reações, comentários, compartilhamentos)",
+    hint: "Engajamento gerado pelos vídeos: reações, comentários e compartilhamentos.",
     type: "engagement",
     group: "video",
     order: 3,
@@ -295,7 +295,7 @@ export default function FacebookDashboard() {
       setPageMetrics([]);
       setPageOverview({});
       setNetFollowersSeries([]);
-      setPageError("P�gina do Facebook n�o configurada.");
+      setPageError("Página do Facebook não configurada.");
       return;
     }
 
@@ -315,7 +315,7 @@ export default function FacebookDashboard() {
         const raw = await response.text();
         const json = safeParseJson(raw) || {};
         if (!response.ok) {
-          throw new Error(describeApiError(json, "Falha ao carregar m�tricas de p�gina."));
+          throw new Error(describeApiError(json, "Falha ao carregar métricas de página."));
         }
         setPageMetrics(json.metrics || []);
         setPageOverview(json.page_overview || {});
@@ -332,7 +332,7 @@ export default function FacebookDashboard() {
           setPageMetrics([]);
           setPageOverview({});
           setNetFollowersSeries([]);
-          setPageError(err.message || "N�o foi poss�vel carregar as m�tricas de p�gina.");
+          setPageError(err.message || "Não foi possível carregar as métricas de página.");
         }
       } finally {
         setLoadingPage(false);
@@ -356,7 +356,7 @@ export default function FacebookDashboard() {
         demographics: {},
         ads_breakdown: [],
       });
-      setAdsError("Conta de an�ncios n�o configurada.");
+      setAdsError("Conta de anúncios não configurada.");
       return;
     }
 
@@ -379,7 +379,7 @@ export default function FacebookDashboard() {
         const raw = await response.text();
         const json = safeParseJson(raw) || {};
         if (!response.ok) {
-          throw new Error(describeApiError(json, "Falha ao carregar m�tricas de an�ncios."));
+          throw new Error(describeApiError(json, "Falha ao carregar métricas de anúncios."));
         }
         setAdsData({
           best_ad: null,
@@ -399,7 +399,7 @@ export default function FacebookDashboard() {
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error(err);
-          setAdsError(err.message || "N�o foi poss�vel carregar os destaques de an�ncios.");
+          setAdsError(err.message || "Não foi possível carregar os destaques de anúncios.");
         }
       } finally {
         setLoadingAds(false);
@@ -461,7 +461,7 @@ export default function FacebookDashboard() {
       setRefreshToken(Date.now());
     } catch (err) {
       console.error('Erro ao atualizar dados manualmente', err);
-      setPageError(err?.message || 'N�o foi poss�vel atualizar os dados.');
+      setPageError(err?.message || 'Não foi possível atualizar os dados.');
     } finally {
       setRefreshing(false);
     }
@@ -491,9 +491,9 @@ export default function FacebookDashboard() {
   const renderEngagementBreakdown = (metric) => {
     const breakdown = metric?.breakdown || {};
     const items = [
-      { key: "reactions", label: "Rea��es", icon: Heart },
-      { key: "comments", label: "Coment�rios", icon: MessageCircle },
-      { key: "shares", label: "Compart.", icon: Share2 },
+      { key: "reactions", label: "Reações", icon: Heart },
+      { key: "comments", label: "Comentários", icon: MessageCircle },
+      { key: "shares", label: "Compartilhamentos", icon: Share2 },
     ]
       .map((item) => ({ ...item, value: Number(breakdown[item.key] || 0) }))
       .filter((item) => item.value > 0);
@@ -727,7 +727,7 @@ export default function FacebookDashboard() {
 
   const filterOptions = [
     { value: "all", label: "Tudo" },
-    { value: "organic", label: "Org�nico" },
+    { value: "organic", label: "Orgânico" },
     { value: "paid", label: "Pago" },
   ];
 
@@ -980,7 +980,7 @@ export default function FacebookDashboard() {
               compact
             />
             <MetricCard
-              title="Impressoes"
+              title="Impressões"
               value={loadingAds ? "..." : formatNumber(Number(adsTotals.impressions))}
               delta={loadingAds ? null : toNumber(adsTotals.impressions_change_pct)}
               compact
@@ -998,25 +998,25 @@ export default function FacebookDashboard() {
               compact
             />
             <MetricCard
-              title="CPC medio"
+              title="CPC médio"
               value={loadingAds ? "..." : formatCurrency(Number(adsAverages.cpc))}
               delta={loadingAds ? null : toNumber(adsAverages.cpc_change_pct)}
               compact
             />
             <MetricCard
-              title="CPM medio"
+              title="CPM médio"
               value={loadingAds ? "..." : formatCurrency(Number(adsAverages.cpm))}
               delta={loadingAds ? null : toNumber(adsAverages.cpm_change_pct)}
               compact
             />
             <MetricCard
-              title="CTR medio"
+              title="CTR médio"
               value={loadingAds ? "..." : formatPercent(Number(adsAverages.ctr))}
               delta={loadingAds ? null : toNumber(adsAverages.ctr_change_pct)}
               compact
             />
             <MetricCard
-              title="Frequencia"
+              title="Frequência"
               value={loadingAds ? "..." : frequencyDisplay}
               delta={loadingAds ? null : frequencyDelta}
               compact
@@ -1058,7 +1058,7 @@ export default function FacebookDashboard() {
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="chart-card__empty">Sem dados no periodo.</div>
+                  <div className="chart-card__empty">Sem dados no período.</div>
                 )}
               </div>
             </div>
