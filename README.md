@@ -71,3 +71,24 @@ Disponível em http://localhost:3001
 cd my-app
 npm install
 npm run dev
+
+
+🔗 Passo a passo para atualizar commits no Docker🔗 Integração com Meta Graph API
+cd /root/DashboardSocial
+
+# 1) Salvar suas mudanças locais
+git add -A
+git commit -m "WIP: alterações locais no servidor"  # se houver algo a commitar
+# Se houver um merge inacabado:
+git merge --abort 2>/dev/null || true
+
+# 2) Rebase com remoto
+git pull --rebase origin main
+
+# (Se aparecer conflitos, edite os arquivos, git add <arquivo>, e continue)
+# git rebase --continue
+
+# 3) Rebuildar e subir
+docker compose build --pull
+docker compose up -d
+docker compose ps
