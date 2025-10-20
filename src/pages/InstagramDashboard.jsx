@@ -1,7 +1,7 @@
 // src/pages/InstagramDashboard.jsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { Heart, MessageCircle, Play } from "lucide-react";
+import { GripVertical, Heart, MessageCircle, Play } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -27,6 +27,72 @@ import { DEFAULT_ACCOUNTS } from "../data/accounts";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const FALLBACK_ACCOUNT_ID = DEFAULT_ACCOUNTS[0]?.id || "";
+const TABLE_SCALE_MIN = 0.75;
+const TABLE_SCALE_MAX = 1.35;
+const TABLE_RESIZE_SENSITIVITY = 360;
+const TABLE_COLUMNS_TEMPLATE = [
+  {
+    id: "date",
+    label: "Data",
+    colClass: "posts-table__col posts-table__col--date",
+    headerClass: "",
+    cellClass: "posts-table__date",
+    minWidth: 140,
+    maxWidth: 280,
+    defaultWidth: 180,
+  },
+  {
+    id: "preview",
+    label: "Preview",
+    colClass: "posts-table__col posts-table__col--preview",
+    headerClass: "",
+    cellClass: "posts-table__preview",
+    minWidth: 120,
+    maxWidth: 260,
+    defaultWidth: 160,
+  },
+  {
+    id: "caption",
+    label: "Legenda",
+    colClass: "posts-table__col posts-table__col--caption",
+    headerClass: "",
+    cellClass: "posts-table__caption",
+    minWidth: 360,
+    maxWidth: 900,
+    defaultWidth: 560,
+  },
+  {
+    id: "likes",
+    label: "Curtidas",
+    colClass: "posts-table__col posts-table__col--metric",
+    headerClass: "posts-table__header--metric",
+    cellClass: "posts-table__metric",
+    minWidth: 150,
+    maxWidth: 280,
+    defaultWidth: 180,
+  },
+  {
+    id: "comments",
+    label: "Comentários",
+    colClass: "posts-table__col posts-table__col--metric",
+    headerClass: "posts-table__header--metric",
+    cellClass: "posts-table__metric",
+    minWidth: 150,
+    maxWidth: 280,
+    defaultWidth: 180,
+  },
+];
+
+const reorderColumns = (columns, sourceId, targetId) => {
+  if (sourceId === targetId) return columns;
+  const next = [...columns];
+  const sourceIndex = next.findIndex((col) => col.id === sourceId);
+  const targetIndex = next.findIndex((col) => col.id === targetId);
+  if (sourceIndex < 0 || targetIndex < 0) return columns;
+  const [moved] = next.splice(sourceIndex, 1);
+  next.splice(targetIndex, 0, moved);
+  return next;
+};
 
 const mapByKey = (items) => {
   const map = {};
@@ -49,6 +115,9 @@ const describeApiError = (payload, fallback) => {
 
 const truncate = (text, length = 120) => !text ? "" : (text.length <= length ? text : `${text.slice(0, length - 3)}...`);
 const extractNumber = (v,f=0)=>Number.isFinite(Number(v))?Number(v):f;
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+const isLikelyVideoUrl = (url) =>
+  typeof url === "string" && /\.(mp4|mov|mpe?g|m4v|avi|wmv|flv)(\?|$)/i.test(url);
 
 const sumInteractions = (post) => {
   const likes = extractNumber(post.likeCount ?? post.likes);
@@ -68,53 +137,6 @@ const formatDate = (iso) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "-" : new Intl.DateTimeFormat("pt-BR",{dateStyle:"medium"}).format(d);
 };
-
-function VideoThumbnail({ src, alt, className = "posts-table__video" }) {
-  const videoRef = useRef(null);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handleLoadedData = () => {
-      try {
-        if (video.readyState >= 2) {
-          const targetTime = Math.min(0.1, video.duration || 0);
-          video.currentTime = targetTime;
-        }
-      } catch (err) {
-        // ignore seeking issues (cross-origin, etc.)
-      }
-    };
-
-    const handleSeeked = () => {
-      try {
-        video.pause();
-      } catch (err) {
-        // ignore pause issues
-      }
-    };
-
-    video.addEventListener("loadeddata", handleLoadedData);
-    video.addEventListener("seeked", handleSeeked);
-    return () => {
-      video.removeEventListener("loadeddata", handleLoadedData);
-      video.removeEventListener("seeked", handleSeeked);
-    };
-  }, [src]);
-
-  return (
-    <video
-      ref={videoRef}
-      className={className}
-      src={src}
-      muted
-      playsInline
-      preload="metadata"
-      aria-label={alt}
-    />
-  );
-}
 
 export default function InstagramDashboard() {
   const { sidebarOpen, toggleSidebar } = useOutletContext();
@@ -150,6 +172,21 @@ export default function InstagramDashboard() {
   const [visiblePosts, setVisiblePosts] = useState(5);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [postsError, setPostsError] = useState("");
+  const [tableScale, setTableScale] = useState(1);
+  const resizeCleanupRef = useRef(null);
+  const columnResizeCleanupRef = useRef(null);
+  const columnsTemplateRef = useRef(TABLE_COLUMNS_TEMPLATE);
+  const [tableColumns, setTableColumns] = useState(columnsTemplateRef.current);
+  const dragColumnIdRef = useRef(null);
+  const [dragOverColumn, setDragOverColumn] = useState(null);
+  const [columnWidths, setColumnWidths] = useState(() => {
+    const widths = {};
+    columnsTemplateRef.current.forEach((column) => {
+      const fallback = column.defaultWidth ?? column.minWidth ?? 160;
+      widths[column.id] = fallback;
+    });
+    return widths;
+  });
 
   const [accountInfo, setAccountInfo] = useState(null);
   const [followerSeries, setFollowerSeries] = useState([]);
@@ -204,6 +241,18 @@ export default function InstagramDashboard() {
     })();
     return () => controller.abort();
   }, [accountConfig?.instagramUserId]);
+
+  useEffect(
+    () => () => {
+      if (typeof resizeCleanupRef.current === "function") {
+        resizeCleanupRef.current();
+      }
+      if (typeof columnResizeCleanupRef.current === "function") {
+        columnResizeCleanupRef.current();
+      }
+    },
+    [],
+  );
 
   const metricsByKey = useMemo(() => mapByKey(metrics), [metrics]);
   const interactionsMetric = metricsByKey.interactions;
@@ -270,6 +319,261 @@ export default function InstagramDashboard() {
   }, [posts]);
 
   const displayedPosts = posts.slice(0, visiblePosts);
+  const tableStyle = useMemo(
+    () => ({ "--posts-table-scale": Number.isFinite(tableScale) ? tableScale : 1 }),
+    [tableScale],
+  );
+
+  const normalizeChildren = useCallback((children) => {
+    if (!children) return [];
+    if (Array.isArray(children)) return children;
+    if (Array.isArray(children.data)) return children.data;
+    return [];
+  }, []);
+
+  const buildPostRow = useCallback((post) => {
+    const rawMediaType = String(post.mediaType || post.media_type || "").toUpperCase();
+    const mediaProductType = String(post.mediaProductType || post.media_product_type || "").toUpperCase();
+    const isVideo = rawMediaType === "VIDEO" || rawMediaType === "REEL" || rawMediaType === "IGTV" || mediaProductType === "REEL";
+    const children = normalizeChildren(post.children);
+
+    const previewCandidates = [
+      post.previewUrl,
+      post.preview_url,
+      post.thumbnailUrl,
+      post.thumbnail_url,
+      post.posterUrl,
+      post.poster_url,
+      post.mediaPreviewUrl,
+      post.media_preview_url,
+    ];
+
+    children.forEach((child) => {
+      const childMediaType = String(child.mediaType || child.media_type || "").toUpperCase();
+      previewCandidates.push(
+        child.previewUrl,
+        child.preview_url,
+        child.thumbnailUrl,
+        child.thumbnail_url,
+        child.posterUrl,
+        child.poster_url,
+      );
+      if (childMediaType !== "VIDEO" && childMediaType !== "REEL" && childMediaType !== "IGTV") {
+        const childMedia = child.mediaUrl || child.media_url;
+        if (childMedia && !isLikelyVideoUrl(childMedia)) previewCandidates.push(childMedia);
+      }
+    });
+
+    let previewUrl = previewCandidates.find((url) => url && !isLikelyVideoUrl(url));
+
+    if (!previewUrl && !isVideo) {
+      const mediaCandidate = post.mediaUrl || post.media_url;
+      if (mediaCandidate && !isLikelyVideoUrl(mediaCandidate)) previewUrl = mediaCandidate;
+    }
+
+    const publishedAt = formatDate(post.timestamp);
+    const likes = extractNumber(post.likeCount ?? post.like_count ?? post.likes ?? 0);
+    const comments = extractNumber(
+      post.commentsCount ??
+      post.comments_count ??
+      post.commentCount ??
+      post.comments ??
+      0
+    );
+    const captionText = truncate(post.caption, 80) || "Sem legenda";
+    const altText = truncate(post.caption || "Post", 40);
+    const permalink = post.permalink || null;
+
+    const previewContent = previewUrl ? (
+      permalink ? (
+        <a href={permalink} target="_blank" rel="noreferrer" className="posts-table__link">
+          <img src={previewUrl} alt={altText} />
+        </a>
+      ) : (
+        <img src={previewUrl} alt={altText} />
+      )
+    ) : (
+      <div className="posts-table__placeholder">Sem preview</div>
+    );
+
+    return {
+      key: post.id || permalink || `${post.timestamp || ""}-${post.mediaType || ""}`,
+      cells: {
+        date: publishedAt,
+        preview: (
+          <>
+            {previewContent}
+            {isVideo && <Play size={12} className="posts-table__badge" />}
+          </>
+        ),
+        caption: captionText,
+        likes: (
+          <span className="posts-table__metric-content">
+            <Heart size={14} /> {likes.toLocaleString("pt-BR")}
+          </span>
+        ),
+        comments: (
+          <span className="posts-table__metric-content">
+            <MessageCircle size={14} /> {comments.toLocaleString("pt-BR")}
+          </span>
+        ),
+      },
+    };
+  }, [normalizeChildren]);
+
+  const postRows = useMemo(() => displayedPosts.map(buildPostRow), [displayedPosts, buildPostRow]);
+
+  const getColumnWidthPx = useCallback(
+    (column) => {
+      const fallback = column.defaultWidth ?? column.minWidth ?? 160;
+      const base = columnWidths[column.id] ?? fallback;
+      const maxWidth = column.maxWidth ?? Number.POSITIVE_INFINITY;
+      const clampedBase = clamp(base, column.minWidth ?? 0, maxWidth);
+      return clampedBase * tableScale;
+    },
+    [columnWidths, tableScale],
+  );
+
+  const handleColumnResizePointerDown = useCallback((columnId, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (columnResizeCleanupRef.current) {
+      columnResizeCleanupRef.current();
+    }
+
+    const columnMeta = columnsTemplateRef.current.find((column) => column.id === columnId);
+    if (!columnMeta) return;
+
+    const fallback = columnMeta.defaultWidth ?? columnMeta.minWidth ?? 160;
+    const startWidthBase = columnWidths[columnId] ?? fallback;
+    const startX = event.clientX ?? 0;
+    const pointerId = event.pointerId ?? -1;
+    const target = event.currentTarget;
+    const originalCursor = document.body.style.cursor;
+    const originalUserSelect = document.body.style.userSelect;
+
+    const handleMove = (moveEvent) => {
+      const dx = (moveEvent.clientX ?? 0) - startX;
+      const deltaBase = dx / (tableScale || 1);
+      const nextBase = clamp(
+        startWidthBase + deltaBase,
+        columnMeta.minWidth ?? 0,
+        columnMeta.maxWidth ?? Number.POSITIVE_INFINITY,
+      );
+      setColumnWidths((prev) => {
+        const current = prev[columnId] ?? fallback;
+        if (Math.abs(current - nextBase) < 0.5) return prev;
+        return { ...prev, [columnId]: nextBase };
+      });
+    };
+
+    const endResize = () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", endResize);
+      window.removeEventListener("pointercancel", endResize);
+      document.body.style.cursor = originalCursor;
+      document.body.style.userSelect = originalUserSelect;
+      if (target.releasePointerCapture) {
+        try { target.releasePointerCapture(pointerId); } catch { /* noop */ }
+      }
+      columnResizeCleanupRef.current = null;
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", endResize);
+    window.addEventListener("pointercancel", endResize);
+    if (target.setPointerCapture) {
+      try { target.setPointerCapture(pointerId); } catch { /* noop */ }
+    }
+    columnResizeCleanupRef.current = endResize;
+  }, [columnWidths, tableScale]);
+
+  const handleResizeStart = useCallback((event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (resizeCleanupRef.current) {
+      resizeCleanupRef.current();
+    }
+    const startScale = tableScale;
+    const startX = event.clientX ?? 0;
+    const startY = event.clientY ?? 0;
+    const pointerId = event.pointerId ?? -1;
+    const target = event.currentTarget;
+    const originalUserSelect = document.body.style.userSelect;
+    const originalCursor = document.body.style.cursor;
+
+    const handleMove = (moveEvent) => {
+      const dx = (moveEvent.clientX ?? 0) - startX;
+      const dy = (moveEvent.clientY ?? 0) - startY;
+      const delta = (dx + dy) / TABLE_RESIZE_SENSITIVITY;
+      const nextScale = clamp(startScale + delta, TABLE_SCALE_MIN, TABLE_SCALE_MAX);
+      setTableScale((prev) => (Math.abs(prev - nextScale) < 0.001 ? prev : nextScale));
+    };
+
+    const endResize = () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", endResize);
+      window.removeEventListener("pointercancel", endResize);
+      document.body.style.userSelect = originalUserSelect;
+      document.body.style.cursor = originalCursor;
+      if (target.releasePointerCapture) {
+        try { target.releasePointerCapture(pointerId); } catch { /* noop */ }
+      }
+      resizeCleanupRef.current = null;
+    };
+
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "se-resize";
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", endResize);
+    window.addEventListener("pointercancel", endResize);
+    if (target.setPointerCapture) {
+      try { target.setPointerCapture(pointerId); } catch { /* noop */ }
+    }
+    resizeCleanupRef.current = endResize;
+  }, [tableScale]);
+
+  const handleColumnDragStart = useCallback((columnId, event) => {
+    dragColumnIdRef.current = columnId;
+    setDragOverColumn(null);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      try { event.dataTransfer.setData("text/plain", columnId); } catch { /* noop */ }
+    }
+  }, []);
+
+  const handleColumnDragOver = useCallback((event) => {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+  }, []);
+
+  const handleColumnDragEnter = useCallback((columnId, event) => {
+    event.preventDefault();
+    if (columnId !== dragColumnIdRef.current) setDragOverColumn(columnId);
+  }, []);
+
+  const handleColumnDragLeave = useCallback((columnId) => {
+    setDragOverColumn((current) => (current === columnId ? null : current));
+  }, []);
+
+  const handleColumnDrop = useCallback((columnId, event) => {
+    event.preventDefault();
+    const sourceId = dragColumnIdRef.current || (event.dataTransfer ? event.dataTransfer.getData("text/plain") : null);
+    if (!sourceId || sourceId === columnId) {
+      setDragOverColumn(null);
+      return;
+    }
+    setTableColumns((prev) => reorderColumns(prev, sourceId, columnId));
+    setDragOverColumn(null);
+    dragColumnIdRef.current = null;
+  }, []);
+
+  const handleColumnDragEnd = useCallback(() => {
+    setDragOverColumn(null);
+    dragColumnIdRef.current = null;
+  }, []);
 
   const accountBadge = accountInfo ? (
     <div className="media-account">
@@ -317,6 +621,104 @@ export default function InstagramDashboard() {
             {/* ====== RANKING SIDEBAR ====== */}
             <InstagramRanking posts={rankedPosts} loading={loadingPosts} />
           </div>
+        </Section>
+        {/* ====== ÚLTIMOS POSTS ====== */}
+        <Section title="Últimos posts" description="Acompanhe o desempenho recente.">
+          {postsError && <div className="alert alert--error">{postsError}</div>}
+          {loadingPosts && posts.length === 0 ? (
+            <div className="table-loading">Carregando posts...</div>
+          ) : displayedPosts.length ? (
+            <>
+              <div className="posts-table-container" style={tableStyle}>
+                <table className="posts-table">
+                  <colgroup>
+                    {tableColumns.map((column) => {
+                      const widthPx = getColumnWidthPx(column);
+                      return (
+                        <col
+                          key={column.id}
+                          className={column.colClass}
+                          style={{ width: `${widthPx}px`, minWidth: `${widthPx}px`, maxWidth: `${widthPx}px` }}
+                        />
+                      );
+                    })}
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      {tableColumns.map((column) => (
+                        <th
+                          key={column.id}
+                          scope="col"
+                          className={[
+                            "posts-table__header",
+                            column.headerClass || "",
+                            dragOverColumn === column.id ? "posts-table__header--drag-over" : "",
+                          ].filter(Boolean).join(" ")}
+                          draggable
+                          title="Arraste para reordenar"
+                          onDragStart={(event) => handleColumnDragStart(column.id, event)}
+                          onDragOver={handleColumnDragOver}
+                          onDragEnter={(event) => handleColumnDragEnter(column.id, event)}
+                          onDragLeave={() => handleColumnDragLeave(column.id)}
+                          onDrop={(event) => handleColumnDrop(column.id, event)}
+                          onDragEnd={handleColumnDragEnd}
+                        >
+                          <span className="posts-table__header-content">
+                            <GripVertical size={12} className="posts-table__header-grip" aria-hidden="true" />
+                            <span className="posts-table__header-label">{column.label}</span>
+                          </span>
+                          <span
+                            role="separator"
+                            aria-orientation="vertical"
+                            aria-label={`Ajustar largura da coluna ${column.label}`}
+                            className="posts-table__header-handle"
+                            onPointerDown={(event) => handleColumnResizePointerDown(column.id, event)}
+                          />
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {postRows.map((row) => (
+                      <tr key={row.key}>
+                        {tableColumns.map((column) => {
+                          const widthPx = getColumnWidthPx(column);
+                          return (
+                            <td
+                              key={column.id}
+                              className={column.cellClass}
+                              style={{ width: `${widthPx}px`, minWidth: `${widthPx}px`, maxWidth: `${widthPx}px` }}
+                            >
+                              {row.cells[column.id] ?? null}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div
+                  className="posts-table-resizer"
+                  onPointerDown={handleResizeStart}
+                  aria-hidden="true"
+                  title="Arraste para redimensionar"
+                />
+              </div>
+              {posts.length > displayedPosts.length && (
+                <div className="posts-table__footer">
+                  <button
+                    type="button"
+                    className="posts-table__more"
+                    onClick={() => setVisiblePosts((prev) => Math.min(prev + 5, posts.length))}
+                  >
+                    Ver mais
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="muted">Nenhum post recente encontrado.</p>
+          )}
         </Section>
 
         {/* ====== GRÁFICOS - 3 COLUNAS ====== */}
@@ -429,100 +831,6 @@ export default function InstagramDashboard() {
               )}
             </div>
           </div>
-        </Section>
-
-        {/* ====== ÚLTIMOS POSTS ====== */}
-        <Section title="=Últimos posts" description="Acompanhe o desempenho recente.">
-          {postsError && <div className="alert alert--error">{postsError}</div>}
-          {loadingPosts && posts.length === 0 ? (
-            <div className="table-loading">Carregando posts...</div>
-          ) : displayedPosts.length ? (
-            <>
-              <div className="posts-table-container">
-                <table className="posts-table">
-                  <colgroup>
-                    <col className="posts-table__col posts-table__col--date" />
-                    <col className="posts-table__col posts-table__col--preview" />
-                    <col className="posts-table__col posts-table__col--caption" />
-                    <col className="posts-table__col posts-table__col--metric" />
-                    <col className="posts-table__col posts-table__col--metric" />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      <th>Data</th>
-                      <th>Preview</th>
-                      <th>Legenda</th>
-                      <th>Curtidas</th>
-                      <th>Comentários</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedPosts.map((post) => {
-                      const isVideo = post.mediaType === "VIDEO";
-                      const previewCandidates = [
-                        post.previewUrl,
-                        post.thumbnailUrl,
-                        post.thumbnail_url,
-                        post.posterUrl,
-                        post.poster_url,
-                      ];
-                      const previewFallback = previewCandidates.find(Boolean);
-                      const videoSource = isVideo ? (post.mediaUrl || post.media_url) : null;
-                      const previewUrl = previewFallback || (!isVideo ? (post.mediaUrl || post.media_url) : null);
-                      const publishedAt = formatDate(post.timestamp);
-                      const likes = extractNumber(post.likeCount);
-                      const comments = extractNumber(post.commentsCount);
-                      return (
-                        <tr key={post.id}>
-                          <td className="posts-table__date">{publishedAt}</td>
-                          <td className="posts-table__preview">
-                            {previewUrl ? (
-                              post.permalink ? (
-                                <a href={post.permalink} target="_blank" rel="noreferrer" className="posts-table__link">
-                                  <img src={previewUrl} alt={truncate(post.caption || "Post", 40)} />
-                                </a>
-                              ) : (
-                                <img src={previewUrl} alt={truncate(post.caption || "Post", 40)} />
-                              )
-                            ) : videoSource ? (
-                              <VideoThumbnail src={videoSource} alt={truncate(post.caption || "Post", 40)} />
-                            ) : (
-                              <div className="posts-table__placeholder">Sem preview</div>
-                            )}
-                            {isVideo && <Play size={12} className="posts-table__badge" />}
-                          </td>
-                          <td className="posts-table__caption">{truncate(post.caption, 80) || "Sem legenda"}</td>
-                          <td className="posts-table__metric">
-                            <span className="posts-table__metric-content">
-                              <Heart size={14} /> {likes.toLocaleString("pt-BR")}
-                            </span>
-                          </td>
-                          <td className="posts-table__metric">
-                            <span className="posts-table__metric-content">
-                              <MessageCircle size={14} /> {comments.toLocaleString("pt-BR")}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              {posts.length > displayedPosts.length && (
-                <div className="posts-table__footer">
-                  <button
-                    type="button"
-                    className="posts-table__more"
-                    onClick={() => setVisiblePosts((prev) => Math.min(prev + 5, posts.length))}
-                  >
-                    Ver mais
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="muted">Nenhum post recente encontrado.</p>
-          )}
         </Section>
       </div>
     </>

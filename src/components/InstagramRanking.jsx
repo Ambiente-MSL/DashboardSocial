@@ -1,6 +1,9 @@
 // src/components/InstagramRanking.jsx
 import { Play, Heart, MessageCircle, ExternalLink, TrendingUp } from "lucide-react";
 
+const isLikelyVideoUrl = (url) =>
+  typeof url === "string" && /\.(mp4|mov|mpe?g|m4v|avi|wmv|flv)(\?|$)/i.test(url);
+
 export default function InstagramRanking({ posts, loading }) {
   if (loading) {
     return (
@@ -32,10 +35,27 @@ export default function InstagramRanking({ posts, loading }) {
         {topPosts.map((post, index) => {
           const likes = Number(post.likeCount || post.likes || 0);
           const comments = Number(post.commentsCount || post.comments || 0);
-          const isVideo = post.mediaType === "VIDEO";
+          const rawMediaType = String(post.mediaType || post.media_type || "").toUpperCase();
+          const mediaProductType = String(post.mediaProductType || post.media_product_type || "").toUpperCase();
+          const isVideo = rawMediaType === "VIDEO" || rawMediaType === "REEL" || rawMediaType === "IGTV" || mediaProductType === "REEL";
 
-          // Preview de imagem
-          const previewUrl = post.previewUrl || post.thumbnailUrl || post.thumbnail_url || post.mediaUrl || post.media_url;
+          const previewCandidates = [
+            post.previewUrl,
+            post.preview_url,
+            post.thumbnailUrl,
+            post.thumbnail_url,
+            post.posterUrl,
+            post.poster_url,
+            post.mediaPreviewUrl,
+            post.media_preview_url,
+          ];
+
+          if (!isVideo) {
+            const mediaCandidate = post.mediaUrl || post.media_url;
+            if (mediaCandidate && !isLikelyVideoUrl(mediaCandidate)) previewCandidates.push(mediaCandidate);
+          }
+
+          const previewUrl = previewCandidates.find((url) => url && !isLikelyVideoUrl(url));
 
           return (
             <div key={post.id} className="ig-ranking-item">

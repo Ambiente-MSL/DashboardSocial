@@ -1100,7 +1100,10 @@ def ig_recent_posts(ig_user_id: str, limit: int = 6):
         limit_int = 6
     limit_sanitized = max(1, min(limit_int, 25))
 
-    media_fields = "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count"
+    media_fields = (
+        "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,"
+        "children{media_type,media_url,thumbnail_url,permalink,caption}"
+    )
     media_res = gget(
         f"/{ig_user_id}/media",
         {
@@ -1110,8 +1113,51 @@ def ig_recent_posts(ig_user_id: str, limit: int = 6):
     )
 
     posts = []
+    VIDEO_TYPES = {"VIDEO", "REEL", "IGTV"}
+
+    def normalize_children(child_payload):
+        if not child_payload:
+            return []
+        if isinstance(child_payload, dict):
+            data = child_payload.get("data")
+            if isinstance(data, list):
+                return data
+            return []
+        if isinstance(child_payload, list):
+            return child_payload
+        return []
+
     for item in media_res.get("data", []):
-        preview = item.get("media_url") or item.get("thumbnail_url")
+        media_type = item.get("media_type")
+        thumbnail_url = item.get("thumbnail_url")
+        media_url = item.get("media_url")
+        preview = None
+        if media_type in VIDEO_TYPES and thumbnail_url:
+            preview = thumbnail_url
+        else:
+            preview = media_url or thumbnail_url
+
+        children_payload = normalize_children(item.get("children"))
+        children = []
+        for child in children_payload:
+            child_media_type = child.get("media_type")
+            child_thumbnail = child.get("thumbnail_url")
+            child_media_url = child.get("media_url")
+            child_preview = (
+                child_thumbnail
+                if child_media_type in VIDEO_TYPES and child_thumbnail
+                else child_thumbnail or child_media_url
+            )
+            children.append({
+                "id": child.get("id"),
+                "caption": child.get("caption"),
+                "mediaType": child_media_type,
+                "mediaUrl": child_media_url,
+                "thumbnailUrl": child_thumbnail,
+                "permalink": child.get("permalink"),
+                "previewUrl": child_preview,
+            })
+
         posts.append({
             "id": item.get("id"),
             "caption": item.get("caption"),
@@ -1123,6 +1169,7 @@ def ig_recent_posts(ig_user_id: str, limit: int = 6):
             "likeCount": item.get("like_count"),
             "commentsCount": item.get("comments_count"),
             "previewUrl": preview,
+            "children": children,
         })
 
     account_fields = "id,username,profile_picture_url,followers_count"
