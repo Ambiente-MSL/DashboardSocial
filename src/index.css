@@ -4915,6 +4915,20 @@ tbody
   align-items: start;
 }
 
+.ig-top-section__metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ig-top-section__metrics .metric-card {
+  padding: 12px 14px;
+}
+
+.ig-top-section__metrics .metric-card__value {
+  font-size: 24px;
+}
+
+
 @media (max-width: 1400px) {
   .ig-top-section {
     grid-template-columns: 1fr;
@@ -4936,6 +4950,23 @@ tbody
 /* Override para os KPIs do Instagram usarem 3 colunas */
 .ig-top-section .dashboard-kpis {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 0;
+}
+
+.ig-top-section__metrics .dashboard-kpis-extended {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 1200px) {
+  .ig-top-section__metrics .dashboard-kpis-extended {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .ig-top-section__metrics .dashboard-kpis-extended {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 1200px) {
@@ -5530,10 +5561,11 @@ tbody
   display:grid;
   grid-template-columns: repeat(6, minmax(0,1fr));
   gap:16px;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 @media (max-width:1440px){ .dashboard-kpis-extended{ grid-template-columns: repeat(4,1fr); } }
 @media (max-width:1024px){ .dashboard-kpis-extended{ grid-template-columns: repeat(2,1fr); } }
+@media (max-width:600px){ .dashboard-kpis-extended{ grid-template-columns: 1fr; } }
 
 /* Altura padrao para graficos compactos */
 .chart-card--sm .recharts-responsive-container { height: 240px !important; }
@@ -6031,4 +6063,73 @@ td.posts-table__metric + td.posts-table__metric {
 .accounts-card__actions button:hover {
   background: rgba(148, 163, 184, 0.1);
   border-color: var(--accent);
+}
+
+
+/* ===== Chart readability overrides ===== */
+.recharts-tooltip-wrapper .recharts-default-tooltip,
+.recharts-default-tooltip {
+  background: rgba(14, 18, 26, 0.92) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(148, 163, 184, 0.32) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28) !important;
+  backdrop-filter: blur(6px);
+}
+.recharts-default-tooltip .recharts-tooltip-label,
+.recharts-default-tooltip .recharts-tooltip-item,
+.recharts-default-tooltip .recharts-tooltip-item-label,
+.recharts-default-tooltip .recharts-tooltip-item-value {
+  color: #f8fafc !important;
+  fill: #f8fafc !important;
+}
+.recharts-cartesian-axis-tick text,
+.recharts-cartesian-axis-tick-value,
+.recharts-cartesian-axis-tick-value tspan,
+.recharts-polar-angle-axis-tick-value,
+.recharts-polar-angle-axis-tick-value tspan,
+.recharts-polar-radius-axis-tick-value,
+.recharts-polar-radius-axis-tick-value tspan,
+.recharts-legend-item-text,
+.recharts-legend-item-text tspan {
+  fill: #f8fafc !important;
+  color: #f8fafc !important;
+}
+.recharts-cartesian-axis line,
+.recharts-cartesian-axis .recharts-cartesian-axis-line,
+.recharts-cartesian-axis .recharts-cartesian-axis-tick-line {
+  stroke: rgba(148, 163, 184, 0.3) !important;
+}
+.recharts-active-dot circle {
+  stroke: var(--accent) !important;
+  stroke-width: 3px !important;
+  fill: var(--accent) !important;
+}
+.recharts-layer .recharts-bar-rectangle path,
+.recharts-layer .recharts-bar-rectangle rect {
+  transition: filter 0.2s ease, opacity 0.2s ease;
+}
+.recharts-layer .recharts-bar-rectangle:hover path,
+.recharts-layer .recharts-bar-rectangle:hover rect {
+  filter: brightness(1.15);
+  opacity: 0.9;
+}
+.recharts-line-dot circle,
+.recharts-line-dots circle {
+  transition: r 0.2s ease, stroke-width 0.2s ease;
+}
+.recharts-line-dot:hover circle,
+.recharts-line-dots circle:hover {
+  stroke: var(--accent) !important;
+  stroke-width: 3px !important;
+}
+
+.recharts-tooltip-cursor {
+  stroke: rgba(248, 250, 252, 0.35) !important;
+  fill: rgba(248, 250, 252, 0.08) !important;
+}
+
+.recharts-pie-label-text, .recharts-pie-label-text tspan {
+  fill: #f8fafc !important;
+  color: #f8fafc !important;
 }

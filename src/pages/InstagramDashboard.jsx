@@ -115,6 +115,11 @@ const describeApiError = (payload, fallback) => {
 
 const truncate = (text, length = 120) => !text ? "" : (text.length <= length ? text : `${text.slice(0, length - 3)}...`);
 const extractNumber = (v,f=0)=>Number.isFinite(Number(v))?Number(v):f;
+const toNumberOrNull = (value) => {
+  if (value === null || value === undefined) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+};
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 const isLikelyVideoUrl = (url) =>
   typeof url === "string" && /\.(mp4|mov|mpe?g|m4v|avi|wmv|flv)(\?|$)/i.test(url);
@@ -187,6 +192,11 @@ export default function InstagramDashboard() {
     });
     return widths;
   });
+  const [igSummary, setIgSummary] = useState({
+    accountsEngaged: null,
+    profileViews: null,
+    websiteClicks: null,
+  });
 
   const [accountInfo, setAccountInfo] = useState(null);
   const [followerSeries, setFollowerSeries] = useState([]);
@@ -194,6 +204,7 @@ export default function InstagramDashboard() {
   useEffect(() => {
     if (!accountConfig?.instagramUserId) {
       setMetrics([]); setFollowerSeries([]); setMetricsError("Conta do Instagram nao configurada.");
+      setIgSummary({ accountsEngaged: null, profileViews: null, websiteClicks: null });
       return;
     }
     const controller = new AbortController();
@@ -210,9 +221,17 @@ export default function InstagramDashboard() {
         if (!resp.ok) throw new Error(describeApiError(json, "Falha ao carregar metricas do Instagram."));
         setMetrics(json.metrics || []);
         setFollowerSeries(Array.isArray(json.follower_series) ? json.follower_series : []);
+        setIgSummary({
+          accountsEngaged: toNumberOrNull(json.accounts_engaged),
+          profileViews: toNumberOrNull(json.profile_views),
+          websiteClicks: toNumberOrNull(json.website_clicks),
+        });
       } catch (err) {
         if (err.name !== "AbortError") {
-          setMetrics([]); setFollowerSeries([]); setMetricsError(err.message || "Nao foi possivel atualizar.");
+          setMetrics([]);
+          setFollowerSeries([]);
+          setIgSummary({ accountsEngaged: null, profileViews: null, websiteClicks: null });
+          setMetricsError(err.message || "Nao foi possivel atualizar.");
         }
       } finally { setLoadingMetrics(false); }
     })();
@@ -284,6 +303,19 @@ export default function InstagramDashboard() {
       // Preencha com mais KPIs se o endpoint fornecer (alcance, impress?es etc.)
     ]),
     [interactionsMetric, interactionsValue, likesMetric, commentsMetric, sharesMetric, savesMetric],
+  );
+
+
+  const secondaryCards = useMemo(
+    () => ([
+      { key: "followers_total", title: "Seguidores", metric: metricsByKey.followers_total },
+      { key: "follower_growth", title: "Crescimento de seguidores", metric: metricsByKey.follower_growth },
+      { key: "reach", title: "Alcance", metric: metricsByKey.reach },
+      { key: "accounts_engaged", title: "Contas engajadas", metric: igSummary.accountsEngaged != null ? { value: igSummary.accountsEngaged } : null },
+      { key: "profile_views", title: "Visitas ao perfil", metric: igSummary.profileViews != null ? { value: igSummary.profileViews } : null },
+      { key: "website_clicks", title: "Cliques no site", metric: igSummary.websiteClicks != null ? { value: igSummary.websiteClicks } : null },
+    ]),
+    [metricsByKey, igSummary.accountsEngaged, igSummary.profileViews, igSummary.websiteClicks],
   );
 
   // ===== Donut (composição do engajamento) =====
@@ -606,16 +638,28 @@ export default function InstagramDashboard() {
 
           {/* ====== GRID DE KPIS + RANKING ====== */}
           <div className="ig-top-section">
-            <div className="dashboard-kpis">
-              {kpiCards.map(({ key, title, metric }) => (
-                <MetricCard
-                  key={key}
-                  title={title}
-                  value={formatMetricValue(metric, { loading: loadingMetrics })}
-                  delta={metricDelta(metric, { loading: loadingMetrics })}
-                  compact
-                />
-              ))}
+            <div className="ig-top-section__metrics">
+              <div className="dashboard-kpis">
+                {kpiCards.map(({ key, title, metric }) => (
+                  <MetricCard
+                    key={key}
+                    title={title}
+                    value={formatMetricValue(metric, { loading: loadingMetrics })}
+                    delta={metricDelta(metric, { loading: loadingMetrics })}
+                    compact
+                  />
+                ))}
+              </div>
+              <div className="dashboard-kpis-extended">
+                {secondaryCards.map(({ key, title, metric }) => (
+                  <MetricCard
+                    key={`extra-${key}`}
+                    title={title}
+                    value={formatMetricValue(metric, { loading: loadingMetrics })}
+                    compact
+                  />
+                ))}
+              </div>
             </div>
 
             {/* ====== RANKING SIDEBAR ====== */}
