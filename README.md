@@ -1,6 +1,6 @@
-📊 MSL Monitor – Dashboard de Insights Sociais
+# 📊 MSL Monitor – Dashboard de Insights Sociais
 
-Um dashboard profissional para monitorar métricas orgânicas e pagas do Facebook e Instagram, com exportação de relatórios e visual moderno.
+- Um dashboard profissional para monitorar métricas orgânicas e pagas do Facebook e Instagram, com exportação de relatórios e visual moderno.
 
 <img src="docs/screenshot-dashboard.png" width="800"/>
 ✨ Funcionalidades
@@ -80,7 +80,7 @@ cd /root/DashboardSocial
  1) Salvar suas mudanças locais
 git add -A
 git commit -m "WIP: alterações locais no servidor"  # se houver algo a commitar
-# Se houver um merge inacabado:
+Se houver um merge inacabado:
 git merge --abort 2>/dev/null || true
 
  2) Rebase com remoto
