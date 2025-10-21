@@ -114,7 +114,136 @@ const describeApiError = (payload, fallback) => {
 };
 
 const truncate = (text, length = 120) => !text ? "" : (text.length <= length ? text : `${text.slice(0, length - 3)}...`);
-const extractNumber = (v,f=0)=>Number.isFinite(Number(v))?Number(v):f;
+
+const normalizeNumericString = (value) => (
+  String(value)
+    .replace(/\s+/g, "")
+    .replace(/[.,](?=\d{3}(\D|$))/g, "")
+    .replace(",", ".")
+);
+
+const tryParseNumber = (value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string") {
+    const normalized = normalizeNumericString(value);
+    if (!normalized.length) return null;
+    const numeric = Number(normalized);
+    return Number.isFinite(numeric) ? numeric : null;
+  }
+  if (Array.isArray(value)) return value.length;
+  if (typeof value === "object") {
+    const candidatePaths = [
+      ["value"],
+      ["count"],
+      ["total"],
+      ["totalCount"],
+      ["total_count"],
+      ["summary", "total"],
+      ["summary", "totalCount"],
+      ["summary", "total_count"],
+      ["summary", "count"],
+      ["summary", "value"],
+    ];
+    for (const path of candidatePaths) {
+      let current = value;
+      for (const key of path) {
+        if (current === null || current === undefined) break;
+        current = current[key];
+      }
+      const parsed = tryParseNumber(current);
+      if (parsed !== null) return parsed;
+    }
+    return null;
+  }
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
+const extractNumber = (value, fallback = 0) => {
+  const parsed = tryParseNumber(value);
+  return parsed !== null ? parsed : fallback;
+};
+
+const pickFirstNumber = (candidates, fallback = 0) => {
+  for (const candidate of candidates) {
+    const parsed = tryParseNumber(candidate);
+    if (parsed !== null) return parsed;
+  }
+  return fallback;
+};
+
+const getNestedValue = (object, path) => {
+  if (!object) return null;
+  const segments = Array.isArray(path) ? path : String(path).split(".");
+  let current = object;
+  for (const segment of segments) {
+    if (current === null || current === undefined) return null;
+    current = current[segment];
+  }
+  return current;
+};
+
+const POST_METRIC_PATHS = {
+  likes: [
+    ["likeCount"],
+    ["like_count"],
+    ["likes"],
+    ["metrics", "likes"],
+    ["metrics", "likes", "value"],
+    ["insights", "likes"],
+    ["insights", "likes", "value"],
+  ],
+  comments: [
+    ["commentsCount"],
+    ["comments_count"],
+    ["commentCount"],
+    ["comment_count"],
+    ["comments"],
+    ["comments", "summary"],
+    ["comments", "summary", "count"],
+    ["comments", "summary", "total"],
+    ["comments", "summary", "total_count"],
+    ["commentsSummary"],
+    ["commentsSummary", "count"],
+    ["commentsSummary", "total"],
+    ["commentsSummary", "total_count"],
+    ["comments_summary"],
+    ["comments_summary", "count"],
+    ["comments_summary", "total"],
+    ["comments_summary", "total_count"],
+    ["metrics", "comments"],
+    ["metrics", "comments", "value"],
+    ["insights", "comments"],
+    ["insights", "comments", "value"],
+  ],
+  shares: [
+    ["shares"],
+    ["shareCount"],
+    ["share_count"],
+    ["metrics", "shares"],
+    ["metrics", "shares", "value"],
+    ["insights", "shares"],
+    ["insights", "shares", "value"],
+  ],
+  saves: [
+    ["saved"],
+    ["saves"],
+    ["saveCount"],
+    ["save_count"],
+    ["metrics", "saves"],
+    ["metrics", "saves", "value"],
+    ["insights", "saves"],
+    ["insights", "saves", "value"],
+  ],
+};
+
+const resolvePostMetric = (post, metric, fallback = 0) => {
+  const paths = POST_METRIC_PATHS[metric] || [];
+  const candidates = paths.map((path) => getNestedValue(post, path));
+  return pickFirstNumber(candidates, fallback);
+};
+
 const toNumberOrNull = (value) => {
   if (value === null || value === undefined) return null;
   const numeric = Number(value);
@@ -125,10 +254,10 @@ const isLikelyVideoUrl = (url) =>
   typeof url === "string" && /\.(mp4|mov|mpe?g|m4v|avi|wmv|flv)(\?|$)/i.test(url);
 
 const sumInteractions = (post) => {
-  const likes = extractNumber(post.likeCount ?? post.likes);
-  const comments = extractNumber(post.commentsCount ?? post.comments);
-  const shares = extractNumber(post.shares ?? post.shareCount);
-  const saves = extractNumber(post.saved ?? post.saves ?? post.saveCount);
+  const likes = resolvePostMetric(post, "likes");
+  const comments = resolvePostMetric(post, "comments");
+  const shares = resolvePostMetric(post, "shares");
+  const saves = resolvePostMetric(post, "saves");
   return likes + comments + shares + saves;
 };
 
@@ -404,14 +533,8 @@ export default function InstagramDashboard() {
     }
 
     const publishedAt = formatDate(post.timestamp);
-    const likes = extractNumber(post.likeCount ?? post.like_count ?? post.likes ?? 0);
-    const comments = extractNumber(
-      post.commentsCount ??
-      post.comments_count ??
-      post.commentCount ??
-      post.comments ??
-      0
-    );
+    const likes = resolvePostMetric(post, "likes");
+    const comments = resolvePostMetric(post, "comments");
     const captionText = truncate(post.caption, 80) || "Sem legenda";
     const altText = truncate(post.caption || "Post", 40);
     const permalink = post.permalink || null;
