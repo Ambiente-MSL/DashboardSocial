@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -90,6 +90,10 @@ export default function Login() {
           </button>
         </form>
         <p className="auth-footnote">
+          Nao tem conta?{' '}
+          <Link className="auth-link" to="/register">
+            Criar conta
+          </Link>
         </p>
       </div>
     </div>

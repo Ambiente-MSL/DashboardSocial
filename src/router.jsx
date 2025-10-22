@@ -6,9 +6,12 @@ import InstagramDashboard from './pages/InstagramDashboard';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
+import Register from './pages/Register';
+import Admin from './pages/Admin';
 
 const router = createBrowserRouter([
   { path: '/login', element: <Login /> },
+  { path: '/register', element: <Register /> },
   {
     element: <App />,
     children: [
@@ -17,6 +20,7 @@ const router = createBrowserRouter([
       { path: '/instagram', element: <InstagramDashboard /> },
       { path: '/relatorios', element: <Reports /> },
       { path: '/configuracoes', element: <Settings /> },
+      { path: '/admin', element: <Admin /> },
       { path: '*', element: <DashboardHome /> },
     ],
   },

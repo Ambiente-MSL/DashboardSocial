@@ -7,16 +7,21 @@ import {
   LogOut,
   PanelLeft,
   Settings,
+  Shield,
 } from 'lucide-react';
 import logo from '../assets/logo-msl.svg';
 import { useAuth } from '../context/AuthContext';
 
-const NAV_ITEMS = [
-  { to: '/', icon: LayoutDashboard, label: 'Visão geral', end: true },
+const DASHBOARD_ITEMS = [
+  { to: '/', icon: LayoutDashboard, label: 'Visao geral', end: true },
   { to: '/facebook', icon: Facebook, label: 'Facebook' },
   { to: '/instagram', icon: Instagram, label: 'Instagram' },
-  { to: '/relatorios', icon: BarChart3, label: 'Relatórios' },
-  { to: '/configuracoes', icon: Settings, label: 'Configurações' },
+];
+
+const ADMIN_ITEMS = [
+  { to: '/relatorios', icon: BarChart3, label: 'Relatorios' },
+  { to: '/configuracoes', icon: Settings, label: 'Configuracoes' },
+  { to: '/admin', icon: Shield, label: 'Admin' },
 ];
 
 const NavItem = ({ to, icon: Icon, label, end }) => (
@@ -41,7 +46,7 @@ export default function Sidebar({ open, onToggleSidebar }) {
     try {
       await signOut();
     } catch (err) {
-      console.error('Erro ao encerrar sessão', err);
+      console.error('Erro ao encerrar sessao', err);
     }
   };
 
@@ -51,7 +56,7 @@ export default function Sidebar({ open, onToggleSidebar }) {
         <div className="sidebar__brand">
           <img src={logo} alt="Logotipo MSL" className="sidebar__logo" />
           <div className="sidebar__brand-text">
-            <span className="sidebar__brand-name">MSL Estratégia</span>
+            <span className="sidebar__brand-name">MSL Estrategia</span>
             <span className="sidebar__brand-tag">Insights sociais</span>
           </div>
         </div>
@@ -68,8 +73,13 @@ export default function Sidebar({ open, onToggleSidebar }) {
       </div>
 
       <nav className="sidebar__nav">
-        <span className="sidebar__section">Navegação</span>
-        {NAV_ITEMS.map((item) => (
+        <span className="sidebar__section">Dashboard</span>
+        {DASHBOARD_ITEMS.map((item) => (
+          <NavItem key={item.to} {...item} />
+        ))}
+
+        <span className="sidebar__section">Administracao</span>
+        {ADMIN_ITEMS.map((item) => (
           <NavItem key={item.to} {...item} />
         ))}
       </nav>
