@@ -17,6 +17,7 @@ from cache import (
 from meta import (
     MetaAPIError,
     ads_highlights,
+    fb_audience,
     fb_page_window,
     fb_recent_posts,
     ig_audience,
@@ -357,6 +358,16 @@ def fetch_facebook_posts(
     return fb_recent_posts(page_id, limit)
 
 
+def fetch_facebook_audience(
+    page_id: str,
+    _since_ts: Optional[int],
+    _until_ts: Optional[int],
+    _extra: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Fetcher para dados demográficos do Facebook"""
+    return fb_audience(page_id)
+
+
 def fetch_instagram_metrics(
     ig_id: str,
     since_ts: Optional[int],
@@ -657,6 +668,55 @@ def facebook_posts():
     except MetaAPIError as err:
         mark_cache_error("facebook_posts", page_id, None, None, {"limit": limit}, err.args[0])
         return meta_error_response(err)
+    response = dict(payload)
+    response["cache"] = meta
+    return jsonify(response)
+
+
+@app.get("/api/facebook/audience")
+def facebook_audience():
+    """
+    Retorna dados demográficos do Facebook (cidades, países, idade, gênero).
+    Usa cache Supabase e fallback em caso de erro da API.
+    """
+    page_id = request.args.get("pageId", PAGE_ID)
+    if not page_id:
+        return jsonify({"error": "META_PAGE_ID is not configured"}), 500
+
+    try:
+        payload, meta = get_cached_payload(
+            "facebook_audience",
+            page_id,
+            None,
+            None,
+            fetcher=fetch_facebook_audience,
+        )
+    except MetaAPIError as err:
+        mark_cache_error("facebook_audience", page_id, None, None, None, err.args[0])
+        # Tentar fallback com último cache disponível
+        fallback = get_latest_cached_payload("facebook_audience", page_id)
+        if fallback:
+            payload, meta = fallback
+            meta = dict(meta or {})
+            meta["fallback_error"] = err.args[0]
+            meta["fallback_reason"] = "meta_api_error"
+            response = dict(payload) if isinstance(payload, dict) else {"payload": payload}
+            response["cache"] = meta
+            return jsonify(response)
+        return meta_error_response(err)
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Falha inesperada em facebook_audience")
+        fallback = get_latest_cached_payload("facebook_audience", page_id)
+        if fallback:
+            payload, meta = fallback
+            meta = dict(meta or {})
+            meta["fallback_error"] = str(err)
+            meta["fallback_reason"] = "unexpected_error"
+            response = dict(payload) if isinstance(payload, dict) else {"payload": payload}
+            response["cache"] = meta
+            return jsonify(response)
+        return jsonify({"error": str(err)}), 500
+
     response = dict(payload)
     response["cache"] = meta
     return jsonify(response)
@@ -1001,6 +1061,7 @@ def manual_refresh():
 
 register_fetcher("facebook_metrics", fetch_facebook_metrics)
 register_fetcher("facebook_posts", fetch_facebook_posts)
+register_fetcher("facebook_audience", fetch_facebook_audience)
 register_fetcher("instagram_metrics", fetch_instagram_metrics)
 register_fetcher("instagram_organic", fetch_instagram_organic)
 register_fetcher("instagram_audience", fetch_instagram_audience)

@@ -949,6 +949,165 @@ def ig_audience(ig_user_id: str) -> Dict[str, Any]:
         },
     }
 
+
+def fb_audience(page_id: str) -> Dict[str, Any]:
+    """
+    Retorna distribuição demográfica da audiência do Facebook.
+
+    Coleta dados de:
+    - Cidades (top 8)
+    - Países (top 5)
+    - Idade e gênero dos fãs da página
+
+    Args:
+        page_id: ID da página do Facebook
+
+    Returns:
+        Dict contendo cities, countries, ages, gender e totals
+    """
+    def as_percentage(value: float, total: float) -> float:
+        """Calcula percentual com 2 casas decimais"""
+        if not total:
+            return 0.0
+        return round((value / total) * 100.0, 2)
+
+    # ==== CIDADES ====
+    city_data = {}
+    try:
+        city_response = gget(
+            f"/{page_id}/insights",
+            {"metric": "page_fans_city", "period": "lifetime"}
+        )
+        if city_response and "data" in city_response:
+            for item in city_response["data"]:
+                if "values" in item and len(item["values"]) > 0:
+                    city_data = item["values"][-1].get("value", {})
+    except MetaAPIError as e:
+        logger.warning(f"Erro ao buscar page_fans_city: {e}")
+
+    top_cities = sorted(city_data.items(), key=lambda kv: kv[1], reverse=True)[:8]
+    total_city = sum(city_data.values()) or 0.0
+
+    cities = [
+        {
+            "name": name,
+            "value": int(round(count)),
+            "percentage": as_percentage(count, total_city),
+        }
+        for name, count in top_cities
+    ]
+
+    # ==== PAÍSES ====
+    country_data = {}
+    try:
+        country_response = gget(
+            f"/{page_id}/insights",
+            {"metric": "page_fans_country", "period": "lifetime"}
+        )
+        if country_response and "data" in country_response:
+            for item in country_response["data"]:
+                if "values" in item and len(item["values"]) > 0:
+                    country_data = item["values"][-1].get("value", {})
+    except MetaAPIError as e:
+        logger.warning(f"Erro ao buscar page_fans_country: {e}")
+
+    top_countries = sorted(country_data.items(), key=lambda kv: kv[1], reverse=True)[:5]
+    total_country = sum(country_data.values()) or 0.0
+
+    countries = [
+        {
+            "name": name,
+            "value": int(round(count)),
+            "percentage": as_percentage(count, total_country),
+        }
+        for name, count in top_countries
+    ]
+
+    # ==== IDADE E GÊNERO ====
+    age_gender_data = {}
+    try:
+        age_gender_response = gget(
+            f"/{page_id}/insights",
+            {"metric": "page_fans_gender_age", "period": "lifetime"}
+        )
+        if age_gender_response and "data" in age_gender_response:
+            for item in age_gender_response["data"]:
+                if "values" in item and len(item["values"]) > 0:
+                    age_gender_data = item["values"][-1].get("value", {})
+    except MetaAPIError as e:
+        logger.warning(f"Erro ao buscar page_fans_gender_age: {e}")
+
+    # Processar idade e gênero
+    age_buckets = {
+        "18-24": 0.0,
+        "25-34": 0.0,
+        "35-44": 0.0,
+        "45-54": 0.0,
+        "55+": 0.0,
+    }
+    gender_totals = {"female": 0.0, "male": 0.0, "unknown": 0.0}
+
+    # Formato do Facebook: {"F.18-24": 123, "M.25-34": 456, "U.35-44": 78}
+    for key, value in age_gender_data.items():
+        parts = str(key).split('.')
+        if len(parts) != 2:
+            continue
+
+        gender_char = parts[0].upper()
+        age_range = parts[1]
+
+        # Mapear gênero
+        if gender_char == 'F':
+            gender_totals["female"] += float(value or 0.0)
+        elif gender_char == 'M':
+            gender_totals["male"] += float(value or 0.0)
+        else:
+            gender_totals["unknown"] += float(value or 0.0)
+
+        # Mapear faixa etária
+        if age_range in ("18-24", "25-34", "35-44", "45-54"):
+            age_buckets[age_range] += float(value or 0.0)
+        elif age_range in ("55-64", "65+"):
+            age_buckets["55+"] += float(value or 0.0)
+
+    # Formatar dados de idade
+    age_total = sum(age_buckets.values()) or 0.0
+    ages = [
+        {
+            "range": label,
+            "value": int(round(amount)),
+            "percentage": as_percentage(amount, age_total),
+        }
+        for label, amount in age_buckets.items()
+    ]
+
+    # Formatar dados de gênero
+    gender_labels = {"female": "Feminino", "male": "Masculino", "unknown": "Não informado"}
+    gender_total = sum(gender_totals.values()) or 0.0
+    gender = [
+        {
+            "key": key,
+            "label": gender_labels.get(key, key.title()),
+            "value": int(round(amount)),
+            "percentage": as_percentage(amount, gender_total),
+        }
+        for key, amount in gender_totals.items()
+    ]
+
+    return {
+        "cities": cities,
+        "countries": countries,
+        "ages": ages,
+        "gender": gender,
+        "totals": {
+            "cities": int(round(total_city)) if total_city else 0,
+            "countries": int(round(total_country)) if total_country else 0,
+            "ages": int(round(age_total)) if age_total else 0,
+            "gender": int(round(gender_total)) if gender_total else 0,
+        },
+    }
+
+
 def ig_organic_summary(ig_user_id: str, since: int, until: int) -> Dict[str, Any]:
     """
     - varre mídias no intervalo para calcular:
