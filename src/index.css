@@ -810,6 +810,43 @@ body.theme-light {
   color: #e5e7eb;
 }
 
+:root:not([data-theme="light"]) .date-range-btn {
+  background: #1a1a1a;
+  border-color: #2a2a2a;
+  color: #e5e7eb;
+}
+
+:root:not([data-theme="light"]) .date-range-btn:hover {
+  background: #222222;
+  border-color: #3a3a3a;
+}
+
+:root:not([data-theme="light"]) .date-range-btn[data-open] {
+  background: #1a1a1a;
+  border-color: #4a4a4a;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+:root:not([data-theme="light"]) .date-range-btn__icon {
+  color: #e5e7eb;
+}
+
+:root:not([data-theme="light"]) .date-range-btn[data-open] .date-range-btn__icon {
+  color: #60a5fa;
+}
+
+:root:not([data-theme="light"]) .action-bar__icon-btn {
+  background: #1a1a1a;
+  border-color: #2a2a2a;
+  color: #e5e7eb;
+}
+
+:root:not([data-theme="light"]) .action-bar__icon-btn:hover {
+  background: #222222;
+  border-color: #3a3a3a;
+  color: #e5e7eb;
+}
+
 :root:not([data-theme="light"]) .filter-dropdown {
   background: #1a1a1a;
   border-color: #2a2a2a;
@@ -881,21 +918,21 @@ body.theme-light {
   width: 40px;
   height: 40px;
   border-radius: var(--radius);
-  border: 1px solid var(--stroke);
-  background: var(--panel);
-  color: var(--muted);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #0f172a;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: transform var(--transition), color var(--transition), border-color var(--transition), background var(--transition);
-  box-shadow: var(--shadow-inner);
+  box-shadow: none;
 }
 
 .action-bar__icon-btn:hover {
-  background: var(--panel-hover);
-  color: var(--fg);
-  border-color: var(--stroke);
+  background: #f9fafb;
+  color: #0f172a;
+  border-color: #d1d5db;
   transform: translateY(-2px);
 }
 
@@ -1302,9 +1339,9 @@ body.theme-light {
   gap: 12px;
   padding: 10px 16px;
   border-radius: var(--radius);
-  background: var(--panel-hover);
-  border: 1px solid rgba(103, 123, 170, 0.24);
-  color: var(--fg);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  color: #0f172a;
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -1313,16 +1350,16 @@ body.theme-light {
 }
 
 .date-range-btn:hover {
-  border-color: rgba(103, 123, 170, 0.45);
-  background: rgba(18, 36, 28, 0.72);
+  border-color: #d1d5db;
+  background: #f9fafb;
   transform: translateY(-1px);
 }
 
 .date-range-btn[data-open] {
-  border-color: var(--accent);
-  background: var(--panel);
-  color: var(--fg);
-  box-shadow: var(--shadow-lg);
+  border-color: #3b82f6;
+  background: #f9fafb;
+  color: #0f172a;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
 .date-range-btn__text {
@@ -1337,7 +1374,7 @@ body.theme-light {
 
 .date-range-btn__icon {
 
-  color: var(--fg);
+  color: #0f172a;
 
   transition: color 200ms ease;
 
@@ -1347,7 +1384,7 @@ body.theme-light {
 
 .date-range-btn[data-open] .date-range-btn__icon {
 
-  color: var(--accent);
+  color: #3b82f6;
 
 }
 
