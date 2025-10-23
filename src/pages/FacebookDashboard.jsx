@@ -2120,6 +2120,54 @@ export default function FacebookDashboard() {
 
             />
 
+            <MetricCard
+
+              title="Conversões"
+
+              value={loadingAds ? "..." : formatNumber(Number(adsTotals.conversions || adsTotals.actions || 0))}
+
+              delta={loadingAds ? null : toNumber(adsTotals.conversions_change_pct)}
+
+              compact
+
+            />
+
+            <MetricCard
+
+              title="Custo/Resultado"
+
+              value={loadingAds ? "..." : formatCurrency(Number(adsAverages.cost_per_result || adsAverages.cost_per_action || 0))}
+
+              delta={loadingAds ? null : toNumber(adsAverages.cost_per_result_change_pct)}
+
+              compact
+
+            />
+
+            <MetricCard
+
+              title="Taxa de Conversão"
+
+              value={loadingAds ? "..." : formatPercent(Number(adsAverages.conversion_rate || 0))}
+
+              delta={loadingAds ? null : toNumber(adsAverages.conversion_rate_change_pct)}
+
+              compact
+
+            />
+
+            <MetricCard
+
+              title="ROAS"
+
+              value={loadingAds ? "..." : (Number(adsAverages.roas || 0) > 0 ? Number(adsAverages.roas).toFixed(2) + "x" : "-")}
+
+              delta={loadingAds ? null : toNumber(adsAverages.roas_change_pct)}
+
+              compact
+
+            />
+
           </div>
 
 

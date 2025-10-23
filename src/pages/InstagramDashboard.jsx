@@ -21,6 +21,7 @@ import Topbar from "../components/Topbar";
 import Section from "../components/Section";
 import MetricCard from "../components/MetricCard";
 import InstagramRanking from "../components/InstagramRanking";
+import BestTimeToPost from "../components/BestTimeToPost";
 import useQueryState from "../hooks/useQueryState";
 import { useAccounts } from "../context/AccountsContext";
 import { DEFAULT_ACCOUNTS } from "../data/accounts";
@@ -757,7 +758,11 @@ export default function InstagramDashboard() {
         {metricsError && <div className="alert alert--error">{metricsError}</div>}
 
         <Section title="Instagram" description="">
-          {accountBadge && <div className="mb-6">{accountBadge}</div>}
+          {/* ====== BADGE + BEST TIME ====== */}
+          <div className="ig-header-compact">
+            {accountBadge}
+            <BestTimeToPost posts={posts} loading={loadingPosts} />
+          </div>
 
           {/* ====== GRID DE KPIS + RANKING ====== */}
           <div className="ig-top-section">

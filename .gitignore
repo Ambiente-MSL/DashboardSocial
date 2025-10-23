@@ -1,8 +1,11 @@
 # See    for more about ignoring files.
 
+# best-time-to-post
+BEST-TIME-TO-POST.md
+
 # claude
 claude.md
-.claude/
+/.claude
 
 # dependencies
 /node_modules
