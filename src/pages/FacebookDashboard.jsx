@@ -211,6 +211,20 @@ const FACEBOOK_CARD_CONFIG = [
 
   {
 
+    key: "impressions",
+
+    title: "Impressões",
+
+    hint: "Total de vezes que o conteúdo foi exibido.",
+
+    group: "primary",
+
+    order: 0,
+
+  },
+
+  {
+
     key: "reach",
 
     title: "Alcance orgânico",
@@ -298,6 +312,20 @@ const FACEBOOK_CARD_CONFIG = [
     order: 3,
 
     hidden: true,
+
+  },
+
+  {
+
+    key: "likes_add",
+
+    title: "Novos curtidores",
+
+    hint: "Novos curtidores da página no período.",
+
+    group: "primary",
+
+    order: 4,
 
   },
 
@@ -1602,15 +1630,31 @@ export default function FacebookDashboard() {
 
             <Section title="Pagina do Facebook" description="">
 
-              {/* === 6 KPIs compactos em 2 fileiras === */}
+              {/* === 7 KPIs compactos na primeira fileira === */}
 
               <div className="dashboard-kpis">
 
-                {/* 1. Alcance organico */}
+                {/* 1. Impressões */}
 
                 <MetricCard
 
-                  title="Alcance organico"
+                  title="Impressões"
+
+                  value={primaryCards.find(c=>c.key==="impressions")?.value}
+
+                  delta={primaryCards.find(c=>c.key==="impressions")?.delta}
+
+                  compact
+
+                />
+
+
+
+                {/* 2. Alcance organico */}
+
+                <MetricCard
+
+                  title="Alcance orgânico"
 
                   value={primaryCards.find(c=>c.key==="reach")?.value}
 
@@ -1622,7 +1666,7 @@ export default function FacebookDashboard() {
 
 
 
-                {/* 2. Engajamento total (abre modal com detalhes) */}
+                {/* 3. Engajamento total (abre modal com detalhes) */}
 
                 <MetricCard
 
@@ -1640,11 +1684,11 @@ export default function FacebookDashboard() {
 
 
 
-                {/* 3. Visualizacoes da pagina */}
+                {/* 4. Visualizacoes da pagina */}
 
                 <MetricCard
 
-                  title="Visualizacoes da pagina"
+                  title="Visualizações da página"
 
                   value={primaryCards.find(c=>c.key==="page_views")?.value}
 
@@ -1656,11 +1700,27 @@ export default function FacebookDashboard() {
 
 
 
-                {/* 4. Crescimento liquido */}
+                {/* 5. Novos curtidores */}
 
                 <MetricCard
 
-                  title="Crescimento liquido"
+                  title="Novos curtidores"
+
+                  value={primaryCards.find(c=>c.key==="likes_add")?.value}
+
+                  delta={primaryCards.find(c=>c.key==="likes_add")?.delta}
+
+                  compact
+
+                />
+
+
+
+                {/* 6. Crescimento liquido */}
+
+                <MetricCard
+
+                  title="Crescimento líquido"
 
                   value={(cardGroups.audience||[]).find(c=>c.key==="net_followers")?.value}
 
@@ -1672,7 +1732,7 @@ export default function FacebookDashboard() {
 
 
 
-                {/* 5. Tempo total assistido */}
+                {/* 7. Tempo total assistido */}
 
                 <MetricCard
 
@@ -1686,9 +1746,13 @@ export default function FacebookDashboard() {
 
                 />
 
+              </div>
 
 
-                {/* 6. Novos seguidores */}
+
+              {/* === Segunda linha de 7 KPIs compactos === */}
+
+              <div className="dashboard-kpis-extended">
 
                 <MetricCard
 
@@ -1702,17 +1766,9 @@ export default function FacebookDashboard() {
 
                 />
 
-              </div>
-
-
-
-              {/* === Linha extra de KPIs compactos === */}
-
-              <div className="dashboard-kpis-extended">
-
                 <MetricCard
 
-                  title="Seguidores da pagina"
+                  title="Seguidores da página"
 
                   value={(cardGroups.audience || []).find((c) => c.key === "followers_total")?.value}
 
@@ -1748,7 +1804,7 @@ export default function FacebookDashboard() {
 
                 <MetricCard
 
-                  title="Video engajamento"
+                  title="Vídeo engajamento"
 
                   value={(cardGroups.video || []).find((c) => c.key === "video_engagement_total")?.value}
 

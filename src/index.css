@@ -5532,15 +5532,18 @@ tbody
   margin: 0;
 }
 
-/* grade dos KPIs: 6 colunas compactas em 2 linhas nas telas largas */
+/* grade dos KPIs: 7 colunas compactas em 2 linhas nas telas largas */
 .dashboard-kpis{
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 14px;
   margin-top: 12px;
 }
 
 /* responsivo */
+@media (max-width: 1600px){
+  .dashboard-kpis{ grid-template-columns: repeat(5, 1fr); }
+}
 @media (max-width: 1440px){
   .dashboard-kpis{ grid-template-columns: repeat(4, 1fr); }
 }
@@ -5552,8 +5555,8 @@ tbody
 .metric-card{
   background: var(--card-bg);
   border: 1px solid var(--card-stroke);
-  border-radius: 14px;
-  padding: 14px 16px;
+  border-radius: 12px;
+  padding: 12px 14px;
   transition: background .15s ease;
 }
 .metric-card:hover{ background: var(--card-bg-hover); }
@@ -5561,14 +5564,14 @@ tbody
 .metric-card__title{
   color: var(--kpi-title);
   font-weight: 600;
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: .2px;
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   line-height: 1.2;
 }
 .metric-card__value{
   color: var(--kpi-value);
-  font-size: 28px;   /* compacto mas legivel */
+  font-size: 24px;   /* compacto mas legivel */
   font-weight: 700;
   line-height: 1;
 }
@@ -5642,10 +5645,11 @@ tbody
 /* ===== Linha EXTRA de KPIs compactos ===== */
 .dashboard-kpis-extended{
   display:grid;
-  grid-template-columns: repeat(6, minmax(0,1fr));
-  gap:16px;
+  grid-template-columns: repeat(7, minmax(0,1fr));
+  gap:14px;
   margin-top: 12px;
 }
+@media (max-width:1600px){ .dashboard-kpis-extended{ grid-template-columns: repeat(5,1fr); } }
 @media (max-width:1440px){ .dashboard-kpis-extended{ grid-template-columns: repeat(4,1fr); } }
 @media (max-width:1024px){ .dashboard-kpis-extended{ grid-template-columns: repeat(2,1fr); } }
 @media (max-width:600px){ .dashboard-kpis-extended{ grid-template-columns: 1fr; } }
