@@ -24,6 +24,7 @@ from meta import (
     ig_organic_summary,
     ig_recent_posts,
     ig_window,
+    gget,
 )
 from scheduler import MetaSyncScheduler
 
@@ -951,6 +952,84 @@ def ads_high():
     response = dict(payload)
     response["cache"] = meta
     return jsonify(response)
+
+
+@app.get("/api/accounts/discover")
+def discover_accounts():
+    """
+    Descobre automaticamente todas as contas disponíveis conectadas ao token.
+    Retorna páginas do Facebook, perfis do Instagram e contas de anúncios.
+    """
+    try:
+        # 1. Buscar todas as páginas que o usuário administra
+        pages_response = gget("/me/accounts", params={
+            "fields": "id,name,access_token,category,tasks,instagram_business_account{id,username,name,profile_picture_url,followers_count}"
+        })
+
+        pages = []
+        instagram_accounts = []
+
+        if pages_response and "data" in pages_response:
+            for page in pages_response["data"]:
+                page_data = {
+                    "id": page.get("id"),
+                    "name": page.get("name"),
+                    "category": page.get("category"),
+                    "tasks": page.get("tasks", []),
+                }
+                pages.append(page_data)
+
+                # Se a página tem Instagram conectado, adicionar
+                ig_account = page.get("instagram_business_account")
+                if ig_account:
+                    instagram_accounts.append({
+                        "id": ig_account.get("id"),
+                        "username": ig_account.get("username"),
+                        "name": ig_account.get("name"),
+                        "profilePictureUrl": ig_account.get("profile_picture_url"),
+                        "followersCount": ig_account.get("followers_count"),
+                        "linkedPageId": page.get("id"),
+                        "linkedPageName": page.get("name"),
+                    })
+
+        # 2. Buscar todas as contas de anúncios
+        adaccounts_response = gget("/me/adaccounts", params={
+            "fields": "id,name,account_status,currency,timezone_name,business"
+        })
+
+        ad_accounts = []
+        if adaccounts_response and "data" in adaccounts_response:
+            for adaccount in adaccounts_response["data"]:
+                ad_accounts.append({
+                    "id": adaccount.get("id"),
+                    "name": adaccount.get("name"),
+                    "accountStatus": adaccount.get("account_status"),
+                    "currency": adaccount.get("currency"),
+                    "timezoneName": adaccount.get("timezone_name"),
+                })
+
+        return jsonify({
+            "pages": pages,
+            "instagramAccounts": instagram_accounts,
+            "adAccounts": ad_accounts,
+            "totalPages": len(pages),
+            "totalInstagram": len(instagram_accounts),
+            "totalAdAccounts": len(ad_accounts),
+        })
+
+    except MetaAPIError as err:
+        logger.error(f"Meta API error in discover_accounts: {err}")
+        return jsonify({
+            "error": err.args[0],
+            "graph": {
+                "status": err.status,
+                "code": err.code,
+                "type": err.error_type,
+            },
+        }), 502
+    except Exception as err:
+        logger.exception("Unexpected error in discover_accounts")
+        return jsonify({"error": str(err)}), 500
 
 
 @app.post("/api/sync/refresh")

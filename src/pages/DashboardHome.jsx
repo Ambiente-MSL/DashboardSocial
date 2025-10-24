@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { Facebook, Instagram } from 'lucide-react';
 import { useOutletContext, Link } from 'react-router-dom';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 import Topbar from '../components/Topbar';
 
@@ -573,6 +574,50 @@ export default function DashboardHome() {
 
 
 
+  const reachByPlatformData = useMemo(() => {
+
+    const data = [];
+
+
+
+    if (currentFacebookSummary?.reach != null && currentFacebookSummary.reach > 0) {
+
+      data.push({
+
+        name: 'Facebook',
+
+        value: currentFacebookSummary.reach,
+
+        color: '#1877F2',
+
+      });
+
+    }
+
+
+
+    if (currentInstagramSummary?.reach != null && currentInstagramSummary.reach > 0) {
+
+      data.push({
+
+        name: 'Instagram',
+
+        value: currentInstagramSummary.reach,
+
+        color: '#E4405F',
+
+      });
+
+    }
+
+
+
+    return data;
+
+  }, [currentFacebookSummary?.reach, currentInstagramSummary?.reach]);
+
+
+
   return (
 
     <>
@@ -662,6 +707,78 @@ export default function DashboardHome() {
                 </span>
 
               </Link>
+
+            </div>
+
+          )}
+
+        </Section>
+
+        <Section
+
+          title="Alcance por Plataforma"
+
+          description="Comparativo de alcance entre Facebook e Instagram dos últimos 30 dias.">
+
+          {loading && !currentFacebookSummary && !currentInstagramSummary ? (
+
+            <div className="overview-loading">Carregando dados...</div>
+
+          ) : reachByPlatformData.length === 0 ? (
+
+            <div className="overview-loading">Nenhum dado de alcance disponível para o período selecionado.</div>
+
+          ) : (
+
+            <div className="dashboard-chart">
+
+              <ResponsiveContainer width="100%" height={200}>
+
+                <BarChart
+
+                  data={reachByPlatformData}
+
+                  layout="vertical"
+
+                  margin={{ top: 10, right: 30, left: 20, bottom: 10 }}>
+
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+
+                  <XAxis type="number" stroke="#888" />
+
+                  <YAxis dataKey="name" type="category" stroke="#888" width={100} />
+
+                  <Tooltip
+
+                    contentStyle={{
+
+                      backgroundColor: 'rgba(0,0,0,0.9)',
+
+                      border: '1px solid rgba(255,255,255,0.2)',
+
+                      borderRadius: '8px',
+
+                    }}
+
+                    formatter={(value) => [formatNumber(value), 'Alcance']}
+
+                    labelFormatter={(label) => label}
+
+                  />
+
+                  <Bar dataKey="value" radius={[0, 8, 8, 0]}>
+
+                    {reachByPlatformData.map((entry, index) => (
+
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+
+                    ))}
+
+                  </Bar>
+
+                </BarChart>
+
+              </ResponsiveContainer>
 
             </div>
 
