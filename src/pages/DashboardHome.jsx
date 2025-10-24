@@ -579,7 +579,7 @@ export default function DashboardHome() {
 
       <Topbar
 
-        title="Visao Geral"
+        title="Visão Geral"
 
         sidebarOpen={sidebarOpen}
 

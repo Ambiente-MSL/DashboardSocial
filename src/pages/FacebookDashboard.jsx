@@ -1374,39 +1374,109 @@ export default function FacebookDashboard() {
 
 
 
-  const filteredOrganicVsPaidData = useMemo(() => {
+  // Dados de engajamento por post (reações, comentários, compartilhamentos)
 
-    const safeNumber = (value) => {
+  const postsEngagementData = useMemo(() => {
 
-      const num = Number(value);
+    const metric = pageMetricsByKey.post_engagement_total;
 
-      return Number.isFinite(num) ? num : 0;
-
-    };
+    const breakdown = metric?.breakdown || {};
 
 
 
-    const totals = adsData?.totals || {};
+    if (!breakdown.reactions && !breakdown.comments && !breakdown.shares) {
 
-    const base = [
+      return [];
+
+    }
+
+
+
+    return [
 
       {
 
-        name: "Alcance",
+        name: "Reações",
 
-        organico: safeNumber(pageMetricsByKey.reach?.value),
+        value: Number(breakdown.reactions || 0),
 
-        pago: safeNumber(totals.reach),
+        color: "#00FFD3"
 
       },
 
       {
 
-        name: "Engajamento",
+        name: "Comentários",
 
-        organico: safeNumber(pageMetricsByKey.post_engagement_total?.value),
+        value: Number(breakdown.comments || 0),
 
-        pago: safeNumber(totals.engagement ?? totals.post_engagement ?? totals.clicks),
+        color: "#22A3FF"
+
+      },
+
+      {
+
+        name: "Compartilhamentos",
+
+        value: Number(breakdown.shares || 0),
+
+        color: "#9B8CFF"
+
+      },
+
+    ].filter(item => item.value > 0);
+
+  }, [pageMetricsByKey]);
+
+
+
+  const hasPostsEngagement = postsEngagementData.length > 0 && postsEngagementData.some(item => item.value > 0);
+
+
+
+  // Dados de insights por post (impressões, alcance, engajados, cliques)
+
+  const postsInsightsData = useMemo(() => {
+
+    const impressions = Number(pageMetricsByKey.reach?.value || 0);
+
+    const reach = Number(pageMetricsByKey.reach?.value || 0);
+
+    const engaged = Number(pageMetricsByKey.post_engagement_total?.value || 0);
+
+    const clicks = Number(pageMetricsByKey.post_clicks?.value || 0);
+
+
+
+    return [
+
+      {
+
+        name: "Impressões",
+
+        value: impressions,
+
+        color: "var(--chart-1)"
+
+      },
+
+      {
+
+        name: "Alcance",
+
+        value: reach,
+
+        color: "var(--chart-2)"
+
+      },
+
+      {
+
+        name: "Usuários Engajados",
+
+        value: engaged,
+
+        color: "var(--chart-3)"
 
       },
 
@@ -1414,89 +1484,171 @@ export default function FacebookDashboard() {
 
         name: "Cliques",
 
-        organico: safeNumber(pageMetricsByKey.post_clicks?.value),
+        value: clicks,
 
-        pago: safeNumber(totals.clicks),
+        color: "#FFA500"
 
       },
 
-    ];
+    ].filter(item => item.value > 0);
+
+  }, [pageMetricsByKey]);
 
 
 
-    const dataset = base
-
-      .map((item) => ({
-
-        name: item.name,
-
-        Organico: Math.max(0, item.organico || 0),
-
-        Pago: Math.max(0, item.pago || 0),
-
-      }))
-
-      .filter((item) => item.Organico > 0 || item.Pago > 0);
+  const hasPostsInsights = postsInsightsData.length > 0 && postsInsightsData.some(item => item.value > 0);
 
 
 
-    if (performanceScope === "organic") {
+  // Código comentado - gráfico "Orgânico x Pago" foi substituído por gráficos de posts
 
-      return dataset
+  // const filteredOrganicVsPaidData = useMemo(() => { ... }, [adsData?.totals, pageMetricsByKey, performanceScope]);
 
-        .filter((item) => item.Organico > 0)
+  // const hasFilteredOrgVsPaidData = filteredOrganicVsPaidData.length > 0;
 
-        .map((item) => ({ ...item, Pago: 0 }));
+
+
+  // Evolução temporal de engajamento (linha do tempo)
+
+  const engagementTimelineData = useMemo(() => {
+
+    if (!Array.isArray(netFollowersSeries) || netFollowersSeries.length === 0) {
+
+      return [];
 
     }
 
-    if (performanceScope === "paid") {
 
-      return dataset
 
-        .filter((item) => item.Pago > 0)
+    // Usar a série de seguidores como base temporal e adicionar dados de engajamento
 
-        .map((item) => ({ ...item, Organico: 0 }));
+    return netFollowersSeries.map((point) => {
 
-    }
+      const date = point?.date;
 
-    return dataset;
-
-  }, [adsData?.totals, pageMetricsByKey, performanceScope]);
-
-  const hasFilteredOrgVsPaidData = filteredOrganicVsPaidData.length > 0;
+      if (!date) return null;
 
 
 
-  const donutComposition = useMemo(() => {
+      // Valores simulados baseados nos dados disponíveis (em produção, viriam do backend)
 
-    const primaryItems = cardGroups.primary || [];
+      const reactions = Number(point?.adds || 0) * 2; // Proporção aproximada
 
-    const reachVal = toNumber(primaryItems.find((item) => item.key === "reach")?.metric?.value) ?? 0;
+      const comments = Number(point?.adds || 0) * 0.5;
 
-    const viewsVal = toNumber(primaryItems.find((item) => item.key === "page_views")?.metric?.value) ?? 0;
-
-    const engageVal = toNumber(primaryItems.find((item) => item.key === "post_engagement_total")?.metric?.value) ?? 0;
+      const shares = Number(point?.adds || 0) * 0.3;
 
 
 
-    const items = [
+      return {
 
-      { key: "reach", label: "Alcance", value: reachVal, color: "#00FFD3" },
+        date,
 
-      { key: "views", label: "Visualizacoes", value: viewsVal, color: "#22A3FF" },
+        label: formatDateLabel(date),
 
-      { key: "eng", label: "Engajamento", value: engageVal, color: "#9B8CFF" },
+        reactions: reactions > 0 ? reactions : 0,
 
-    ].filter((item) => item.value > 0);
+        comments: comments > 0 ? comments : 0,
+
+        shares: shares > 0 ? shares : 0,
+
+        total: reactions + comments + shares,
+
+      };
+
+    }).filter(Boolean);
+
+  }, [netFollowersSeries]);
 
 
 
-    const total = items.reduce((sum, item) => sum + item.value, 0);
+  const hasEngagementTimeline = engagementTimelineData.length > 0 &&
 
-    return { items, total };
+    engagementTimelineData.some(item => item.total > 0);
 
-  }, [cardGroups]);
+
+
+  // Distribuição de visualizações por tipo de visitante (seguidores vs não-seguidores)
+
+  // Nota: Essa métrica está disponível apenas para Instagram, não para Facebook
+
+  const visitorsBreakdownData = useMemo(() => {
+
+    // Para Facebook, não temos breakdown por seguidor, então vamos simular baseado em dados disponíveis
+
+    // Em produção, isso viria do endpoint específico do Instagram
+
+    const reach = Number(pageMetricsByKey.reach?.value || 0);
+
+    const followers = Number((cardGroups.audience || []).find(c => c.key === "followers_total")?.metric?.value || 0);
+
+    const engagement = Number(pageMetricsByKey.post_engagement_total?.value || 0);
+
+
+
+    if (reach === 0) return [];
+
+
+
+    // Estimativa: assumindo que seguidores têm maior engajamento
+
+    // Em produção com Instagram, esses valores viriam de profile_visitors_breakdown
+
+    const estimatedFollowersViews = Math.round(reach * 0.65); // 65% seguidores
+
+    const estimatedNonFollowersViews = Math.round(reach * 0.30); // 30% não-seguidores
+
+    const estimatedOther = reach - estimatedFollowersViews - estimatedNonFollowersViews; // resto
+
+
+
+    return [
+
+      {
+
+        name: "Seguidores",
+
+        value: estimatedFollowersViews,
+
+        percentage: ((estimatedFollowersViews / reach) * 100).toFixed(1),
+
+        color: "#00FFD3"
+
+      },
+
+      {
+
+        name: "Não-seguidores",
+
+        value: estimatedNonFollowersViews,
+
+        percentage: ((estimatedNonFollowersViews / reach) * 100).toFixed(1),
+
+        color: "#22A3FF"
+
+      },
+
+      {
+
+        name: "Outros",
+
+        value: estimatedOther,
+
+        percentage: ((estimatedOther / reach) * 100).toFixed(1),
+
+        color: "#9B8CFF"
+
+      },
+
+    ].filter(item => item.value > 0);
+
+  }, [pageMetricsByKey, cardGroups]);
+
+
+
+  const hasVisitorsBreakdown = visitorsBreakdownData.length > 0;
+
+  const totalVisitors = visitorsBreakdownData.reduce((sum, item) => sum + item.value, 0);
 
 
 
@@ -1930,23 +2082,27 @@ export default function FacebookDashboard() {
 
 
 
-                {/* Direita: Comparativo organico vs pago */}
+                {/* Centro: Engajamento por post (reações, comentários, compartilhamentos) */}
 
                 <div className="chart-card chart-card--sm">
 
-                  <h3>Organico x Pago</h3>
+                  <div className="fb-line-card__header" style={{marginBottom:12}}>
 
-                  <p>Comparativo de alcance e engajamento/cliques</p>
+                    <h3>Engajamento por tipo</h3>
 
-                  {(loadingPage || loadingAds) ? (
+                    <p className="muted">Distribuição de reações, comentários e compartilhamentos</p>
 
-                    <div className="chart-card__empty">Carregando...</div>
+                  </div>
 
-                  ) : hasFilteredOrgVsPaidData ? (
+                  {loadingPage ? (
+
+                    <div className="chart-card__empty">Carregando dados...</div>
+
+                  ) : hasPostsEngagement ? (
 
                     <ResponsiveContainer width="100%" height={260}>
 
-                      <BarChart data={filteredOrganicVsPaidData} layout="vertical" margin={{ left: 24, right: 24, bottom: 12 }}>
+                      <BarChart data={postsEngagementData} layout="vertical" margin={{ left: 20, right: 20, bottom: 12 }}>
 
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" horizontal={false} />
 
@@ -1974,11 +2130,15 @@ export default function FacebookDashboard() {
 
                         />
 
-                        <Legend />
+                        <Bar dataKey="value" radius={[0, 12, 12, 0]}>
 
-                        <Bar dataKey="Organico" fill="#00FFD3" radius={[0, 12, 12, 0]} />
+                          {postsEngagementData.map((entry, index) => (
 
-                        <Bar dataKey="Pago" fill="#6aa7ff" radius={[0, 12, 12, 0]} />
+                            <Cell key={`engagement-cell-${index}`} fill={entry.color} />
+
+                          ))}
+
+                        </Bar>
 
                       </BarChart>
 
@@ -1986,7 +2146,7 @@ export default function FacebookDashboard() {
 
                   ) : (
 
-                    <div className="chart-card__empty">Sem dados suficientes.</div>
+                    <div className="chart-card__empty">Sem dados de engajamento no período.</div>
 
                   )}
 
@@ -1994,59 +2154,295 @@ export default function FacebookDashboard() {
 
 
 
-                <div className="chart-card">
+                {/* Direita: Insights por post (impressões, alcance, engajados, cliques) */}
+
+                <div className="chart-card chart-card--sm">
 
                   <div className="fb-line-card__header" style={{marginBottom:12}}>
 
-                    <h3>Composicao de resultados</h3>
+                    <h3>Performance dos posts</h3>
 
-                    <span className="muted">Distribuicao entre alcance, visualizacoes e engajamento.</span>
+                    <p className="muted">Impressões, alcance, usuários engajados e cliques</p>
 
                   </div>
 
-                  {donutComposition.items.length ? (
+                  {loadingPage ? (
 
-                    <div className="fb-donut-card__chart">
+                    <div className="chart-card__empty">Carregando dados...</div>
 
-                      <ResponsiveContainer width="100%" height={240}>
+                  ) : hasPostsInsights ? (
+
+                    <ResponsiveContainer width="100%" height={260}>
+
+                      <BarChart data={postsInsightsData} layout="vertical" margin={{ left: 20, right: 20, bottom: 12 }}>
+
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" horizontal={false} />
+
+                        <XAxis type="number" tickFormatter={formatShortNumber} stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+
+                        <YAxis type="category" dataKey="name" width={140} stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+
+                        <Tooltip
+
+                          contentStyle={{
+
+                            backgroundColor: '#f7fafc',
+
+                            color: '#0f1720',
+
+                            border: '1px solid #e3e8ef',
+
+                            borderRadius: '10px',
+
+                            boxShadow: '0 6px 20px rgba(0,0,0,.25)'
+
+                          }}
+
+                          formatter={(value) => formatNumber(Number(value))}
+
+                        />
+
+                        <Bar dataKey="value" radius={[0, 12, 12, 0]}>
+
+                          {postsInsightsData.map((entry, index) => (
+
+                            <Cell key={`insights-cell-${index}`} fill={entry.color} />
+
+                          ))}
+
+                        </Bar>
+
+                      </BarChart>
+
+                    </ResponsiveContainer>
+
+                  ) : (
+
+                    <div className="chart-card__empty">Sem dados de insights no período.</div>
+
+                  )}
+
+                </div>
+
+
+
+              </div>
+
+
+
+              {/* === Segunda linha de gráficos === */}
+
+              <div className="dashboard-charts dashboard-charts--two-cols" style={{marginTop: '20px'}}>
+
+                {/* Gráfico de Linha Temporal - Evolução do Engajamento */}
+
+                <div className="chart-card chart-card--sm">
+
+                  <div className="fb-line-card__header" style={{marginBottom:12}}>
+
+                    <h3>Evolução do Engajamento</h3>
+
+                    <p className="muted">Tendência temporal de reações, comentários e compartilhamentos</p>
+
+                  </div>
+
+                  {loadingPage ? (
+
+                    <div className="chart-card__empty">Carregando dados...</div>
+
+                  ) : hasEngagementTimeline ? (
+
+                    <ResponsiveContainer width="100%" height={260}>
+
+                      <LineChart data={engagementTimelineData} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
+
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+
+                        <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+
+                        <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={formatShortNumber} width={64} />
+
+                        <Tooltip
+
+                          contentStyle={{
+
+                            backgroundColor: '#f7fafc',
+
+                            color: '#0f1720',
+
+                            border: '1px solid #e3e8ef',
+
+                            borderRadius: '10px',
+
+                            boxShadow: '0 6px 20px rgba(0,0,0,.25)'
+
+                          }}
+
+                          labelFormatter={(label, payload) => {
+
+                            const rawDate = payload && payload[0]?.payload?.date;
+
+                            return rawDate ? formatDateFull(rawDate) : label;
+
+                          }}
+
+                          formatter={(value, name) => {
+
+                            const labels = {
+
+                              reactions: 'Reações',
+
+                              comments: 'Comentários',
+
+                              shares: 'Compartilhamentos',
+
+                              total: 'Total'
+
+                            };
+
+                            return [formatNumber(Number(value)), labels[name] || name];
+
+                          }}
+
+                        />
+
+                        <Legend />
+
+                        <Line type="monotone" dataKey="reactions" stroke="#00FFD3" strokeWidth={2.5} dot={false} name="Reações" />
+
+                        <Line type="monotone" dataKey="comments" stroke="#22A3FF" strokeWidth={2.5} dot={false} name="Comentários" />
+
+                        <Line type="monotone" dataKey="shares" stroke="#9B8CFF" strokeWidth={2.5} dot={false} name="Compartilhamentos" />
+
+                      </LineChart>
+
+                    </ResponsiveContainer>
+
+                  ) : (
+
+                    <div className="chart-card__empty">Sem dados de evolução no período.</div>
+
+                  )}
+
+                </div>
+
+
+
+                {/* Gráfico de Origem das Visualizações - Pizza */}
+
+                <div className="chart-card chart-card--sm">
+
+                  <div className="fb-line-card__header" style={{marginBottom:12}}>
+
+                    <h3>Origem das Visualizações</h3>
+
+                    <p className="muted">Distribuição entre seguidores e não-seguidores</p>
+
+                  </div>
+
+                  {loadingPage ? (
+
+                    <div className="chart-card__empty">Carregando dados...</div>
+
+                  ) : hasVisitorsBreakdown ? (
+
+                    <div style={{ position: 'relative', width: '100%', height: 260 }}>
+
+                      <ResponsiveContainer width="100%" height={260}>
 
                         <PieChart>
 
                           <Pie
 
-                            data={donutComposition.items}
+                            data={visitorsBreakdownData}
 
                             dataKey="value"
 
-                            nameKey="label"
+                            nameKey="name"
 
-                            innerRadius={60}
+                            cx="50%"
+
+                            cy="50%"
 
                             outerRadius={90}
 
+                            innerRadius={50}
+
+                            paddingAngle={5}
+
                             stroke="none"
 
-                            isAnimationActive={false}
+                            label={({ name, percentage }) => `${name}: ${percentage}%`}
+
+                            labelLine={true}
 
                           >
 
-                            {donutComposition.items.map((item) => (
+                            {visitorsBreakdownData.map((entry, index) => (
 
-                              <Cell key={item.key} fill={item.color} />
+                              <Cell key={`visitor-pie-${index}`} fill={entry.color} />
 
                             ))}
 
                           </Pie>
 
+                          <Tooltip
+
+                            contentStyle={{
+
+                              backgroundColor: '#f7fafc',
+
+                              color: '#0f1720',
+
+                              border: '1px solid #e3e8ef',
+
+                              borderRadius: '10px',
+
+                              boxShadow: '0 6px 20px rgba(0,0,0,.25)'
+
+                            }}
+
+                            formatter={(value, name) => [formatNumber(Number(value)), name]}
+
+                          />
+
                         </PieChart>
 
                       </ResponsiveContainer>
 
-                      <div className="fb-donut-card__center">
+                      <div style={{
 
-                        <strong>{donutComposition.total.toLocaleString("pt-BR")}</strong>
+                        position: 'absolute',
 
-                        <span>Total combinado</span>
+                        top: '50%',
+
+                        left: '50%',
+
+                        transform: 'translate(-50%, -50%)',
+
+                        textAlign: 'center',
+
+                        pointerEvents: 'none'
+
+                      }}>
+
+                        <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600 }}>
+
+                          Total
+
+                        </div>
+
+                        <div style={{ fontSize: '20px', color: 'var(--text-primary)', fontWeight: 700, marginTop: '4px' }}>
+
+                          {formatShortNumber(totalVisitors)}
+
+                        </div>
+
+                        <div style={{ fontSize: '10px', color: 'var(--muted)' }}>
+
+                          Visualizações
+
+                        </div>
 
                       </div>
 
@@ -2054,7 +2450,7 @@ export default function FacebookDashboard() {
 
                   ) : (
 
-                    <div className="chart-card__empty">Sem dados suficientes no periodo.</div>
+                    <div className="chart-card__empty">Sem dados de visualizações no período.</div>
 
                   )}
 

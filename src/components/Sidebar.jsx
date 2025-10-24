@@ -13,14 +13,14 @@ import logo from '../assets/logo-msl.svg';
 import { useAuth } from '../context/AuthContext';
 
 const DASHBOARD_ITEMS = [
-  { to: '/', icon: LayoutDashboard, label: 'Visao geral', end: true },
+  { to: '/', icon: LayoutDashboard, label: 'Visão geral', end: true },
   { to: '/facebook', icon: Facebook, label: 'Facebook' },
   { to: '/instagram', icon: Instagram, label: 'Instagram' },
 ];
 
 const ADMIN_ITEMS = [
-  { to: '/relatorios', icon: BarChart3, label: 'Relatorios' },
-  { to: '/configuracoes', icon: Settings, label: 'Configuracoes' },
+  { to: '/relatorios', icon: BarChart3, label: 'Relatórios' },
+  { to: '/configuracoes', icon: Settings, label: 'Configurações' },
   { to: '/admin', icon: Shield, label: 'Admin' },
 ];
 
@@ -46,7 +46,7 @@ export default function Sidebar({ open, onToggleSidebar }) {
     try {
       await signOut();
     } catch (err) {
-      console.error('Erro ao encerrar sessao', err);
+      console.error('Erro ao encerrar sessão', err);
     }
   };
 
@@ -56,8 +56,8 @@ export default function Sidebar({ open, onToggleSidebar }) {
         <div className="sidebar__brand">
           <img src={logo} alt="Logotipo MSL" className="sidebar__logo" />
           <div className="sidebar__brand-text">
-            <span className="sidebar__brand-name">MSL Estrategia</span>
-            <span className="sidebar__brand-tag">Insights sociais</span>
+            <span className="sidebar__brand-name">MSL Estratégia</span>
+            <span className="sidebar__brand-tag">Monitor</span>
           </div>
         </div>
         {onToggleSidebar && (
@@ -78,7 +78,7 @@ export default function Sidebar({ open, onToggleSidebar }) {
           <NavItem key={item.to} {...item} />
         ))}
 
-        <span className="sidebar__section">Administracao</span>
+        <span className="sidebar__section">Administração</span>
         {ADMIN_ITEMS.map((item) => (
           <NavItem key={item.to} {...item} />
         ))}
