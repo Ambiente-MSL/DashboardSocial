@@ -1607,6 +1607,10 @@ body.theme-light {
   font-weight: 500;
   transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
 }
+.filter-select__input option {
+  color: #000;
+  background-color: #fff;
+}
 
 .filter-select__input:focus {
   border-color: var(--accent);

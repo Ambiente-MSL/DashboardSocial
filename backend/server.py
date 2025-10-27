@@ -957,40 +957,82 @@ def ads_high():
 @app.get("/api/accounts/discover")
 def discover_accounts():
     """
-    Descobre automaticamente todas as contas disponíveis conectadas ao token.
-    Retorna páginas do Facebook, perfis do Instagram e contas de anúncios.
+    Descobre automaticamente todas as contas conectadas ao token do System User.
+    Retorna paginas do Facebook, perfis do Instagram e contas de anuncios, alem
+    de uma lista normalizada pronta para preencher o seletor no frontend.
     """
     try:
         # 1. Buscar todas as páginas que o usuário administra
         pages_response = gget("/me/accounts", params={
-            "fields": "id,name,access_token,category,tasks,instagram_business_account{id,username,name,profile_picture_url,followers_count}"
+            "fields": (
+                "id,name,access_token,category,tasks,"
+                "instagram_business_account{id,username,name,profile_picture_url,followers_count},"
+                "ads_accounts{id,account_id,name,account_status,currency,timezone_name}"
+            )
         })
 
         pages = []
         instagram_accounts = []
+        normalized_accounts = []
 
         if pages_response and "data" in pages_response:
             for page in pages_response["data"]:
+                if not isinstance(page, dict):
+                    continue
+
+                page_id = page.get("id")
+                page_name = page.get("name")
+                if not page_id:
+                    continue
+
                 page_data = {
-                    "id": page.get("id"),
-                    "name": page.get("name"),
+                    "id": page_id,
+                    "name": page_name,
                     "category": page.get("category"),
                     "tasks": page.get("tasks", []),
                 }
                 pages.append(page_data)
 
-                # Se a página tem Instagram conectado, adicionar
                 ig_account = page.get("instagram_business_account")
-                if ig_account:
+                ig_id = ""
+                ig_username = ""
+                if isinstance(ig_account, dict):
+                    ig_id = ig_account.get("id") or ""
+                    ig_username = ig_account.get("username") or ""
                     instagram_accounts.append({
                         "id": ig_account.get("id"),
                         "username": ig_account.get("username"),
                         "name": ig_account.get("name"),
                         "profilePictureUrl": ig_account.get("profile_picture_url"),
                         "followersCount": ig_account.get("followers_count"),
-                        "linkedPageId": page.get("id"),
-                        "linkedPageName": page.get("name"),
+                        "linkedPageId": page_id,
+                        "linkedPageName": page_name,
                     })
+
+                ads_accounts_payload = page.get("ads_accounts")
+                ads_accounts_data = []
+                if isinstance(ads_accounts_payload, dict):
+                    for ad in ads_accounts_payload.get("data", []):
+                        if not isinstance(ad, dict):
+                            continue
+                        ads_accounts_data.append({
+                            "id": ad.get("id"),
+                            "name": ad.get("name"),
+                            "accountId": ad.get("account_id"),
+                            "accountStatus": ad.get("account_status"),
+                            "currency": ad.get("currency"),
+                            "timezoneName": ad.get("timezone_name"),
+                        })
+
+                normalized_accounts.append({
+                    "id": f"page-{page_id}",
+                    "label": page_name or page_id,
+                    "facebookPageId": page_id,
+                    "instagramUserId": ig_id,
+                    "instagramUsername": ig_username,
+                    "adAccountId": ads_accounts_data[0]["id"] if ads_accounts_data else "",
+                    "adAccounts": ads_accounts_data,
+                })
 
         # 2. Buscar todas as contas de anúncios
         adaccounts_response = gget("/me/adaccounts", params={
@@ -1000,6 +1042,8 @@ def discover_accounts():
         ad_accounts = []
         if adaccounts_response and "data" in adaccounts_response:
             for adaccount in adaccounts_response["data"]:
+                if not isinstance(adaccount, dict):
+                    continue
                 ad_accounts.append({
                     "id": adaccount.get("id"),
                     "name": adaccount.get("name"),
@@ -1012,6 +1056,7 @@ def discover_accounts():
             "pages": pages,
             "instagramAccounts": instagram_accounts,
             "adAccounts": ad_accounts,
+            "accounts": normalized_accounts,
             "totalPages": len(pages),
             "totalInstagram": len(instagram_accounts),
             "totalAdAccounts": len(ad_accounts),
