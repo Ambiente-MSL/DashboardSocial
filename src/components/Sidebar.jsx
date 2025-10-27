@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   BarChart3,
   Facebook,
@@ -24,20 +24,25 @@ const ADMIN_ITEMS = [
   { to: '/admin', icon: Shield, label: 'Admin' },
 ];
 
-const NavItem = ({ to, icon: Icon, label, end }) => (
-  <NavLink
-    to={to}
-    end={end}
-    title={label}
-    aria-label={label}
-    className={({ isActive }) =>
-      `sidebar__nav-item${isActive ? ' sidebar__nav-item--active' : ''}`
-    }
-  >
-    <Icon size={18} strokeWidth={1.6} />
-    <span>{label}</span>
-  </NavLink>
-);
+const NavItem = ({ to, icon: Icon, label, end }) => {
+  const { search } = useLocation();
+  const destination = search ? { pathname: to, search } : to;
+
+  return (
+    <NavLink
+      to={destination}
+      end={end}
+      title={label}
+      aria-label={label}
+      className={({ isActive }) =>
+        `sidebar__nav-item${isActive ? ' sidebar__nav-item--active' : ''}`
+      }
+    >
+      <Icon size={18} strokeWidth={1.6} />
+      <span>{label}</span>
+    </NavLink>
+  );
+};
 
 export default function Sidebar({ open, onToggleSidebar }) {
   const { signOut } = useAuth();

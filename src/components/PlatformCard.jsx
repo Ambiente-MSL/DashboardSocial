@@ -1,5 +1,5 @@
 import { ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export default function PlatformCard({
   platform,
@@ -10,6 +10,9 @@ export default function PlatformCard({
   metrics,
   loading = false
 }) {
+  const { search } = useLocation();
+  const destination = search ? { pathname: to, search } : to;
+
   const formatNumber = (num) => {
     if (num == null) return '—';
     if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
@@ -24,7 +27,7 @@ export default function PlatformCard({
   };
 
   return (
-    <Link to={to} className="platform-card" style={{ '--platform-color': color }}>
+    <Link to={destination} className="platform-card" style={{ '--platform-color': color }}>
       <div className="platform-card__gradient" style={{ background: gradient }} />
 
       <div className="platform-card__header">

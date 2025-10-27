@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { Facebook, Instagram } from 'lucide-react';
-import { useOutletContext, Link } from 'react-router-dom';
+import { useOutletContext, Link, useLocation } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 import Topbar from '../components/Topbar';
@@ -107,6 +107,8 @@ const getMetric = (payload, key) => payload?.metrics?.find((item) => item.key ==
 export default function DashboardHome() {
 
   const { sidebarOpen, toggleSidebar } = useOutletContext();
+  const { search } = useLocation();
+  const buildLink = (pathname) => (search ? { pathname, search } : pathname);
 
   const { accounts } = useAccounts();
 
@@ -668,7 +670,7 @@ export default function DashboardHome() {
 
             <div className="overview-highlight">
 
-              <Link to="/instagram" className="overview-highlight-card overview-highlight-card--instagram">
+              <Link to={buildLink("/instagram")} className="overview-highlight-card overview-highlight-card--instagram">
 
                 <span className="overview-highlight-label" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                   <Instagram size={18} /> Seguidores no Instagram
@@ -688,7 +690,7 @@ export default function DashboardHome() {
 
               </Link>
 
-              <Link to="/facebook" className="overview-highlight-card overview-highlight-card--facebook">
+              <Link to={buildLink("/facebook")} className="overview-highlight-card overview-highlight-card--facebook">
 
                 <span className="overview-highlight-label" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                   <Facebook size={18} /> Curtidas da pagina
