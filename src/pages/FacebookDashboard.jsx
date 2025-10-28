@@ -39,17 +39,12 @@ import {
 
 } from "recharts";
 
-import Topbar from "../components/Topbar";
 
 import Modal from "../components/Modal";
 
 import MetricCard from "../components/MetricCard";
 
 import Section from "../components/Section";
-
-import DateRangePicker from "../components/DateRangePicker";
-
-import AccountSelect from "../components/AccountSelect";
 
 import FilterButton from "../components/FilterButton";
 
@@ -73,6 +68,11 @@ const CACHE_KEYS = {
 
 };
 
+const PERFORMANCE_FILTER_OPTIONS = [
+  { value: "all", label: "Tudo" },
+  { value: "organic", label: "Organico" },
+  { value: "paid", label: "Pago" },
+];
 
 
 
@@ -213,9 +213,9 @@ const FACEBOOK_CARD_CONFIG = [
 
     key: "impressions",
 
-    title: "Impressões",
+    title: "ImpressAes",
 
-    hint: "Total de vezes que o conteúdo foi exibido.",
+    hint: "Total de vezes que o conteAodo foi exibido.",
 
     group: "primary",
 
@@ -227,9 +227,9 @@ const FACEBOOK_CARD_CONFIG = [
 
     key: "reach",
 
-    title: "Alcance orgânico",
+    title: "Alcance orgAnico",
 
-    hint: "Pessoas alcancadas no período.",
+    hint: "Pessoas alcancadas no perAodo.",
 
     group: "primary",
 
@@ -243,7 +243,7 @@ const FACEBOOK_CARD_CONFIG = [
 
     title: "Engajamento total",
 
-    hint: "Reações, comentários e compartilhamentos em posts.",
+    hint: "ReaAAes, comentArios e compartilhamentos em posts.",
 
     type: "engagement",
 
@@ -257,9 +257,9 @@ const FACEBOOK_CARD_CONFIG = [
 
     key: "page_views",
 
-    title: "Visualizações da página",
+    title: "VisualizaAAes da pAgina",
 
-    hint: "Visualizações registradas na página.",
+    hint: "VisualizaAAes registradas na pAgina.",
 
     group: "primary",
 
@@ -271,9 +271,9 @@ const FACEBOOK_CARD_CONFIG = [
 
     key: "content_activity",
 
-    title: "Interações totais",
+    title: "InteraAAes totais",
 
-    hint: "Somatório de cliques, reações e engajamentos.",
+    hint: "SomatA3rio de cliques, reaAAes e engajamentos.",
 
     group: "engagement",
 
@@ -289,7 +289,7 @@ const FACEBOOK_CARD_CONFIG = [
 
     title: "Cliques em CTA",
 
-    hint: "Cliques em botões de call-to-action.",
+    hint: "Cliques em botAes de call-to-action.",
 
     group: "engagement",
 
@@ -321,7 +321,7 @@ const FACEBOOK_CARD_CONFIG = [
 
     title: "Novos curtidores",
 
-    hint: "Novos curtidores da página no período.",
+    hint: "Novos curtidores da pAgina no perAodo.",
 
     group: "primary",
 
@@ -333,9 +333,9 @@ const FACEBOOK_CARD_CONFIG = [
 
     key: "followers_total",
 
-    title: "Seguidores da página",
+    title: "Seguidores da pAgina",
 
-    hint: "Total de seguidores no final do período selecionado.",
+    hint: "Total de seguidores no final do perAodo selecionado.",
 
     group: "audience",
 
@@ -349,7 +349,7 @@ const FACEBOOK_CARD_CONFIG = [
 
     title: "Novos seguidores",
 
-    hint: "Seguidores ganhos no período.",
+    hint: "Seguidores ganhos no perAodo.",
 
     group: "audience",
 
@@ -363,7 +363,7 @@ const FACEBOOK_CARD_CONFIG = [
 
     title: "Deixaram de seguir",
 
-    hint: "Seguidores perdidos no período.",
+    hint: "Seguidores perdidos no perAodo.",
 
     group: "audience",
 
@@ -375,7 +375,7 @@ const FACEBOOK_CARD_CONFIG = [
 
     key: "net_followers",
 
-    title: "Crescimento líquido",
+    title: "Crescimento lAquido",
 
     hint: "Saldo entre ganhos e perdas de seguidores.",
 
@@ -391,7 +391,7 @@ const FACEBOOK_CARD_CONFIG = [
 
     title: "Tempo total assistido",
 
-    hint: "Tempo acumulado de visualização dos vídeos.",
+    hint: "Tempo acumulado de visualizaAAo dos vAdeos.",
 
     format: "duration",
 
@@ -407,7 +407,7 @@ const FACEBOOK_CARD_CONFIG = [
 
     title: "Video views",
 
-    hint: "Total de visualizações de vídeos no período.",
+    hint: "Total de visualizaAAes de vAdeos no perAodo.",
 
     group: "video",
 
@@ -419,9 +419,9 @@ const FACEBOOK_CARD_CONFIG = [
 
     key: "video_engagement_total",
 
-    title: "Vídeos (reações, comentários, compartilhamentos)",
+    title: "VAdeos (reaAAes, comentArios, compartilhamentos)",
 
-    hint: "Engajamento gerado pelos vídeos: reações, comentários e compartilhamentos.",
+    hint: "Engajamento gerado pelos vAdeos: reaAAes, comentArios e compartilhamentos.",
 
     type: "engagement",
 
@@ -505,7 +505,8 @@ const formatCurrency = (value) => {
 
 export default function FacebookDashboard() {
 
-  const { sidebarOpen, toggleSidebar } = useOutletContext();
+  const outletContext = useOutletContext() || {};
+  const { setTopbarConfig, resetTopbarConfig } = outletContext;
 
   const { accounts } = useAccounts();
 
@@ -526,8 +527,8 @@ export default function FacebookDashboard() {
       setQuery({ account: availableAccounts[0].id });
 
     }
-
-  }, [availableAccounts, queryAccountId, setQuery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableAccounts.length, queryAccountId]);
 
 
 
@@ -561,7 +562,7 @@ export default function FacebookDashboard() {
 
   const [loadingPage, setLoadingPage] = useState(false);
 
-  const [pageOverview, setPageOverview] = useState({});
+  const [, setPageOverview] = useState({});
 
   const [netFollowersSeries, setNetFollowersSeries] = useState([]);
 
@@ -607,11 +608,7 @@ export default function FacebookDashboard() {
 
   const [loadingAds, setLoadingAds] = useState(false);
 
-  const [cacheMeta, setCacheMeta] = useState({});
-
-  const [refreshing, setRefreshing] = useState(false);
-
-  const [refreshToken, setRefreshToken] = useState(0);
+  const [, setCacheMeta] = useState({});
 
   const [openEngagementModal, setOpenEngagementModal] = useState(false);
 
@@ -622,31 +619,6 @@ export default function FacebookDashboard() {
     setCacheMeta({});
 
   }, [accountId]);
-
-
-
-  const lastSyncAt = useMemo(() => {
-
-    const timestamps = Object.values(cacheMeta)
-
-      .map((meta) => {
-
-        if (!meta?.fetched_at) return null;
-
-        const time = new Date(meta.fetched_at).getTime();
-
-        return Number.isFinite(time) ? time : null;
-
-      })
-
-      .filter((value) => value != null);
-
-    if (!timestamps.length) return null;
-
-    return new Date(Math.max(...timestamps)).toISOString();
-
-  }, [cacheMeta]);
-
 
 
 
@@ -661,7 +633,7 @@ export default function FacebookDashboard() {
 
       setNetFollowersSeries([]);
 
-      setPageError("Página do Facebook não configurada.");
+      setPageError("PAgina do Facebook nAo configurada.");
 
       return;
 
@@ -701,7 +673,7 @@ export default function FacebookDashboard() {
 
         if (!response.ok) {
 
-          throw new Error(describeApiError(json, "Falha ao carregar métricas de página."));
+          throw new Error(describeApiError(json, "Falha ao carregar mAtricas de pAgina."));
 
         }
 
@@ -735,7 +707,7 @@ export default function FacebookDashboard() {
 
           setNetFollowersSeries([]);
 
-          setPageError(err.message || "Não foi possível carregar as métricas de página.");
+          setPageError(err.message || "NAo foi possAvel carregar as mAtricas de pAgina.");
 
         }
 
@@ -753,10 +725,10 @@ export default function FacebookDashboard() {
 
     return () => controller.abort();
 
-  }, [accountConfig?.facebookPageId, since, until, refreshToken]);
+  }, [accountConfig?.facebookPageId, since, until]);
 
 
-  //Carregar dados demográficos
+  //Carregar dados demogrAficos
   useEffect(() => {
   if (!accountConfig?.facebookPageId) return;
 
@@ -816,7 +788,7 @@ export default function FacebookDashboard() {
 
       });
 
-      setAdsError("Conta de anúncios não configurada.");
+      setAdsError("Conta de anAoncios nAo configurada.");
 
       return;
 
@@ -864,7 +836,7 @@ export default function FacebookDashboard() {
 
         if (!response.ok) {
 
-          throw new Error(describeApiError(json, "Falha ao carregar métricas de anúncios."));
+          throw new Error(describeApiError(json, "Falha ao carregar mAtricas de anAoncios."));
 
         }
 
@@ -904,7 +876,7 @@ export default function FacebookDashboard() {
 
           console.error(err);
 
-          setAdsError(err.message || "Não foi possível carregar os destaques de anúncios.");
+          setAdsError(err.message || "NAo foi possAvel carregar os destaques de anAoncios.");
 
         }
 
@@ -922,121 +894,7 @@ export default function FacebookDashboard() {
 
     return () => controller.abort();
 
-  }, [accountConfig?.adAccountId, since, until, refreshToken]);
-
-
-
-  const handleManualRefresh = async () => {
-
-    if (refreshing) return;
-
-    setRefreshing(true);
-
-    try {
-
-      const payload = {
-
-        resources: ['facebook_metrics', 'ads_highlights'],
-
-        account: {
-
-          facebookPageId: accountConfig?.facebookPageId,
-
-          adAccountId: accountConfig?.adAccountId,
-
-        },
-
-        since: toNumber(since),
-
-        until: toNumber(until),
-
-      };
-
-
-
-      const response = await fetch(`${API_BASE_URL}/api/sync/refresh`, {
-
-        method: 'POST',
-
-        headers: { 'Content-Type': 'application/json' },
-
-        body: JSON.stringify(payload),
-
-      });
-
-      const raw = await response.text();
-
-      const json = safeParseJson(raw) || {};
-
-
-
-      if (!response.ok) {
-
-        throw new Error(describeApiError(json, 'Falha ao atualizar os dados.'));
-
-      }
-
-
-
-      if (json.results) {
-
-        const updates = Object.entries(json.results).reduce((acc, [resource, value]) => {
-
-          if (value?.cache && CACHE_KEYS[resource]) {
-
-            acc[CACHE_KEYS[resource]] = value.cache;
-
-          }
-
-          return acc;
-
-        }, {});
-
-        if (Object.keys(updates).length) {
-
-          setCacheMeta((prev) => ({ ...prev, ...updates }));
-
-        }
-
-      }
-
-
-
-      if (Array.isArray(json.errors) && json.errors.length) {
-
-        const metricsIssue = json.errors.find((item) => item.resource === 'facebook_metrics');
-
-        const adsIssue = json.errors.find((item) => item.resource === 'ads_highlights');
-
-        if (metricsIssue?.error) setPageError(metricsIssue.error);
-
-        if (adsIssue?.error) setAdsError(adsIssue.error);
-
-      } else {
-
-        setPageError('');
-
-        setAdsError('');
-
-      }
-
-
-
-      setRefreshToken(Date.now());
-
-    } catch (err) {
-
-      console.error('Erro ao atualizar dados manualmente', err);
-
-      setPageError(err?.message || 'Não foi possível atualizar os dados.');
-
-    } finally {
-
-      setRefreshing(false);
-
-    }
-
-  };
+  }, [accountConfig?.adAccountId, since, until]);
 
 
 
@@ -1088,9 +946,9 @@ export default function FacebookDashboard() {
 
     const items = [
 
-      { key: "reactions", label: "Reações", icon: Heart },
+      { key: "reactions", label: "ReaAAes", icon: Heart },
 
-      { key: "comments", label: "Comentários", icon: MessageCircle },
+      { key: "comments", label: "ComentArios", icon: MessageCircle },
 
       { key: "shares", label: "Compartilhamentos", icon: Share2 },
 
@@ -1252,129 +1110,9 @@ export default function FacebookDashboard() {
 
 
 
-  const dailyEngagementData = useMemo(() => {
 
-    const series =
 
-      Array.isArray(pageOverview?.daily_engagement_series)
-
-        ? pageOverview.daily_engagement_series
-
-        : Array.isArray(pageOverview?.engagement_series)
-
-          ? pageOverview.engagement_series
-
-          : [];
-
-
-
-    return series
-
-      .map((point) => {
-
-        const date = point?.date || point?.day;
-
-        if (!date) return null;
-
-        const total = Number(point?.total ?? point?.value ?? 0) || 0;
-
-        const reactions = Number(point?.reactions ?? 0) || 0;
-
-        const comments = Number(point?.comments ?? 0) || 0;
-
-        const shares = Number(point?.shares ?? 0) || 0;
-
-        return {
-
-          date,
-
-          label: formatDateLabel(date),
-
-          total,
-
-          reactions,
-
-          comments,
-
-          shares,
-
-        };
-
-      })
-
-      .filter(Boolean);
-
-  }, [pageOverview]);
-
-
-
-  // Barras empilhadas por tipo de engajamento (reactions/comments/shares)
-
-  const engagementStackedData = useMemo(() => {
-
-    const metric = pageMetricsByKey.post_engagement_total;
-
-    if (metric?.daily_series) {
-
-      return metric.daily_series
-
-        .map((point) => {
-
-          const date = point?.date;
-
-          if (!date) return null;
-
-          return {
-
-            date,
-
-            label: formatDateLabel(date),
-
-            reactions: Number(point?.reactions || 0),
-
-            comments: Number(point?.comments || 0),
-
-            shares: Number(point?.shares || 0),
-
-          };
-
-        })
-
-        .filter(Boolean);
-
-    }
-
-    return dailyEngagementData.map(({ date, label, reactions, comments, shares }) => ({
-
-      date,
-
-      label,
-
-      reactions,
-
-      comments,
-
-      shares,
-
-    }));
-
-  }, [dailyEngagementData, pageMetricsByKey]);
-
-  const hasEngagementStacked = engagementStackedData.some(
-
-    (item) =>
-
-      (item?.reactions ?? 0) > 0 ||
-
-      (item?.comments ?? 0) > 0 ||
-
-      (item?.shares ?? 0) > 0,
-
-  );
-
-
-
-  // Dados de engajamento por post (reações, comentários, compartilhamentos)
+  // Dados de engajamento por post (reaAAes, comentArios, compartilhamentos)
 
   const postsEngagementData = useMemo(() => {
 
@@ -1396,7 +1134,7 @@ export default function FacebookDashboard() {
 
       {
 
-        name: "Reações",
+        name: "ReaAAes",
 
         value: Number(breakdown.reactions || 0),
 
@@ -1406,7 +1144,7 @@ export default function FacebookDashboard() {
 
       {
 
-        name: "Comentários",
+        name: "ComentArios",
 
         value: Number(breakdown.comments || 0),
 
@@ -1434,7 +1172,7 @@ export default function FacebookDashboard() {
 
 
 
-  // Dados de insights por post (impressões, alcance, engajados, cliques)
+  // Dados de insights por post (impressAes, alcance, engajados, cliques)
 
   const postsInsightsData = useMemo(() => {
 
@@ -1452,7 +1190,7 @@ export default function FacebookDashboard() {
 
       {
 
-        name: "Impressões",
+        name: "ImpressAes",
 
         value: impressions,
 
@@ -1472,7 +1210,7 @@ export default function FacebookDashboard() {
 
       {
 
-        name: "Usuários Engajados",
+        name: "UsuArios Engajados",
 
         value: engaged,
 
@@ -1500,7 +1238,7 @@ export default function FacebookDashboard() {
 
 
 
-  // Código comentado - gráfico "Orgânico x Pago" foi substituído por gráficos de posts
+  // CA3digo comentado - grAfico "OrgAnico x Pago" foi substituAdo por grAficos de posts
 
   // const filteredOrganicVsPaidData = useMemo(() => { ... }, [adsData?.totals, pageMetricsByKey, performanceScope]);
 
@@ -1508,7 +1246,7 @@ export default function FacebookDashboard() {
 
 
 
-  // Evolução temporal de engajamento (linha do tempo)
+  // EvoluAAo temporal de engajamento (linha do tempo)
 
   const engagementTimelineData = useMemo(() => {
 
@@ -1520,7 +1258,7 @@ export default function FacebookDashboard() {
 
 
 
-    // Usar a série de seguidores como base temporal e adicionar dados de engajamento
+    // Usar a sArie de seguidores como base temporal e adicionar dados de engajamento
 
     return netFollowersSeries.map((point) => {
 
@@ -1530,9 +1268,9 @@ export default function FacebookDashboard() {
 
 
 
-      // Valores simulados baseados nos dados disponíveis (em produção, viriam do backend)
+      // Valores simulados baseados nos dados disponAveis (em produAAo, viriam do backend)
 
-      const reactions = Number(point?.adds || 0) * 2; // Proporção aproximada
+      const reactions = Number(point?.adds || 0) * 2; // ProporAAo aproximada
 
       const comments = Number(point?.adds || 0) * 0.5;
 
@@ -1568,21 +1306,17 @@ export default function FacebookDashboard() {
 
 
 
-  // Distribuição de visualizações por tipo de visitante (seguidores vs não-seguidores)
+  // DistribuiAAo de visualizaAAes por tipo de visitante (seguidores vs nAo-seguidores)
 
-  // Nota: Essa métrica está disponível apenas para Instagram, não para Facebook
+  // Nota: Essa mAtrica estA disponAvel apenas para Instagram, nAo para Facebook
 
   const visitorsBreakdownData = useMemo(() => {
 
-    // Para Facebook, não temos breakdown por seguidor, então vamos simular baseado em dados disponíveis
+    // Para Facebook, nAo temos breakdown por seguidor, entAo vamos simular baseado em dados disponAveis
 
-    // Em produção, isso viria do endpoint específico do Instagram
+    // Em produAAo, isso viria do endpoint especAfico do Instagram
 
     const reach = Number(pageMetricsByKey.reach?.value || 0);
-
-    const followers = Number((cardGroups.audience || []).find(c => c.key === "followers_total")?.metric?.value || 0);
-
-    const engagement = Number(pageMetricsByKey.post_engagement_total?.value || 0);
 
 
 
@@ -1590,13 +1324,13 @@ export default function FacebookDashboard() {
 
 
 
-    // Estimativa: assumindo que seguidores têm maior engajamento
+    // Estimativa: assumindo que seguidores tAam maior engajamento
 
-    // Em produção com Instagram, esses valores viriam de profile_visitors_breakdown
+    // Em produAAo com Instagram, esses valores viriam de profile_visitors_breakdown
 
     const estimatedFollowersViews = Math.round(reach * 0.65); // 65% seguidores
 
-    const estimatedNonFollowersViews = Math.round(reach * 0.30); // 30% não-seguidores
+    const estimatedNonFollowersViews = Math.round(reach * 0.30); // 30% nAo-seguidores
 
     const estimatedOther = reach - estimatedFollowersViews - estimatedNonFollowersViews; // resto
 
@@ -1618,7 +1352,7 @@ export default function FacebookDashboard() {
 
       {
 
-        name: "Não-seguidores",
+        name: "NAo-seguidores",
 
         value: estimatedNonFollowersViews,
 
@@ -1642,7 +1376,7 @@ export default function FacebookDashboard() {
 
     ].filter(item => item.value > 0);
 
-  }, [pageMetricsByKey, cardGroups]);
+  }, [pageMetricsByKey]);
 
 
 
@@ -1708,68 +1442,38 @@ export default function FacebookDashboard() {
 
 
 
-  const filterOptions = [
-
-    { value: "all", label: "Tudo" },
-
-    { value: "organic", label: "Orgânico" },
-
-    { value: "paid", label: "Pago" },
-
-  ];
-
-
-
-  const topbarFilters = (
-
-    <>
-
-      <AccountSelect />
-
-      <DateRangePicker />
-
+  const filterControls = useMemo(
+    () => (
       <FilterButton
-
         value={performanceScope}
-
         onChange={setPerformanceScope}
-
-        options={filterOptions}
-
+        options={PERFORMANCE_FILTER_OPTIONS}
       />
-
-    </>
-
+    ),
+    [performanceScope],
   );
+
+  useEffect(() => {
+    if (typeof setTopbarConfig !== "function") return undefined;
+
+    setTopbarConfig({
+      title: "Facebook",
+      showFilters: true,
+      customFilters: filterControls,
+    });
+
+    return () => {
+      if (typeof resetTopbarConfig === "function") {
+        resetTopbarConfig();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterControls]);
 
 
 
   return (
-
     <>
-
-      <Topbar
-
-        title="Facebook"
-
-        sidebarOpen={sidebarOpen}
-
-        onToggleSidebar={toggleSidebar}
-
-        showFilters={false}
-
-        onRefresh={handleManualRefresh}
-
-        refreshing={refreshing}
-
-        lastSync={lastSyncAt}
-
-        customFilters={topbarFilters}
-
-      />
-
-
-
       <div className="page-content page-content--unified">
 
         {pageError && <div className="alert alert--error">{pageError}</div>}
@@ -1786,11 +1490,11 @@ export default function FacebookDashboard() {
 
               <div className="dashboard-kpis">
 
-                {/* 1. Impressões */}
+                {/* 1. ImpressAes */}
 
                 <MetricCard
 
-                  title="Impressões"
+                  title="ImpressAes"
 
                   value={primaryCards.find(c=>c.key==="impressions")?.value}
 
@@ -1806,7 +1510,7 @@ export default function FacebookDashboard() {
 
                 <MetricCard
 
-                  title="Alcance orgânico"
+                  title="Alcance orgAnico"
 
                   value={primaryCards.find(c=>c.key==="reach")?.value}
 
@@ -1840,7 +1544,7 @@ export default function FacebookDashboard() {
 
                 <MetricCard
 
-                  title="Visualizações da página"
+                  title="VisualizaAAes da pAgina"
 
                   value={primaryCards.find(c=>c.key==="page_views")?.value}
 
@@ -1872,7 +1576,7 @@ export default function FacebookDashboard() {
 
                 <MetricCard
 
-                  title="Crescimento líquido"
+                  title="Crescimento lAquido"
 
                   value={(cardGroups.audience||[]).find(c=>c.key==="net_followers")?.value}
 
@@ -1920,7 +1624,7 @@ export default function FacebookDashboard() {
 
                 <MetricCard
 
-                  title="Seguidores da página"
+                  title="Seguidores da pAgina"
 
                   value={(cardGroups.audience || []).find((c) => c.key === "followers_total")?.value}
 
@@ -1956,7 +1660,7 @@ export default function FacebookDashboard() {
 
                 <MetricCard
 
-                  title="Vídeo engajamento"
+                  title="VAdeo engajamento"
 
                   value={(cardGroups.video || []).find((c) => c.key === "video_engagement_total")?.value}
 
@@ -2082,7 +1786,7 @@ export default function FacebookDashboard() {
 
 
 
-                {/* Centro: Engajamento por post (reações, comentários, compartilhamentos) */}
+                {/* Centro: Engajamento por post (reaAAes, comentArios, compartilhamentos) */}
 
                 <div className="chart-card chart-card--sm">
 
@@ -2090,7 +1794,7 @@ export default function FacebookDashboard() {
 
                     <h3>Engajamento por tipo</h3>
 
-                    <p className="muted">Distribuição de reações, comentários e compartilhamentos</p>
+                    <p className="muted">DistribuiAAo de reaAAes, comentArios e compartilhamentos</p>
 
                   </div>
 
@@ -2146,7 +1850,7 @@ export default function FacebookDashboard() {
 
                   ) : (
 
-                    <div className="chart-card__empty">Sem dados de engajamento no período.</div>
+                    <div className="chart-card__empty">Sem dados de engajamento no perAodo.</div>
 
                   )}
 
@@ -2154,7 +1858,7 @@ export default function FacebookDashboard() {
 
 
 
-                {/* Direita: Insights por post (impressões, alcance, engajados, cliques) */}
+                {/* Direita: Insights por post (impressAes, alcance, engajados, cliques) */}
 
                 <div className="chart-card chart-card--sm">
 
@@ -2162,7 +1866,7 @@ export default function FacebookDashboard() {
 
                     <h3>Performance dos posts</h3>
 
-                    <p className="muted">Impressões, alcance, usuários engajados e cliques</p>
+                    <p className="muted">ImpressAes, alcance, usuArios engajados e cliques</p>
 
                   </div>
 
@@ -2218,7 +1922,7 @@ export default function FacebookDashboard() {
 
                   ) : (
 
-                    <div className="chart-card__empty">Sem dados de insights no período.</div>
+                    <div className="chart-card__empty">Sem dados de insights no perAodo.</div>
 
                   )}
 
@@ -2230,19 +1934,19 @@ export default function FacebookDashboard() {
 
 
 
-              {/* === Segunda linha de gráficos === */}
+              {/* === Segunda linha de grAficos === */}
 
               <div className="dashboard-charts dashboard-charts--two-cols" style={{marginTop: '20px'}}>
 
-                {/* Gráfico de Linha Temporal - Evolução do Engajamento */}
+                {/* GrAfico de Linha Temporal - EvoluAAo do Engajamento */}
 
                 <div className="chart-card chart-card--sm">
 
                   <div className="fb-line-card__header" style={{marginBottom:12}}>
 
-                    <h3>Evolução do Engajamento</h3>
+                    <h3>EvoluAAo do Engajamento</h3>
 
-                    <p className="muted">Tendência temporal de reações, comentários e compartilhamentos</p>
+                    <p className="muted">TendAancia temporal de reaAAes, comentArios e compartilhamentos</p>
 
                   </div>
 
@@ -2290,9 +1994,9 @@ export default function FacebookDashboard() {
 
                             const labels = {
 
-                              reactions: 'Reações',
+                              reactions: 'ReaAAes',
 
-                              comments: 'Comentários',
+                              comments: 'ComentArios',
 
                               shares: 'Compartilhamentos',
 
@@ -2308,9 +2012,9 @@ export default function FacebookDashboard() {
 
                         <Legend />
 
-                        <Line type="monotone" dataKey="reactions" stroke="#00FFD3" strokeWidth={2.5} dot={false} name="Reações" />
+                        <Line type="monotone" dataKey="reactions" stroke="#00FFD3" strokeWidth={2.5} dot={false} name="ReaAAes" />
 
-                        <Line type="monotone" dataKey="comments" stroke="#22A3FF" strokeWidth={2.5} dot={false} name="Comentários" />
+                        <Line type="monotone" dataKey="comments" stroke="#22A3FF" strokeWidth={2.5} dot={false} name="ComentArios" />
 
                         <Line type="monotone" dataKey="shares" stroke="#9B8CFF" strokeWidth={2.5} dot={false} name="Compartilhamentos" />
 
@@ -2320,7 +2024,7 @@ export default function FacebookDashboard() {
 
                   ) : (
 
-                    <div className="chart-card__empty">Sem dados de evolução no período.</div>
+                    <div className="chart-card__empty">Sem dados de evoluAAo no perAodo.</div>
 
                   )}
 
@@ -2328,15 +2032,15 @@ export default function FacebookDashboard() {
 
 
 
-                {/* Gráfico de Origem das Visualizações - Pizza */}
+                {/* GrAfico de Origem das VisualizaAAes - Pizza */}
 
                 <div className="chart-card chart-card--sm">
 
                   <div className="fb-line-card__header" style={{marginBottom:12}}>
 
-                    <h3>Origem das Visualizações</h3>
+                    <h3>Origem das VisualizaAAes</h3>
 
-                    <p className="muted">Distribuição entre seguidores e não-seguidores</p>
+                    <p className="muted">DistribuiAAo entre seguidores e nAo-seguidores</p>
 
                   </div>
 
@@ -2440,7 +2144,7 @@ export default function FacebookDashboard() {
 
                         <div style={{ fontSize: '10px', color: 'var(--muted)' }}>
 
-                          Visualizações
+                          VisualizaAAes
 
                         </div>
 
@@ -2450,7 +2154,7 @@ export default function FacebookDashboard() {
 
                   ) : (
 
-                    <div className="chart-card__empty">Sem dados de visualizações no período.</div>
+                    <div className="chart-card__empty">Sem dados de visualizaAAes no perAodo.</div>
 
                   )}
 
@@ -2490,7 +2194,7 @@ export default function FacebookDashboard() {
 
             <MetricCard
 
-              title="Impressões"
+              title="ImpressAes"
 
               value={loadingAds ? "..." : formatNumber(Number(adsTotals.impressions))}
 
@@ -2526,7 +2230,7 @@ export default function FacebookDashboard() {
 
             <MetricCard
 
-              title="CPC médio"
+              title="CPC mAdio"
 
               value={loadingAds ? "..." : formatCurrency(Number(adsAverages.cpc))}
 
@@ -2538,7 +2242,7 @@ export default function FacebookDashboard() {
 
             <MetricCard
 
-              title="CPM médio"
+              title="CPM mAdio"
 
               value={loadingAds ? "..." : formatCurrency(Number(adsAverages.cpm))}
 
@@ -2550,7 +2254,7 @@ export default function FacebookDashboard() {
 
             <MetricCard
 
-              title="CTR médio"
+              title="CTR mAdio"
 
               value={loadingAds ? "..." : formatPercent(Number(adsAverages.ctr))}
 
@@ -2562,7 +2266,7 @@ export default function FacebookDashboard() {
 
             <MetricCard
 
-              title="Frequência"
+              title="FrequAancia"
 
               value={loadingAds ? "..." : frequencyDisplay}
 
@@ -2574,7 +2278,7 @@ export default function FacebookDashboard() {
 
             <MetricCard
 
-              title="Conversões"
+              title="ConversAes"
 
               value={loadingAds ? "..." : formatNumber(Number(adsTotals.conversions || adsTotals.actions || 0))}
 
@@ -2598,7 +2302,7 @@ export default function FacebookDashboard() {
 
             <MetricCard
 
-              title="Taxa de Conversão"
+              title="Taxa de ConversAo"
 
               value={loadingAds ? "..." : formatPercent(Number(adsAverages.conversion_rate || 0))}
 
@@ -2694,7 +2398,7 @@ export default function FacebookDashboard() {
 
                 ) : (
 
-                  <div className="chart-card__empty">Sem dados no período.</div>
+                  <div className="chart-card__empty">Sem dados no perAodo.</div>
 
                 )}
 

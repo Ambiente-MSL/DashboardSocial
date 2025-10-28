@@ -48,7 +48,8 @@ export default function DateRangePicker() {
       set({ since: String(toUnixSeconds(startDate)), until: String(toUnixSeconds(endDate)) });
     }
     firstSync.current = true;
-  }, [qSince, qUntil, startDate, endDate, set]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qSince, qUntil]);
 
   // Atualizar datas quando query params mudam
   useEffect(() => {

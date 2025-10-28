@@ -22,8 +22,6 @@ export default function FilterButton({ value, onChange, options }) {
     setIsOpen(false);
   };
 
-  const selectedOption = options.find((opt) => opt.value === value) || options[0];
-
   return (
     <div className="filter-button-wrapper" ref={dropdownRef}>
       <button

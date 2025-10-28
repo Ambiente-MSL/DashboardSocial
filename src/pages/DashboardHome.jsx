@@ -4,8 +4,6 @@ import { Facebook, Instagram } from 'lucide-react';
 import { useOutletContext, Link, useLocation } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-import Topbar from '../components/Topbar';
-
 import Section from '../components/Section';
 
 import AccountSelect from '../components/AccountSelect';
@@ -106,13 +104,26 @@ const getMetric = (payload, key) => payload?.metrics?.find((item) => item.key ==
 
 export default function DashboardHome() {
 
-  const { sidebarOpen, toggleSidebar } = useOutletContext();
+  const outletContext = useOutletContext() || {};
+const { setTopbarConfig, resetTopbarConfig } = outletContext;
   const { search } = useLocation();
   const buildLink = (pathname) => (search ? { pathname, search } : pathname);
 
   const { accounts } = useAccounts();
 
   const availableAccounts = accounts.length ? accounts : DEFAULT_ACCOUNTS;
+
+  const topbarAccountControl = useMemo(() => <AccountSelect />, []);
+
+  useEffect(() => {
+    if (!setTopbarConfig) return undefined;
+    setTopbarConfig({
+      title: "Visao Geral",
+      showFilters: false,
+      rightExtras: topbarAccountControl,
+    });
+    return () => resetTopbarConfig?.();
+  }, [setTopbarConfig, resetTopbarConfig, topbarAccountControl]);
 
   const [get, setQuery] = useQueryState({ account: FALLBACK_ACCOUNT_ID });
 
@@ -194,6 +205,7 @@ export default function DashboardHome() {
 
 
 
+
   useEffect(() => {
 
     let active = true;
@@ -261,6 +273,7 @@ export default function DashboardHome() {
       let nextInstagram = null;
 
       let nextAds = null;
+
 
 
 
@@ -534,8 +547,6 @@ export default function DashboardHome() {
 
   const currentAdsSummary = adsSummary?.accountId === currentAccountId ? adsSummary : null;
 
-
-
   const lastSyncAt = useMemo(() => {
 
     const timestamps = [
@@ -573,9 +584,6 @@ export default function DashboardHome() {
     currentAdsSummary?.cacheAt,
 
   ]);
-
-
-
   const reachByPlatformData = useMemo(() => {
 
     const data = [];
@@ -623,24 +631,19 @@ export default function DashboardHome() {
   return (
 
     <>
-
-      <Topbar
-
-        title="Visão Geral"
-
-        sidebarOpen={sidebarOpen}
-
-        onToggleSidebar={toggleSidebar}
-
-        showFilters={false}
-
-        lastSync={lastSyncAt}
-
-        rightExtras={<AccountSelect />}
-
-      />
-
       <div className="page-content">
+
+        {lastSyncAt && (
+
+          <div className="overview-meta">
+
+            <span className="overview-meta__label">Ultima atualizacao:</span>
+
+            <time dateTime={lastSyncAt}>{formatDateTime(lastSyncAt)}</time>
+
+          </div>
+
+        )}
 
         {error && (
 
@@ -658,7 +661,7 @@ export default function DashboardHome() {
 
           title="Resumo geral da conta"
 
-          description="Principais indicadores da página e perfil selecionados."
+          description="Principais indicadores da pÃ¡gina e perfil selecionados."
 
           right={<span className="overview-current-account">{accountConfig?.label}</span>}>
 
@@ -720,7 +723,7 @@ export default function DashboardHome() {
 
           title="Alcance por Plataforma"
 
-          description="Comparativo de alcance entre Facebook e Instagram dos últimos 30 dias.">
+          description="Comparativo de alcance entre Facebook e Instagram dos Ãºltimos 30 dias.">
 
           {loading && !currentFacebookSummary && !currentInstagramSummary ? (
 
@@ -728,7 +731,7 @@ export default function DashboardHome() {
 
           ) : reachByPlatformData.length === 0 ? (
 
-            <div className="overview-loading">Nenhum dado de alcance disponível para o período selecionado.</div>
+            <div className="overview-loading">Nenhum dado de alcance disponÃ­vel para o perÃ­odo selecionado.</div>
 
           ) : (
 
@@ -795,4 +798,6 @@ export default function DashboardHome() {
   );
 
 }
+
+
 

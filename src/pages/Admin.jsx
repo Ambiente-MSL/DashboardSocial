@@ -1,19 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Shield, UserCog, AlertCircle, CheckCircle } from 'lucide-react';
-import Topbar from '../components/Topbar';
 import Section from '../components/Section';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 
 export default function Admin() {
-  const { sidebarOpen, toggleSidebar } = useOutletContext();
+  const outletContext = useOutletContext() || {};
+  const { setTopbarConfig, resetTopbarConfig } = outletContext;
   const { user, role } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [updating, setUpdating] = useState(null);
+
+  useEffect(() => {
+    if (!setTopbarConfig) return undefined;
+    setTopbarConfig({ title: 'Admin', showFilters: false });
+    return () => resetTopbarConfig?.();
+  }, [setTopbarConfig, resetTopbarConfig]);
 
   const fetchUsers = async () => {
     try {
@@ -67,7 +73,6 @@ export default function Admin() {
   if (role !== 'admin') {
     return (
       <>
-        <Topbar title="Admin" sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
         <div className="page-content">
           <Section title="Acesso Negado">
             <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--muted)' }}>
@@ -85,7 +90,6 @@ export default function Admin() {
 
   return (
     <>
-      <Topbar title="Admin" sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
       <div className="page-content">
         <Section
           title="Gerenciamento de Usuarios"
@@ -227,3 +231,4 @@ export default function Admin() {
     </>
   );
 }
+

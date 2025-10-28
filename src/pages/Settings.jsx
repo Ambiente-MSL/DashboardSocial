@@ -4,8 +4,6 @@ import { useOutletContext } from 'react-router-dom';
 
 import { ChevronDown, Edit3, Plus, Trash2 } from 'lucide-react';
 
-import Topbar from '../components/Topbar';
-
 import { useTheme } from '../context/ThemeContext';
 
 import { useAccounts } from '../context/AccountsContext';
@@ -31,8 +29,14 @@ const ACCOUNT_FORM_INITIAL = {
 
 
 export default function Settings() {
+  const outletContext = useOutletContext() || {};
+  const { setTopbarConfig, resetTopbarConfig } = outletContext;
 
-  const { sidebarOpen, toggleSidebar } = useOutletContext();
+  useEffect(() => {
+    if (!setTopbarConfig) return undefined;
+    setTopbarConfig({ title: "Configuracoes", showFilters: false });
+    return () => resetTopbarConfig?.();
+  }, [setTopbarConfig, resetTopbarConfig]);
 
   const { theme, resolvedTheme, setTheme } = useTheme();
 
@@ -284,7 +288,7 @@ export default function Settings() {
 
 
 
-    const confirmed = typeof window === 'undefined' ? true : window.confirm('Remover esta conta? Esta aзгo pode afetar os filtros dos dashboards.');
+    const confirmed = typeof window === 'undefined' ? true : window.confirm('Remover esta conta? Esta acao pode afetar os filtros dos dashboards.');
 
     if (!confirmed) return;
 
@@ -303,8 +307,6 @@ export default function Settings() {
   return (
 
     <>
-
-      <Topbar title="Configuracoes" sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
 
       <div className="page-content">
 
@@ -668,11 +670,11 @@ export default function Settings() {
 
                           <span className="accounts-card__title">{account.label}</span>
 
-                          <span>ID da pagina: {account.facebookPageId || 'Ч'}</span>
+                          <span>ID da pagina: {account.facebookPageId || ''}</span>
 
-                          <span>ID Instagram: {account.instagramUserId || 'Ч'}</span>
+                          <span>ID Instagram: {account.instagramUserId || ''}</span>
 
-                          <span>ID conta de anuncios: {account.adAccountId || 'Ч'}</span>
+                          <span>ID conta de anuncios: {account.adAccountId || ''}</span>
 
                         </div>
 
@@ -719,4 +721,5 @@ export default function Settings() {
   );
 
 }
+
 

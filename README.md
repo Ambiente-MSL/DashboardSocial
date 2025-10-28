@@ -5,6 +5,10 @@
 <img src="docs/screenshot-dashboard.png" width="800"/>
 ✨ Funcionalidades
 
+Funcionalidades Diferenciais da Meta
+Conexão direta com a Meta Graph API
+Métricas 
+
 ✅ Conexão direta com a Meta Graph API
 ✅ Métricas orgânicas (Facebook e Instagram) e pagas (Ads)
 ✅ Gráficos interativos (linhas, pizza, comparativos)

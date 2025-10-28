@@ -1,7 +1,6 @@
 // src/pages/Reports.jsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import Topbar from "../components/Topbar";
 import Section from "../components/Section";
 import ExportButtons from "../components/ExportButtons";
 import useQueryState from "../hooks/useQueryState";
@@ -15,8 +14,15 @@ import { utils as XLSXutils, writeFile as XLSXwriteFile } from "xlsx";
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 
 export default function Reports() {
-  const { sidebarOpen, toggleSidebar } = useOutletContext();
+  const outletContext = useOutletContext() || {};
+  const { setTopbarConfig, resetTopbarConfig } = outletContext;
   const [get] = useQueryState();
+
+  useEffect(() => {
+    if (!setTopbarConfig) return undefined;
+    setTopbarConfig({ title: "Relatorios", showFilters: false });
+    return () => resetTopbarConfig?.();
+  }, [setTopbarConfig, resetTopbarConfig]);
 
   const account = get("account");
   const since = get("since");
@@ -67,8 +73,8 @@ export default function Reports() {
   };
 
   const getFacebookData = async () => {
-    // orgânico + pago (ads)
-    const pageId = account ? undefined : undefined; // já vem do backend pela env se não enviar
+    // orgAnico + pago (ads)
+    const pageId = account ? undefined : undefined; // jA vem do backend pela env se nAo enviar
     const [org, ads] = await Promise.all([
       call("/api/facebook/metrics", { pageId, since, until }),
       call("/api/ads/highlights", { since: toIso(since), until: toIso(until) }),
@@ -134,12 +140,12 @@ export default function Reports() {
     const rows = flattenForTable(data);
     const sheet = XLSXutils.json_to_sheet(rows);
     const wb = XLSXutils.book_new();
-    XLSXutils.book_append_sheet(wb, sheet, "Relatório");
+    XLSXutils.book_append_sheet(wb, sheet, "RelatA3rio");
     XLSXwriteFile(wb, `${report?.name || "relatorio"}.xlsx`);
   };
 
   const exportPDF = async (report, data) => {
-    // renderiza um preview simples do relatório no DOM “invisível” e captura em PDF
+    // renderiza um preview simples do relatA3rio no DOM ainvisAvela e captura em PDF
     const el = previewRef.current;
     if (el) {
       el.innerHTML = renderHtmlPreview(report, data);
@@ -189,8 +195,8 @@ export default function Reports() {
     // preview simples; personalize com HTML/CSS do seu template
     return `
       <div style="padding:24px;color:var(--fg);font-family:'Lato',system-ui,Arial;background:var(--bg);width:900px">
-        <h2 style="margin:0 0 8px 0">${report?.name || "Relatório"}</h2>
-        <p style="margin:0 0 24px 0;opacity:.75">Conta: ${account || "Padrão"} | Período: ${since || "-"} → ${until || "-"}</p>
+        <h2 style="margin:0 0 8px 0">${report?.name || "RelatA3rio"}</h2>
+        <p style="margin:0 0 24px 0;opacity:.75">Conta: ${account || "PadrAo"} | PerAodo: ${since || "-"} a ${until || "-"}</p>
         <h3>Resumo</h3>
         <pre style="white-space:pre-wrap;background:var(--panel);border:1px solid var(--stroke);border-radius:12px;padding:12px;color:var(--fg)">${JSON.stringify(data, null, 2)}</pre>
       </div>
@@ -199,7 +205,6 @@ export default function Reports() {
 
   return (
     <>
-      <Topbar title="Relatórios" sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
 
       <div className="page-content">
         <Section title="Origem dos dados">
@@ -234,13 +239,13 @@ export default function Reports() {
           </div>
         </Section>
 
-        <Section title="Exportações" description="Gere o arquivo diretamente com os filtros atuais.">
+        <Section title="ExportaAAes" description="Gere o arquivo diretamente com os filtros atuais.">
           <ExportButtons onExport={onExport} disabled={loading || reports.length === 0} />
-          {/* área invisível para renderização do preview do PDF */}
+          {/* Area invisAvel para renderizaAAo do preview do PDF */}
           <div ref={previewRef} style={{ position: "absolute", left: -99999, top: -99999 }} />
         </Section>
 
-        <Section title="Meus Relatórios">
+        <Section title="Meus RelatA3rios">
           <ReportGrid
             reports={reports}
             templates={templates}
@@ -252,3 +257,4 @@ export default function Reports() {
     </>
   );
 }
+

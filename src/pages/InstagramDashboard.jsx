@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { Link, useLocation, useOutletContext } from "react-router-dom";
+import { differenceInCalendarDays, endOfDay, startOfDay, subDays } from "date-fns";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -16,21 +17,30 @@ import {
   Cell,
 } from "recharts";
 import {
+  BarChart3,
+  BellRing,
   Bookmark,
-  Calendar,
+  CalendarDays,
+  ChevronDown,
   Clock,
   Flame,
+  FileText,
+  Facebook,
   Hash,
   Heart,
+  Instagram as InstagramIcon,
   MessageCircle,
   Play,
   Share2,
   TrendingUp,
-  Users,
+  Settings,
+  Shield,
 } from "lucide-react";
 import useQueryState from "../hooks/useQueryState";
 import { useAccounts } from "../context/AccountsContext";
 import { DEFAULT_ACCOUNTS } from "../data/accounts";
+import AccountSelect from "../components/AccountSelect";
+import DateRangePicker from "../components/DateRangePicker";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const FALLBACK_ACCOUNT_ID = DEFAULT_ACCOUNTS[0]?.id || "";
@@ -40,6 +50,23 @@ const STOP_WORDS = new Set([
   "por", "que", "se", "sem", "um", "uma", "uns", "umas", "foi", "sao", "ser", "como", "mais", "mas", "ja", "vai",
   "tem", "ter", "pra", "nosso", "nossa", "seu", "sua", "the", "and", "of",
 ]);
+
+const IG_TOPBAR_PRESETS = [
+  { id: "7d", label: "7 Days", days: 7 },
+  { id: "1m", label: "1 Month", days: 30 },
+  { id: "3m", label: "3 Months", days: 90 },
+];
+
+const HERO_TABS = [
+  { id: "instagram", label: "Instagram", href: "/instagram", icon: InstagramIcon },
+  { id: "facebook", label: "Facebook", href: "/facebook", icon: Facebook },
+  { id: "ads", label: "Ads", icon: BarChart3 },
+  { id: "reports", label: "Relatorios", href: "/relatorios", icon: FileText },
+  { id: "admin", label: "Admin", href: "/admin", icon: Shield },
+  { id: "settings", label: "Configuracoes", href: "/configuracoes", icon: Settings },
+];
+
+const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
 
 const SHORT_DATE_FORMATTER = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" });
 const LONG_DATE_FORMATTER = new Intl.DateTimeFormat("pt-BR", { dateStyle: "full" });
@@ -367,6 +394,7 @@ const IG_CONTENT_LABEL = {
 export default function InstagramDashboard() {
   const outlet = useOutletContext() || {};
   const { setTopbarConfig, resetTopbarConfig } = outlet;
+  const location = useLocation();
   const { accounts } = useAccounts();
   const availableAccounts = accounts.length ? accounts : DEFAULT_ACCOUNTS;
   const [getQuery, setQuery] = useQueryState({ account: FALLBACK_ACCOUNT_ID });
@@ -377,7 +405,8 @@ export default function InstagramDashboard() {
     if (!queryAccountId || !availableAccounts.some((account) => account.id === queryAccountId)) {
       setQuery({ account: availableAccounts[0].id });
     }
-  }, [availableAccounts, queryAccountId, setQuery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableAccounts.length, queryAccountId]);
 
   const accountId = queryAccountId && availableAccounts.some((account) => account.id === queryAccountId)
     ? queryAccountId
@@ -392,6 +421,61 @@ export default function InstagramDashboard() {
   const untilParam = getQuery("until");
   const sinceDate = useMemo(() => parseQueryDate(sinceParam), [sinceParam]);
   const untilDate = useMemo(() => parseQueryDate(untilParam), [untilParam]);
+  const now = useMemo(() => new Date(), []);
+  const defaultEnd = useMemo(() => endOfDay(subDays(startOfDay(now), 1)), [now]);
+
+  const activePreset = useMemo(() => {
+    if (!sinceDate || !untilDate) return "custom";
+    const diff = differenceInCalendarDays(endOfDay(untilDate), startOfDay(sinceDate)) + 1;
+    const preset = IG_TOPBAR_PRESETS.find((item) => item.days === diff);
+    return preset?.id ?? "custom";
+  }, [sinceDate, untilDate]);
+
+  const handlePresetSelect = useCallback(
+    (presetId) => {
+      const preset = IG_TOPBAR_PRESETS.find((item) => item.id === presetId);
+      if (!preset?.days || preset.days <= 0) return;
+      const endDate = defaultEnd;
+      const startDate = startOfDay(subDays(endDate, preset.days - 1));
+      setQuery({
+        since: toUnixSeconds(startDate),
+        until: toUnixSeconds(endDate),
+      });
+    },
+    [defaultEnd, setQuery],
+  );
+
+  const topbarFilters = useMemo(
+    () => (
+      <div className="ig-topbar-controls">
+        <div className="ig-topbar-controls__left">
+          <div className="ig-topbar-controls__date">
+            <DateRangePicker />
+          </div>
+          <AccountSelect />
+        </div>
+        <div className="ig-topbar-controls__right">
+          <button type="button" className="ig-topbar-controls__bell" aria-label="Notificacoes">
+            <BellRing size={16} />
+            <span className="ig-topbar-controls__bell-dot" />
+          </button>
+          <div className="ig-topbar-controls__chips">
+            {IG_TOPBAR_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                className={`ig-topbar-controls__chip${activePreset === preset.id ? " ig-topbar-controls__chip--active" : ""}`}
+                onClick={() => handlePresetSelect(preset.id)}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    ),
+    [activePreset, handlePresetSelect],
+  );
 
   const [metrics, setMetrics] = useState([]);
   const [loadingMetrics, setLoadingMetrics] = useState(false);
@@ -409,12 +493,19 @@ export default function InstagramDashboard() {
 
   const [accountInfo, setAccountInfo] = useState(null);
   const [followerSeries, setFollowerSeries] = useState([]);
+  const [followerCounts, setFollowerCounts] = useState(null);
 
   useEffect(() => {
     if (!setTopbarConfig) return undefined;
-    setTopbarConfig({ title: "Instagram", showFilters: true });
+    setTopbarConfig({
+      title: "Instagram",
+      showFilters: false,
+      customFilters: topbarFilters,
+      rightExtras: null,
+    });
     return () => resetTopbarConfig?.();
-  }, [setTopbarConfig, resetTopbarConfig]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topbarFilters]);
 
   useEffect(() => {
     if (!accountConfig?.instagramUserId) {
@@ -440,6 +531,7 @@ export default function InstagramDashboard() {
         if (!resp.ok) throw new Error(describeApiError(json, "Falha ao carregar metricas do Instagram."));
         setMetrics(json.metrics || []);
         setFollowerSeries(Array.isArray(json.follower_series) ? json.follower_series : []);
+        setFollowerCounts(json.follower_counts || null);
         setIgSummary({
           accountsEngaged: tryParseNumber(json.accounts_engaged),
           profileViews: tryParseNumber(json.profile_views),
@@ -449,6 +541,7 @@ export default function InstagramDashboard() {
         if (err.name !== "AbortError") {
           setMetrics([]);
           setFollowerSeries([]);
+          setFollowerCounts(null);
           setIgSummary({ accountsEngaged: null, profileViews: null, websiteClicks: null });
           setMetricsError(err.message || "Nao foi possivel atualizar.");
         }
@@ -550,23 +643,32 @@ export default function InstagramDashboard() {
   }, [posts, sinceDate, untilDate]);
 
   const totalFollowers = useMemo(() => {
-    const metricValue = extractNumber(followersMetric?.value, null);
+    const accountFollowers = pickFirstNumber(
+      [
+        accountInfo?.followers_count,
+        accountInfo?.followers,
+        getNestedValue(accountInfo, ["followers", "count"]),
+        getNestedValue(accountInfo, ["insights", "followers"]),
+        getNestedValue(accountInfo, ["insights", "followers", "value"]),
+      ],
+      null,
+    );
+    if (accountFollowers !== null) return accountFollowers;
+
+    const countsFollowers = tryParseNumber(followerCounts?.end ?? followerCounts?.total);
+    if (countsFollowers !== null) return countsFollowers;
+
+    const metricValue = tryParseNumber(followersMetric?.value);
     if (metricValue !== null) return metricValue;
 
     if (followerSeriesNormalized.length) {
       const latestPoint = followerSeriesNormalized[followerSeriesNormalized.length - 1];
-      const latestValue = extractNumber(latestPoint?.value, null);
+      const latestValue = tryParseNumber(latestPoint?.value);
       if (latestValue !== null) return latestValue;
     }
 
-    return pickFirstNumber([
-      accountInfo?.followers_count,
-      accountInfo?.followers,
-      getNestedValue(accountInfo, ["followers", "count"]),
-      getNestedValue(accountInfo, ["insights", "followers"]),
-      getNestedValue(accountInfo, ["insights", "followers", "value"]),
-    ], 0);
-  }, [followersMetric?.value, followerSeriesNormalized, accountInfo]);
+    return 0;
+  }, [accountInfo, followerCounts, followersMetric?.value, followerSeriesNormalized]);
 
   const reachValue = extractNumber(reachMetric?.value, 0);
   const interactionsValue = extractNumber(interactionsMetric?.value, 0);
@@ -655,117 +757,364 @@ export default function InstagramDashboard() {
   const accountInitial = (accountInfo?.username || accountInfo?.name || "IG").charAt(0).toUpperCase();
 
   return (
-    <div className="instagram-dashboard">
+    <div className="instagram-dashboard instagram-dashboard--clean">
       {metricsError && <div className="alert alert--error">{metricsError}</div>}
       {postsError && <div className="alert alert--error">{postsError}</div>}
 
-      <div className="ig-grid ig-grid--hero">
-        <div className="ig-card ig-summary-card">
-          <div className="ig-summary-card__header">
-            <div className="ig-summary-card__avatar">
+      {/* Topbar Global Unificada */}
+      <div className="global-topbar">
+        <div className="global-topbar__left">
+          <div className="global-topbar__logo">
+            <img src="/favicon2.png" alt="MSL Monitor" />
+          </div>
+        </div>
+
+        <div className="global-topbar__center">
+          <div className="global-topbar__icon">
+            <BellRing size={18} style={{ color: '#ec4899' }} />
+          </div>
+
+          <div className="global-topbar__date-picker">
+            <CalendarDays size={16} />
+            <span>26 Mar, 2019 - 26 Abr, 2019</span>
+            <ChevronDown size={14} />
+          </div>
+
+          <div className="global-topbar__filters">
+            {IG_TOPBAR_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                className={`global-topbar__chip${activePreset === preset.id ? " global-topbar__chip--active" : ""}`}
+                onClick={() => handlePresetSelect(preset.id)}
+              >
+                {preset.id === '7d' ? '7 Dias' : preset.id === '1m' ? '1 Mês' : '3 Meses'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="global-topbar__right">
+          <div className="global-topbar__user-dropdown">
+            <div className="global-topbar__avatar">
               {accountInfo?.profile_picture_url ? (
-                <img src={accountInfo.profile_picture_url} alt={accountInfo.username || accountInfo.name || "Perfil do Instagram"} />
+                <img src={accountInfo.profile_picture_url} alt="User" />
               ) : (
                 <span>{accountInitial}</span>
               )}
             </div>
-            <div className="ig-summary-card__identity">
-              <span className="ig-summary-card__handle">@{accountInfo?.username || accountInfo?.name || "instagram"}</span>
-              <span className="ig-summary-card__subtitle">{accountInfo?.name || accountInfo?.username || "Perfil conectado"}</span>
+            <div className="global-topbar__user-info">
+              <span className="global-topbar__username">
+                {accountConfig?.label || accountInfo?.username || "Mauro Benevides"}
+              </span>
+              <span className="global-topbar__account-type">
+                {availableAccounts.length > 1 ? `${availableAccounts.length} contas` : 'Conta principal'}
+              </span>
             </div>
-          </div>
+            <ChevronDown size={14} />
 
-          <div className="ig-summary-card__stats">
-            <div className="ig-summary-stat">
-              <Users size={18} />
-              <div>
-                <span className="ig-summary-stat__label">Seguidores</span>
-                <strong className="ig-summary-stat__value">{formatNumber(totalFollowers)}</strong>
-              </div>
-            </div>
-            <div className="ig-summary-stat">
-              <TrendingUp size={18} />
-              <div>
-                <span className="ig-summary-stat__label">Alcance (30 dias)</span>
-                <strong className="ig-summary-stat__value">{formatNumber(reachValue)}</strong>
-              </div>
-            </div>
-            <div className="ig-summary-stat">
-              <Clock size={18} />
-              <div>
-                <span className="ig-summary-stat__label">Seguidores/dia</span>
-                <strong className="ig-summary-stat__value">{avgFollowersPerDay ? avgFollowersPerDay.toLocaleString("pt-BR") : ""}</strong>
-              </div>
-            </div>
-            <div className="ig-summary-stat">
-              <Calendar size={18} />
-              <div>
-                <span className="ig-summary-stat__label">Posts no periodo</span>
-                <strong className="ig-summary-stat__value">{postsCount}</strong>
-              </div>
+            {/* Dropdown de Contas */}
+            <div className="global-topbar__accounts-dropdown">
+              {availableAccounts.map((acc) => (
+                <button
+                  key={acc.id}
+                  type="button"
+                  className={`global-topbar__account-item${acc.id === accountId ? ' global-topbar__account-item--active' : ''}`}
+                  onClick={() => setQuery({ account: acc.id })}
+                >
+                  <div className="global-topbar__account-avatar">
+                    {acc.instagramUsername?.[0]?.toUpperCase() || acc.label?.[0]?.toUpperCase() || 'C'}
+                  </div>
+                  <div className="global-topbar__account-info">
+                    <span className="global-topbar__account-name">{acc.label || 'Conta'}</span>
+                    <span className="global-topbar__account-username">{acc.instagramUsername || '@conta'}</span>
+                  </div>
+                  {acc.id === accountId && (
+                    <div className="global-topbar__account-check">✓</div>
+                  )}
+                </button>
+              ))}
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="ig-card ig-timeline-card">
-          <header className="ig-card__header">
-            <div>
-              <h3>Alcance & Interacoes</h3>
-              <p>Visao geral do periodo selecionado</p>
+      {/* Container Limpo (fundo branco) */}
+      <div className="ig-clean-container">
+        {/* Header com Logo Instagram e Tabs */}
+        <div className="ig-clean-header">
+          <div className="ig-clean-header__brand">
+            <div className="ig-clean-header__logo">
+              <InstagramIcon size={32} />
             </div>
-          </header>
-          <div className="ig-card__chart">
-            {timelineData.length ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={timelineData}>
-                  <defs>
-                    <linearGradient id="igReachGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
-                  <XAxis dataKey="label" stroke="var(--text-secondary)" />
-                  <YAxis stroke="var(--text-secondary)" tickFormatter={(value) => value.toLocaleString("pt-BR")} />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null;
-                      const dateKey = payload[0]?.payload?.dateKey;
-                      const reachPoint = payload.find((item) => item.dataKey === "reach");
-                      const interactionsPoint = payload.find((item) => item.dataKey === "interactions");
-                      const followersPoint = payload.find((item) => item.dataKey === "followers");
-                      return (
-                        <div className="ig-tooltip">
-                          <span className="ig-tooltip__title">{dateKey ? LONG_DATE_FORMATTER.format(new Date(`${dateKey}T00:00:00`)) : "Data"}</span>
-                          <div className="ig-tooltip__row">
-                            <span>Alcance</span>
-                            <strong>{reachPoint?.value?.toLocaleString("pt-BR") ?? ""}</strong>
-                          </div>
-                          <div className="ig-tooltip__row">
-                            <span>Interacoes</span>
-                            <strong>{interactionsPoint?.value?.toLocaleString("pt-BR") ?? ""}</strong>
-                          </div>
-                          {Number.isFinite(followersPoint?.value) && (
-                            <div className="ig-tooltip__row">
-                              <span>Total seguidores</span>
-                              <strong>{followersPoint.value.toLocaleString("pt-BR")}</strong>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }}
-                  />
-                  <Area type="monotone" dataKey="reach" stroke="#8b5cf6" strokeWidth={2} fill="url(#igReachGradient)" />
-                  <Line type="monotone" dataKey="interactions" stroke="#f43f5e" strokeWidth={2.5} dot={{ r: 2.5 }} activeDot={{ r: 4.5 }} />
-                </AreaChart>
-              </ResponsiveContainer>
+            <h1>Instagram</h1>
+          </div>
+
+          <nav className="ig-clean-tabs">
+            {HERO_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = tab.href ? location.pathname === tab.href : tab.id === "instagram";
+              return tab.href ? (
+                <Link
+                  key={tab.id}
+                  to={tab.href}
+                  className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
+                >
+                  <Icon size={18} />
+                  <span>{tab.label}</span>
+                </Link>
+              ) : (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
+                  disabled={!tab.href}
+                >
+                  <Icon size={18} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        <h2 className="ig-clean-title">Visão Geral</h2>
+
+        {/* Grid Principal */}
+        <div className="ig-clean-grid">
+          {/* Card de Perfil Vertical */}
+          <section className="ig-profile-vertical">
+            <div className="ig-profile-vertical__cover" />
+
+            <div className="ig-profile-vertical__avatar-wrapper">
+              <div className="ig-profile-vertical__avatar">
+                {accountInfo?.profile_picture_url ? (
+                  <img src={accountInfo.profile_picture_url} alt="Profile" />
+                ) : (
+                  <span>{accountInitial}</span>
+                )}
+              </div>
+            </div>
+
+            <div className="ig-profile-vertical__body">
+              <h3 className="ig-profile-vertical__username">
+                @{accountInfo?.username || accountInfo?.name || "insta_sample"}
+              </h3>
+
+              <div className="ig-profile-vertical__stats-grid">
+                <div className="ig-stat-box">
+                  <div className="ig-stat-box__value">{formatNumber(totalFollowers)}</div>
+                  <div className="ig-stat-box__label">Total Seguidores</div>
+                </div>
+                <div className="ig-stat-box">
+                  <div className="ig-stat-box__value">{formatNumber(reachValue)}</div>
+                  <div className="ig-stat-box__label">Alcance 30 dias</div>
+                </div>
+              </div>
+
+              <div className="ig-profile-vertical__chart-section">
+                <div className="ig-stat-box">
+                  <div className="ig-stat-box__value">{avgFollowersPerDay > 0 ? avgFollowersPerDay.toFixed(2) : "0,00"}</div>
+                  <div className="ig-stat-box__label">Seguidores Diários</div>
+                </div>
+
+                <div className="ig-weekday-chart">
+                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                    <div key={day + idx} className="ig-weekday-bar">
+                      <div
+                        className={`ig-weekday-bar__fill${idx === 1 || idx === 3 ? ' ig-weekday-bar__fill--active' : ''}`}
+                        style={{ height: `${Math.random() * 60 + 20}%` }}
+                      />
+                      <span>{day}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="ig-stat-box">
+                <div className="ig-stat-box__value">{postsCount}</div>
+                <div className="ig-stat-box__label">Posts Criados</div>
+                <select className="ig-stat-box__dropdown">
+                  <option>Esta semana</option>
+                  <option>Este mês</option>
+                  <option>Este ano</option>
+                </select>
+              </div>
+
+              <div className="ig-weekday-chart">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                  <div key={`week2-${idx}`} className="ig-weekday-bar">
+                    <div
+                      className={`ig-weekday-bar__fill${idx === 3 ? ' ig-weekday-bar__fill--active' : ''}`}
+                      style={{ height: `${Math.random() * 60 + 20}%` }}
+                    />
+                    <span>{day}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Card de Crescimento do Perfil */}
+          <section className="ig-growth-clean">
+            <header className="ig-card-header">
+              <div>
+                <h3>Crescimento do Perfil</h3>
+                <p className="ig-card-subtitle">Alcance</p>
+              </div>
+              <div className="ig-filter-pills">
+                {IG_TOPBAR_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    className={`ig-filter-pill${activePreset === preset.id ? " ig-filter-pill--active" : ""}`}
+                    onClick={() => handlePresetSelect(preset.id)}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+                <button className="ig-filter-pill ig-filter-pill--active">1 Year</button>
+                <button className="ig-filter-pill">Maximum</button>
+              </div>
+            </header>
+
+            <div className="ig-chart-area">
+              {timelineData.length ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={timelineData}>
+                    <defs>
+                      <linearGradient id="cleanPurple" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="cleanOrange" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#fb923c" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#fb923c" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="cleanRed" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="label" stroke="#9ca3af" fontSize={12} />
+                    <YAxis stroke="#9ca3af" fontSize={12} tickFormatter={(value) => value.toLocaleString("pt-BR")} />
+                    <Tooltip />
+                    <Area type="monotone" dataKey="reach" stroke="#8b5cf6" strokeWidth={2.5} fill="url(#cleanPurple)" />
+                    <Area type="monotone" dataKey="interactions" stroke="#f43f5e" strokeWidth={2.5} fill="url(#cleanRed)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="ig-empty-state">Sem dados disponíveis</div>
+              )}
+            </div>
+          </section>
+        </div>
+
+        {/* Segunda Linha: Engajamento + Melhor Horário + Total Engajamento */}
+        <div className="ig-clean-grid-triple">
+          {/* Engajamento por Conteúdo */}
+          <div className="ig-card-white">
+            <h4>Engajamento por Conteúdo</h4>
+            <div className="ig-chart-container">
+              {contentBreakdown.length ? (
+                <ResponsiveContainer width="100%" height={240}>
+                  <PieChart>
+                    <Pie
+                      data={contentBreakdown}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={55}
+                      outerRadius={85}
+                      paddingAngle={3}
+                      stroke="none"
+                    >
+                      {contentBreakdown.map((_, index) => (
+                        <Cell key={index} fill={IG_DONUT_COLORS[index % IG_DONUT_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="ig-empty-state">Sem dados</div>
+              )}
+            </div>
+          </div>
+
+          {/* Melhor Horário para Postar */}
+          <div className="ig-card-white">
+            <h4>Melhor Horário para postar</h4>
+            <div className="ig-best-time-grid">
+              <div className="ig-best-time-card ig-best-time-card--cyan">
+                <div className="ig-best-time-card__label">Melhor Horário para postar</div>
+                <div className="ig-best-time-card__value">{bestTimes.bestTimeRange}</div>
+              </div>
+              <div className="ig-best-time-card ig-best-time-card--pink">
+                <div className="ig-best-time-card__label">Melhor dia</div>
+                <div className="ig-best-time-card__value">{bestTimes.bestDay}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Total de Engajamento */}
+          <div className="ig-card-white ig-card-dark">
+            <h4 style={{color: 'white'}}>25.65%</h4>
+            <p style={{color: '#9ca3af', fontSize: '14px'}}>Total de engajamento do período</p>
+          </div>
+        </div>
+
+        {/* Terceira Linha: Top Posts */}
+        <div className="ig-card-white ig-card-full">
+          <h4>Top posts</h4>
+          <div className="ig-top-posts-grid">
+            {loadingPosts && !topPosts.length ? (
+              <div className="ig-empty-state">Carregando...</div>
+            ) : topPosts.length ? (
+              topPosts.map((post) => {
+                const likes = resolvePostMetric(post, "likes");
+                const comments = resolvePostMetric(post, "comments");
+                const saves = resolvePostMetric(post, "saves");
+                const shares = resolvePostMetric(post, "shares");
+                const previewUrl = [
+                  post.previewUrl,
+                  post.preview_url,
+                  post.thumbnailUrl,
+                  post.thumbnail_url,
+                  post.mediaUrl,
+                  post.media_url,
+                ].find((url) => url && !/\.(mp4|mov)$/i.test(url));
+
+                return (
+                  <div key={post.id || post.timestamp} className="ig-top-post-item">
+                    <div className="ig-top-post-item__thumb">
+                      {previewUrl ? (
+                        <img src={previewUrl} alt="Post" />
+                      ) : (
+                        <div className="ig-empty-thumb">Sem imagem</div>
+                      )}
+                    </div>
+                    <div className="ig-top-post-item__caption">
+                      {truncate(post.caption || "Sem legenda", 80)}
+                    </div>
+                    <div className="ig-top-post-item__stats">
+                      <span><Heart size={14} /> {formatNumber(likes)}</span>
+                      <span><MessageCircle size={14} /> {formatNumber(comments)}</span>
+                      <span><Share2 size={14} /> {formatNumber(shares)}</span>
+                      <span><Bookmark size={14} /> {formatNumber(saves)}</span>
+                    </div>
+                  </div>
+                );
+              })
             ) : (
-              <div className="ig-card__empty">Sem dados disponiveis para o periodo.</div>
+              <div className="ig-empty-state">Nenhum post disponível</div>
             )}
           </div>
         </div>
       </div>
 
+      {/* Ocultar seções antigas duplicadas */}
+      <div style={{display: 'none'}}>
       <div className="ig-grid ig-grid--triple">
         <div className="ig-card">
           <header className="ig-card__header">
@@ -1060,9 +1409,11 @@ export default function InstagramDashboard() {
 
         <div className="ig-card">
           <header className="ig-card__header">
-            <div className="ig-card__title">
-              <Hash size={16} />
-              <h3>Hashtags mais usadas</h3>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <Hash size={16} style={{ color: 'var(--color-primary)' }} />
+                <h3>Hashtags mais usadas</h3>
+              </div>
               <p>Top 10 por recorrencia</p>
             </div>
           </header>
@@ -1083,6 +1434,10 @@ export default function InstagramDashboard() {
           </div>
         </div>
       </div>
+      </div>
+      {/* Fim da div de ocultar */}
     </div>
   );
 }
+
+
