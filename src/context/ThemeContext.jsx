@@ -4,24 +4,24 @@ const STORAGE_KEY = 'ui-theme';
 
 const ThemeContext = createContext({
   theme: 'auto',
-  resolvedTheme: 'dark',
+  resolvedTheme: 'light',
   setTheme: () => {},
   toggleTheme: () => {},
 });
 
 const getSystemTheme = () => {
-  if (typeof window === 'undefined') return 'dark';
+  if (typeof window === 'undefined') return 'light';
   const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   return media && media.matches ? 'dark' : 'light';
 };
 
 const getInitialTheme = () => {
-  if (typeof window === 'undefined') return 'auto';
+  if (typeof window === 'undefined') return 'light';
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (stored === 'light' || stored === 'dark' || stored === 'auto') {
     return stored;
   }
-  return 'auto';
+  return 'light';
 };
 
 export function ThemeProvider({ children }) {
