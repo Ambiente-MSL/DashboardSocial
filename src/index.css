@@ -1,5 +1,5 @@
-/* PlusA Jakarta Sans (Google Fonts) */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+/* Lato (Google Fonts) */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
 
 :root {
   /* Paleta mí­nima (3 cores) */
@@ -7,7 +7,7 @@
   --bg: #0A0A0A;
   --fg: #F3F6F8;
 
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  --font-sans: "Lato", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 
   /* Derivados por opacidade (sem criar novas cores) */
   --panel: color-mix(in oklab, var(--bg) 85%, white 15%);
@@ -58,6 +58,13 @@ html, body, #root {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: var(--font-sans);
 }
 
 /* Layout & cartões base */
@@ -6166,6 +6173,18 @@ td.posts-table__metric + td.posts-table__metric {
 
 
 /* ===== Chart readability overrides ===== */
+.recharts-wrapper text,
+.recharts-wrapper tspan,
+.recharts-default-tooltip,
+.recharts-default-tooltip .recharts-tooltip-item,
+.recharts-default-tooltip .recharts-tooltip-label,
+.recharts-legend-item-text,
+.recharts-legend-item-text tspan,
+.recharts-pie-label-text,
+.recharts-pie-label-text tspan {
+  font-family: var(--font-sans) !important;
+}
+
 .recharts-tooltip-wrapper .recharts-default-tooltip,
 .recharts-default-tooltip {
   background: rgba(14, 18, 26, 0.92) !important;
