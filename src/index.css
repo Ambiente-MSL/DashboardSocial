@@ -7593,7 +7593,6 @@ td.posts-table__metric + td.posts-table__metric {
 .instagram-dashboard--clean {
   background: #f5f7fa;
   min-height: 100vh;
-  padding-top: 64px;
 }
 
 /* Ocultar sidebar na página do Instagram */
@@ -7605,8 +7604,9 @@ body:has(.instagram-dashboard--clean) .app-main {
   margin-left: 0 !important;
 }
 
-body:has(.instagram-dashboard--clean) .topbar {
-  display: none !important;
+body:has(.instagram-dashboard--clean) .app-main__content {
+  padding: 0 !important;
+  gap: 0 !important;
 }
 
 /* Container Limpo */
@@ -7948,6 +7948,300 @@ body:has(.instagram-dashboard--clean) .topbar {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.ig-engagement-legend {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 24px 12px;
+  font-size: 12px;
+  color: #374151;
+}
+
+.ig-engagement-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ig-engagement-legend__swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.ig-engagement-legend__label {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.ig-engagement-summary {
+  margin: 16px 0 0;
+  padding: 20px;
+  background: linear-gradient(135deg, #312e81 0%, #1f2937 100%);
+  color: #f9fafb;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 16px 32px rgba(17, 24, 39, 0.3);
+}
+
+.ig-engagement-summary__value {
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.ig-engagement-summary__label {
+  margin-top: 6px;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.ig-engagement-mini-grid {
+  margin: 18px 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.ig-engagement-mini-card {
+  border-radius: 18px;
+  padding: 14px 16px;
+  color: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.25);
+}
+
+.ig-engagement-mini-card--teal {
+  background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
+}
+
+.ig-engagement-mini-card--pink {
+  background: linear-gradient(135deg, #ec4899 0%, #f97316 100%);
+}
+
+.ig-engagement-mini-card__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  opacity: 0.85;
+}
+
+.ig-engagement-mini-card__value {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.ig-card-filter {
+  padding: 6px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.ig-analytics-grid {
+  margin-top: 20px;
+  display: grid;
+  gap: 20px;
+}
+
+.ig-analytics-grid--pair {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.ig-analytics-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ig-analytics-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ig-analytics-card__header h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #111827;
+}
+
+.ig-analytics-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ig-analytics-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.ig-analytics-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ig-analytics-legend__swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.ig-analytics-legend__label {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.ig-analytics-card--placeholder {
+  justify-content: center;
+  align-items: center;
+}
+
+.ig-analytics-card__placeholder {
+  width: 100%;
+  min-height: 180px;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(148, 163, 184, 0.12),
+    rgba(148, 163, 184, 0.12) 10px,
+    rgba(148, 163, 184, 0.08) 10px,
+    rgba(148, 163, 184, 0.08) 20px
+  );
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.ig-heatmap {
+  width: 100%;
+}
+
+.ig-heatmap__header,
+.ig-heatmap__rows {
+  display: grid;
+  grid-template-columns: 80px repeat(6, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.ig-heatmap__header span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.ig-heatmap__row {
+  display: contents;
+}
+
+.ig-heatmap__row-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  text-align: right;
+  padding-right: 8px;
+}
+
+.ig-heatmap__cell {
+  position: relative;
+  width: 100%;
+  padding-top: 100%;
+  border: none;
+  border-radius: 12px;
+  background: #e2e8f0;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.ig-heatmap__cell:hover {
+  transform: scale(1.05);
+}
+
+.ig-heatmap__cell::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  top: -24px;
+  transform: translate(-50%, -100%);
+  background: #1f2937;
+  color: #f8fafc;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.ig-heatmap__cell:hover::after {
+  opacity: 1;
+}
+
+.ig-heatmap__cell--level-0 {
+  background: #e2e8f0;
+}
+
+.ig-heatmap__cell--level-1 {
+  background: #d6d3ff;
+}
+
+.ig-heatmap__cell--level-2 {
+  background: #c4b5fd;
+}
+
+.ig-heatmap__cell--level-3 {
+  background: #a855f7;
+}
+
+.ig-heatmap__cell--level-4 {
+  background: #7c3aed;
+}
+
+.ig-bubble-tooltip {
+  background: #1f2937;
+  color: #f9fafb;
+  padding: 10px 14px;
+  border-radius: 18px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.ig-bubble-tooltip span {
+  opacity: 0.8;
+}
+
+.ig-bubble-tooltip strong {
+  font-size: 16px;
+  letter-spacing: 0.2px;
 }
 
 /* Card de Crescimento Limpo */
