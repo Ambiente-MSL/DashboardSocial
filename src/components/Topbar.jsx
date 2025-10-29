@@ -5,35 +5,12 @@ import { Bell, CalendarDays } from "lucide-react";
 import DateRangePicker from "./DateRangePicker";
 import AccountSelect from "./AccountSelect";
 import useQueryState from "../hooks/useQueryState";
-import { useAuth } from "../context/AuthContext";
 
 const DEFAULT_PRESETS = [
-  { id: "7d", label: "7 Days", days: 7 },
-  { id: "1m", label: "1 Month", days: 30 },
-  { id: "3m", label: "3 Months", days: 90 },
+  { id: "7d", label: "7 Dias", days: 7 },
+  { id: "1m", label: "1 Mês", days: 30 },
+  { id: "3m", label: "3 Meses", days: 90 },
 ];
-
-const createDisplayName = (user) => {
-  const meta = user?.user_metadata || user?.app_metadata || {};
-  return (
-    meta.nome ||
-    meta.name ||
-    meta.full_name ||
-    user?.email ||
-    "Usuario"
-  );
-};
-
-const createInitials = (value) => {
-  if (!value) return "U";
-  const parts = String(value)
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  if (!parts.length) return "U";
-  const initials = `${parts[0][0] ?? ""}${parts[parts.length - 1][0] ?? ""}`;
-  return initials.toUpperCase();
-};
 
 const parseDateParam = (value) => {
   if (!value) return null;
@@ -74,10 +51,6 @@ export default function Topbar({
   notificationCount = 0,
   className = "",
 }) {
-  const { user } = useAuth();
-  const displayName = userName || createDisplayName(user);
-  const initials = createInitials(displayName);
-  const effectiveAvatar = avatarUrl || user?.user_metadata?.avatar_url || "";
 
   const { since, until, setRange } = useQueryRange();
   const now = useMemo(() => new Date(), []);
@@ -143,12 +116,6 @@ export default function Topbar({
           </div>
 
           <div className="topbar__account">
-            {effectiveAvatar ? (
-              <img src={effectiveAvatar} alt={displayName} className="topbar__avatar-img" />
-            ) : (
-              <span className="topbar__avatar-placeholder">{initials}</span>
-            )}
-            <span className="topbar__account-name">{displayName}</span>
             <AccountSelect />
           </div>
         </div>

@@ -1412,6 +1412,226 @@ body.theme-light {
   color: var(--accent);
 }
 
+/* Account Dropdown Customizado */
+.account-dropdown {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.account-dropdown__label {
+  font-size: 0.72rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.account-dropdown__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.account-dropdown__trigger:hover {
+  opacity: 0.8;
+}
+
+.account-dropdown__current {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.account-dropdown__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.account-dropdown__avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.account-dropdown__name {
+  font-weight: 500;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-dropdown__icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  color: currentColor;
+  opacity: 0.75;
+}
+
+.account-dropdown__icon--open {
+  transform: rotate(180deg);
+}
+
+.account-dropdown__list {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  max-width: 300px;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  z-index: 1000;
+  animation: dropdown-fade-in 0.15s ease;
+}
+
+@keyframes dropdown-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.account-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: #1f2937;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.account-dropdown__item:hover {
+  background: rgba(139, 92, 246, 0.08);
+}
+
+.account-dropdown__item--active {
+  background: rgba(139, 92, 246, 0.12);
+  font-weight: 600;
+}
+
+.account-dropdown__item-name {
+  flex: 1;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Estilos específicos para topbar */
+.topbar__account .account-dropdown {
+  min-width: auto;
+}
+
+.topbar__account .account-dropdown__label {
+  display: none;
+}
+
+.topbar__account .account-dropdown__trigger {
+  padding: 0;
+  background: transparent;
+}
+
+.topbar__account .account-dropdown__name {
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.topbar__account .account-dropdown__list {
+  right: 0;
+  left: auto;
+  background: #2a2a2e;
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.topbar__account .account-dropdown__item {
+  color: #f8fafc;
+}
+
+.topbar__account .account-dropdown__item:hover {
+  background: rgba(139, 92, 246, 0.2);
+  color: #ffffff;
+}
+
+.topbar__account .account-dropdown__item--active {
+  background: rgba(139, 92, 246, 0.3);
+  color: #ffffff;
+}
+
+.topbar__account .account-dropdown__item-name {
+  color: #f8fafc;
+  font-weight: 500;
+}
+
+/* Estilos específicos para Instagram dashboard */
+body:has(.instagram-dashboard--clean) .topbar__account .account-dropdown__name {
+  color: #374151;
+  font-weight: 600;
+}
+
+body:has(.instagram-dashboard--clean) .topbar__account .account-dropdown__list {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+body:has(.instagram-dashboard--clean) .topbar__account .account-dropdown__item {
+  color: #1f2937;
+}
+
+body:has(.instagram-dashboard--clean) .topbar__account .account-dropdown__item:hover {
+  background: rgba(139, 92, 246, 0.1);
+  color: #111827;
+}
+
+body:has(.instagram-dashboard--clean) .topbar__account .account-dropdown__item--active {
+  background: rgba(139, 92, 246, 0.15);
+  color: #111827;
+}
+
+body:has(.instagram-dashboard--clean) .topbar__account .account-dropdown__item-name {
+  color: #1f2937;
+  font-weight: 500;
+}
+
 .filter-button {
 
   display: inline-flex;
@@ -8024,6 +8244,151 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 
 .ig-engagement-mini-card--pink {
   background: linear-gradient(135deg, #ec4899 0%, #f97316 100%);
+}
+
+/* Top Posts Section na Coluna Esquerda */
+.ig-top-posts-section {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin-top: 20px;
+}
+
+.ig-section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 20px 0;
+}
+
+.ig-top-posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ig-top-post-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #f3f4f6;
+  transition: all 0.2s ease;
+}
+
+.ig-top-post-card:hover {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.ig-top-post-card__thumb {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #d1d5db;
+}
+
+.ig-top-post-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ig-empty-thumb {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #9ca3af;
+  text-align: center;
+  padding: 8px;
+}
+
+.ig-top-post-card__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ig-top-post-card__date {
+  font-size: 10px;
+  color: #9ca3af;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+
+.ig-top-post-card__caption {
+  font-size: 12px;
+  color: #4b5563;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin-bottom: 4px;
+}
+
+.ig-top-post-card__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  margin-top: auto;
+}
+
+.ig-top-post-card__stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ig-top-post-card__stat svg {
+  flex-shrink: 0;
+}
+
+.ig-top-post-card__stat--likes {
+  color: #ff3b30;
+}
+
+.ig-top-post-card__stat--likes span {
+  color: #ff3b30;
+}
+
+.ig-top-post-card__stat--comments {
+  color: #a855f7;
+}
+
+.ig-top-post-card__stat--comments span {
+  color: #a855f7;
+}
+
+.ig-top-post-card__stat--shares {
+  color: #ff9500;
+}
+
+.ig-top-post-card__stat--shares span {
+  color: #ff9500;
+}
+
+.ig-top-post-card__stat--saves {
+  color: #5ac8fa;
+}
+
+.ig-top-post-card__stat--saves span {
+  color: #5ac8fa;
 }
 
 .ig-engagement-mini-card__label {
