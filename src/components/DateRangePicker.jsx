@@ -17,7 +17,7 @@ const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
 const fmt = (d) => (d ? format(d, "dd MMM yy", { locale: ptBR }).toUpperCase() : "");
 const toInputValue = (d) => (d ? format(d, "yyyy-MM-dd") : "");
 
-export default function DateRangePicker() {
+export default function DateRangePicker({ onRangeChange, variant = "default" }) {
   // Usar momento atual
   const now = useMemo(() => new Date(), []);
   const todayStart = useMemo(() => startOfDay(now), [now]);
@@ -86,8 +86,12 @@ export default function DateRangePicker() {
   const updateQuery = (s, e) => {
     if (s && e) {
       set({ since: String(toUnixSeconds(s)), until: String(toUnixSeconds(e)) });
+      onRangeChange?.(s, e);
     } else {
       set({ since: null, until: null });
+      const defaultStartDate = defaultStart;
+      const defaultEndDate = defaultEnd;
+      onRangeChange?.(defaultStartDate, defaultEndDate);
     }
   };
 
@@ -132,8 +136,10 @@ export default function DateRangePicker() {
     ? Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1
     : null;
 
+  const wrapperClass = `date-range-wrapper${variant === "compact" ? " date-range-wrapper--compact" : ""}`;
+
   return (
-    <div className="date-range-wrapper">
+    <div className={wrapperClass}>
       {presets.map(({ days, label }) => (
         <button
           key={days}

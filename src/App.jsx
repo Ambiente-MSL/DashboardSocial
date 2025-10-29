@@ -54,16 +54,16 @@ export default function App() {
     setTopbarOverrides({});
   }, []);
 
-  const topbarProps = useMemo(
-    () => ({
+  const topbarProps = useMemo(() => {
+    const merged = {
       ...defaultTopbarConfig,
       ...topbarOverrides,
       sidebarOpen,
       onToggleSidebar: toggleSidebar,
       sticky: true,
-    }),
-    [defaultTopbarConfig, topbarOverrides, sidebarOpen, toggleSidebar],
-  );
+    };
+    return merged;
+  }, [defaultTopbarConfig, topbarOverrides, sidebarOpen, toggleSidebar]);
 
   if (loading) {
     return (
@@ -88,7 +88,10 @@ export default function App() {
       <main className="app-main">
         <div className="app-main__backdrop" aria-hidden="true" />
         <div className="app-main__content">
-          <Topbar {...topbarProps} />
+          {(() => {
+            const { hidden, ...rest } = topbarProps;
+            return hidden ? null : <Topbar {...rest} />;
+          })()}
           <div className="app-main__body">
             <Outlet context={{ sidebarOpen, toggleSidebar, setTopbarConfig, resetTopbarConfig }} />
           </div>

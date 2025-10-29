@@ -1,27 +1,17 @@
-import { useCallback, useMemo } from "react";
-import { differenceInCalendarDays, endOfDay, startOfDay, subDays } from "date-fns";
-import { CalendarDays, ChevronDown, Menu, Sparkles, X } from "lucide-react";
+import { useMemo } from "react";
+import PropTypes from "prop-types";
+import { endOfDay, startOfDay, subDays, differenceInCalendarDays } from "date-fns";
+import { Bell, CalendarDays } from "lucide-react";
 import DateRangePicker from "./DateRangePicker";
 import AccountSelect from "./AccountSelect";
-import { useAuth } from "../context/AuthContext";
 import useQueryState from "../hooks/useQueryState";
+import { useAuth } from "../context/AuthContext";
 
-const DATE_PRESETS = [
+const DEFAULT_PRESETS = [
   { id: "7d", label: "7 Days", days: 7 },
   { id: "1m", label: "1 Month", days: 30 },
   { id: "3m", label: "3 Months", days: 90 },
 ];
-
-const parseDateParam = (value) => {
-  if (!value) return null;
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return null;
-  const ms = numeric > 1_000_000_000_000 ? numeric : numeric * 1000;
-  const d = new Date(ms);
-  return Number.isNaN(d.getTime()) ? null : d;
-};
-
-const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
 
 const createDisplayName = (user) => {
   const meta = user?.user_metadata || user?.app_metadata || {};
@@ -45,107 +35,141 @@ const createInitials = (value) => {
   return initials.toUpperCase();
 };
 
+const parseDateParam = (value) => {
+  if (!value) return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  const ms = numeric > 1_000_000_000_000 ? numeric : numeric * 1000;
+  const d = new Date(ms);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
+
+function useQueryRange() {
+  const [get, set] = useQueryState({});
+  const sinceParam = get("since");
+  const untilParam = get("until");
+  const since = parseDateParam(sinceParam);
+  const until = parseDateParam(untilParam);
+  return {
+    since,
+    until,
+    setRange(start, end) {
+      set({
+        since: start ? String(toUnixSeconds(start)) : null,
+        until: end ? String(toUnixSeconds(end)) : null,
+      });
+    },
+  };
+}
+
 export default function Topbar({
-  title,
-  sidebarOpen,
-  onToggleSidebar,
-  showFilters = false,
-  customFilters = null,
-  rightExtras,
-  sticky = true,
+  presets = DEFAULT_PRESETS,
+  selectedPreset,
+  onPresetSelect,
+  onDateChange,
+  userName,
+  avatarUrl,
+  notificationCount = 0,
+  className = "",
 }) {
   const { user } = useAuth();
-  const [getQuery, setQuery] = useQueryState({});
+  const displayName = userName || createDisplayName(user);
+  const initials = createInitials(displayName);
+  const effectiveAvatar = avatarUrl || user?.user_metadata?.avatar_url || "";
 
+  const { since, until, setRange } = useQueryRange();
   const now = useMemo(() => new Date(), []);
   const defaultEnd = useMemo(() => endOfDay(subDays(startOfDay(now), 1)), [now]);
 
-  const [activeSince, activeUntil] = useMemo(
-    () => [parseDateParam(getQuery("since")), parseDateParam(getQuery("until"))],
-    [getQuery],
-  );
+  const uncontrolledPreset = useMemo(() => {
+    if (!since || !until) return "custom";
+    const diff = differenceInCalendarDays(endOfDay(until), startOfDay(since)) + 1;
+    const match = presets.find((preset) => preset.days === diff);
+    return match?.id ?? "custom";
+  }, [since, until, presets]);
 
-  const applyPreset = useCallback((days) => {
-    const endDate = defaultEnd;
-    const startDate = startOfDay(subDays(endDate, days - 1));
-    setQuery({
-      since: toUnixSeconds(startDate),
-      until: toUnixSeconds(endDate),
-    });
-  }, [defaultEnd, setQuery]);
+  const activePreset = selectedPreset ?? uncontrolledPreset;
 
-  const activePreset = useMemo(() => {
-    if (!activeSince || !activeUntil) return "custom";
-    const diff = differenceInCalendarDays(
-      endOfDay(activeUntil),
-      startOfDay(activeSince),
-    ) + 1;
-    const matched = DATE_PRESETS.find((preset) => preset.days === diff);
-    return matched?.id ?? "custom";
-  }, [activeSince, activeUntil]);
+  const handlePresetClick = (preset) => () => {
+    if (!preset) return;
+    if (typeof onPresetSelect === "function") {
+      onPresetSelect(preset.id, preset);
+    } else {
+      const endDate = defaultEnd;
+      const startDate = startOfDay(subDays(endDate, preset.days - 1));
+      setRange(startDate, endDate);
+    }
+  };
 
-  const handlePresetClick = useCallback((days) => () => applyPreset(days), [applyPreset]);
+  const handleRangeChange = (start, end) => {
+    if (typeof onDateChange === "function") {
+      onDateChange(start, end);
+    } else {
+      setRange(start, end);
+    }
+  };
 
-  const displayName = useMemo(() => createDisplayName(user), [user]);
-  const avatarInitials = useMemo(() => createInitials(displayName), [displayName]);
-
-  const extraControls = rightExtras === undefined ? <AccountSelect /> : rightExtras;
-  const hasControls = showFilters || !!customFilters;
+  const displayNotification = Number.isFinite(notificationCount) && notificationCount > 0;
 
   return (
-    <header className={`topbar${sticky ? " topbar--sticky" : ""}`}>
-      <div className="topbar__section topbar__section--left">
-        {onToggleSidebar && (
-          <button
-            type="button"
-            className="topbar__icon-btn"
-            onClick={onToggleSidebar}
-            aria-label={sidebarOpen ? "Recolher menu lateral" : "Expandir menu lateral"}
-          >
-            {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
+    <header className={`topbar topbar--dark ${className}`.trim()}>
+      <div className="topbar__inner">
+        <div className="topbar__notif">
+          <button type="button" className="topbar__notif-btn" aria-label="Notificacoes">
+            <Bell size={16} />
+            {displayNotification && <span className="topbar__notif-badge">{notificationCount}</span>}
           </button>
-        )}
-        <div className="topbar__brand-chip">
-          <span className="topbar__logo">
-            <Sparkles size={16} />
-          </span>
-          {title ? <span className="topbar__brand-text">{title}</span> : null}
         </div>
-        {hasControls && (
-          <div className="topbar__controls">
-            {showFilters && (
-              <>
-                <div className="topbar__chips">
-                  {DATE_PRESETS.map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      className={`topbar__preset${activePreset === preset.id ? " topbar__preset--active" : ""}`}
-                      onClick={handlePresetClick(preset.days)}
-                      aria-pressed={activePreset === preset.id}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="topbar__range">
-                  <CalendarDays size={14} />
-                  <DateRangePicker />
-                </div>
-              </>
-            )}
-            {customFilters}
+
+        <div className="topbar__controls">
+          <div className="topbar__chips topbar__chips--compact">
+            {presets.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                className={`topbar__chip${activePreset === preset.id ? " topbar__chip--active" : ""}`}
+                onClick={handlePresetClick(preset)}
+              >
+                {preset.label}
+              </button>
+            ))}
           </div>
-        )}
-      </div>
-      <div className="topbar__section topbar__section--right topbar__section--right--flush">
-        {extraControls}
-        <div className="topbar__avatar" role="presentation">
-          <span className="topbar__avatar-badge">{avatarInitials}</span>
-          <span className="topbar__avatar-name">{displayName}</span>
-          <ChevronDown size={14} className="topbar__avatar-icon" />
+
+          <div className="topbar__range topbar__range--compact">
+            <CalendarDays size={16} />
+            <DateRangePicker variant="compact" onRangeChange={handleRangeChange} />
+          </div>
+
+          <div className="topbar__account">
+            {effectiveAvatar ? (
+              <img src={effectiveAvatar} alt={displayName} className="topbar__avatar-img" />
+            ) : (
+              <span className="topbar__avatar-placeholder">{initials}</span>
+            )}
+            <span className="topbar__account-name">{displayName}</span>
+            <AccountSelect />
+          </div>
         </div>
       </div>
     </header>
   );
 }
+
+Topbar.propTypes = {
+  presets: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      label: PropTypes.string.isRequired,
+      days: PropTypes.number.isRequired,
+    }),
+  ),
+  selectedPreset: PropTypes.string,
+  onPresetSelect: PropTypes.func,
+  onDateChange: PropTypes.func,
+  userName: PropTypes.string,
+  avatarUrl: PropTypes.string,
+  notificationCount: PropTypes.number,
+  className: PropTypes.string,
+};

@@ -1,12 +1,15 @@
 // pages/FacebookDashboard.jsx
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useOutletContext } from "react-router-dom";
 
 import { Heart, MessageCircle, Share2 } from "lucide-react";
 
+import { differenceInCalendarDays, endOfDay, startOfDay, subDays } from "date-fns";
+
 import DemographicsSection from "../components/DemographicsSection";
+import Topbar from "../components/Topbar";
 
 
 import {
@@ -74,6 +77,12 @@ const PERFORMANCE_FILTER_OPTIONS = [
   { value: "paid", label: "Pago" },
 ];
 
+const DATE_PRESETS = [
+  { id: "7d", label: "7 Days", days: 7 },
+  { id: "1m", label: "1 Month", days: 30 },
+  { id: "3m", label: "3 Months", days: 90 },
+];
+
 
 
 
@@ -100,6 +109,16 @@ const toIsoDate = (value) => {
   return new Date(ms).toISOString().slice(0, 10);
 
 };
+
+const parseQueryDate = (value) => {
+  const num = toNumber(value);
+  if (!Number.isFinite(num)) return null;
+  const ms = num > 1_000_000_000_000 ? num : num * 1000;
+  const date = new Date(ms);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
 
 
 
@@ -516,16 +535,10 @@ export default function FacebookDashboard() {
 
   const queryAccountId = get("account");
 
-
-
   useEffect(() => {
-
     if (!availableAccounts.length) return;
-
     if (!queryAccountId || !availableAccounts.some((account) => account.id === queryAccountId)) {
-
       setQuery({ account: availableAccounts[0].id });
-
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableAccounts.length, queryAccountId]);
@@ -551,8 +564,39 @@ export default function FacebookDashboard() {
 
 
   const since = get("since");
-
   const until = get("until");
+  const sinceDate = useMemo(() => parseQueryDate(since), [since]);
+  const untilDate = useMemo(() => parseQueryDate(until), [until]);
+  const now = useMemo(() => new Date(), []);
+  const defaultEnd = useMemo(() => endOfDay(subDays(startOfDay(now), 1)), [now]);
+
+  const activeDatePreset = useMemo(() => {
+    if (!sinceDate || !untilDate) return "custom";
+    const diff = differenceInCalendarDays(endOfDay(untilDate), startOfDay(sinceDate)) + 1;
+    const match = DATE_PRESETS.find((preset) => preset.days === diff);
+    return match?.id ?? "custom";
+  }, [sinceDate, untilDate]);
+
+  const handlePresetSelect = useCallback((presetId) => {
+    const preset = DATE_PRESETS.find((item) => item.id === presetId);
+    if (!preset?.days || preset.days <= 0) return;
+    const endDate = defaultEnd;
+    const startDate = startOfDay(subDays(endDate, preset.days - 1));
+    setQuery({ since: toUnixSeconds(startDate), until: toUnixSeconds(endDate) });
+  }, [defaultEnd, setQuery]);
+
+  const handleDateChange = useCallback((start, end) => {
+    if (!start || !end) return;
+    const normalizedStart = startOfDay(start);
+    const normalizedEnd = endOfDay(end);
+    setQuery({ since: toUnixSeconds(normalizedStart), until: toUnixSeconds(normalizedEnd) });
+  }, [setQuery]);
+
+  useEffect(() => {
+    if (!setTopbarConfig) return undefined;
+    setTopbarConfig({ hidden: true });
+    return () => resetTopbarConfig?.();
+  }, [setTopbarConfig, resetTopbarConfig]);
 
 
 
@@ -1442,38 +1486,26 @@ export default function FacebookDashboard() {
 
 
 
-  const filterControls = useMemo(
-    () => (
-      <FilterButton
-        value={performanceScope}
-        onChange={setPerformanceScope}
-        options={PERFORMANCE_FILTER_OPTIONS}
-      />
-    ),
-    [performanceScope],
-  );
-
-  useEffect(() => {
-    if (typeof setTopbarConfig !== "function") return undefined;
-
-    setTopbarConfig({
-      title: "Facebook",
-      showFilters: true,
-      customFilters: filterControls,
-    });
-
-    return () => {
-      if (typeof resetTopbarConfig === "function") {
-        resetTopbarConfig();
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterControls]);
-
 
 
   return (
     <>
+      <Topbar
+        presets={DATE_PRESETS}
+        selectedPreset={activeDatePreset}
+        onPresetSelect={handlePresetSelect}
+        onDateChange={handleDateChange}
+        userName={accountConfig?.label}
+      />
+
+      <div className="page-toolbar">
+        <FilterButton
+          value={performanceScope}
+          onChange={setPerformanceScope}
+          options={PERFORMANCE_FILTER_OPTIONS}
+        />
+      </div>
+
       <div className="page-content page-content--unified">
 
         {pageError && <div className="alert alert--error">{pageError}</div>}
