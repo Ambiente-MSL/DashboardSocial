@@ -779,6 +779,8 @@ body.theme-light {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  margin-left: auto;
+  justify-content: flex-end;
 }
 
 .topbar__chips {
@@ -6347,48 +6349,55 @@ td.posts-table__metric + td.posts-table__metric {
 .ig-topbar-controls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
+  justify-content: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
   width: 100%;
 }
 
-.ig-topbar-controls__left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.ig-topbar-controls__left .filter-select {
-  display: flex;
+.ig-topbar-controls__account .filter-select {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 0.45rem 1rem;
   border-radius: 999px;
   border: 1px solid var(--border-color);
-  background: var(--bg-card);
+  background: #ffffff;
   box-shadow: var(--shadow-sm);
 }
 
-.ig-topbar-controls__left .filter-select__label {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-secondary);
+.ig-topbar-controls__account .filter-select__label {
+  display: none;
 }
 
-.ig-topbar-controls__left .filter-select__input {
+.ig-topbar-controls__account .filter-select__input {
   border: none;
   background: transparent;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.ig-topbar-controls__left .filter-select__input:focus {
+.ig-topbar-controls__account .filter-select__input:focus {
   outline: none;
 }
 
-.ig-topbar-controls__left .filter-select__icon {
+.ig-topbar-controls__account .filter-select__icon {
   color: var(--text-secondary);
+}
+
+.ig-topbar-controls__date {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+
+.ig-topbar-controls__date svg {
+  color: var(--color-primary);
 }
 
 .ig-topbar-controls__date .date-range-wrapper {
@@ -6402,23 +6411,17 @@ td.posts-table__metric + td.posts-table__metric {
 }
 
 .ig-topbar-controls__date .date-range-btn {
-  background: var(--bg-card);
+  background: transparent;
   border-radius: 999px;
-  border: 1px solid var(--border-color);
-  padding: 0.5rem 1rem;
-  font-weight: 500;
+  border: none;
+  padding: 0;
+  font-weight: 600;
   color: var(--text-primary);
-  box-shadow: var(--shadow-sm);
+  min-height: 0;
 }
 
 .ig-topbar-controls__date .date-range-btn__icon {
-  color: var(--color-primary);
-}
-
-.ig-topbar-controls__right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+  display: none;
 }
 
 .ig-topbar-controls__bell {

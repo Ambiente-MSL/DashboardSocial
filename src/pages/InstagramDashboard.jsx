@@ -21,7 +21,6 @@ import {
   BellRing,
   Bookmark,
   CalendarDays,
-  ChevronDown,
   Clock,
   Flame,
   FileText,
@@ -448,30 +447,29 @@ export default function InstagramDashboard() {
   const topbarFilters = useMemo(
     () => (
       <div className="ig-topbar-controls">
-        <div className="ig-topbar-controls__left">
-          <div className="ig-topbar-controls__date">
-            <DateRangePicker />
-          </div>
+        <div className="ig-topbar-controls__chips">
+          {IG_TOPBAR_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={`ig-topbar-controls__chip${activePreset === preset.id ? " ig-topbar-controls__chip--active" : ""}`}
+              onClick={() => handlePresetSelect(preset.id)}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+        <div className="ig-topbar-controls__date">
+          <CalendarDays size={16} />
+          <DateRangePicker />
+        </div>
+        <div className="ig-topbar-controls__account">
           <AccountSelect />
         </div>
-        <div className="ig-topbar-controls__right">
-          <button type="button" className="ig-topbar-controls__bell" aria-label="Notificacoes">
-            <BellRing size={16} />
-            <span className="ig-topbar-controls__bell-dot" />
-          </button>
-          <div className="ig-topbar-controls__chips">
-            {IG_TOPBAR_PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                className={`ig-topbar-controls__chip${activePreset === preset.id ? " ig-topbar-controls__chip--active" : ""}`}
-                onClick={() => handlePresetSelect(preset.id)}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <button type="button" className="ig-topbar-controls__bell" aria-label="Notificacoes">
+          <BellRing size={16} />
+          <span className="ig-topbar-controls__bell-dot" />
+        </button>
       </div>
     ),
     [activePreset, handlePresetSelect],
@@ -1434,8 +1432,6 @@ export default function InstagramDashboard() {
           </div>
         </div>
       </div>
-      </div>
-      {/* Fim da div de ocultar */}
     </div>
   );
 }
