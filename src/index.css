@@ -7841,11 +7841,12 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 .ig-hero-gradient {
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
-  height: 360px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100vw;
+  height: 480px;
   background: linear-gradient(100deg, #4763ca 0%, #bd33b2 33%, #feb34d 66%, #ed4a5f 100%);
-  border-radius: 32px;
+  border-radius: 0;
   filter: saturate(1.05);
   opacity: 0.92;
   z-index: -1;
