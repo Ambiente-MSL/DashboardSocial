@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useLocation, useOutletContext } from "react-router-dom";
-import { differenceInCalendarDays, endOfDay, startOfDay, subDays, addDays } from "date-fns";
+import { differenceInCalendarDays, endOfDay, startOfDay, subDays } from "date-fns";
 import {
   ResponsiveContainer,
-  AreaChart,
   Area,
   CartesianGrid,
   XAxis,
@@ -14,6 +13,10 @@ import {
   PieChart,
   Pie,
   Cell,
+  ComposedChart,
+  Line,
+  ReferenceDot,
+  ReferenceLine,
 } from "recharts";
 import {
   BarChart3,
@@ -31,6 +34,7 @@ import {
 import useQueryState from "../hooks/useQueryState";
 import { useAccounts } from "../context/AccountsContext";
 import { DEFAULT_ACCOUNTS } from "../data/accounts";
+import { supabase } from "../lib/supabaseClient";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const FALLBACK_ACCOUNT_ID = DEFAULT_ACCOUNTS[0]?.id || "";
@@ -54,6 +58,18 @@ const DEFAULT_WEEKLY_POSTS = [2, 3, 4, 5, 6, 4, 3];
 const DEFAULT_GENDER_STATS = [
   { name: "Homens", value: 30 },
   { name: "Mulheres", value: 70 },
+];
+
+const DEFAULT_PROFILE_REACH_SERIES = [
+  { dateKey: "2025-01-29", label: "29/01", value: 12000 },
+  { dateKey: "2025-01-30", label: "30/01", value: 28000 },
+  { dateKey: "2025-01-31", label: "31/01", value: 78000 },
+  { dateKey: "2025-02-01", label: "01/02", value: 36000 },
+  { dateKey: "2025-02-02", label: "02/02", value: 42000 },
+  { dateKey: "2025-02-03", label: "03/02", value: 48000 },
+  { dateKey: "2025-02-04", label: "04/02", value: 32000 },
+  { dateKey: "2025-02-05", label: "05/02", value: 89000 },
+  { dateKey: "2025-02-06", label: "06/02", value: 27000 },
 ];
 
 // const HEATMAP_WEEK_LABELS = ["Sem 1", "Sem 2", "Sem 3", "Sem 4", "Sem 5", "Sem 6"];
@@ -256,6 +272,19 @@ const POST_METRIC_PATHS = {
     ["insights", "saves"],
     ["insights", "saves", "value"],
   ],
+  reach: [
+    ["reach"],
+    ["reachCount"],
+    ["reach_count"],
+    ["metrics", "reach"],
+    ["metrics", "reach", "value"],
+    ["metrics", "reach", "total"],
+    ["metrics", "reach", "summary", "total"],
+    ["insights", "reach"],
+    ["insights", "reach", "value"],
+    ["insights", "reach", "total"],
+    ["insights", "reach", "summary", "total"],
+  ],
 };
 
 const resolvePostMetric = (post, metric, fallback = 0) => {
@@ -294,28 +323,84 @@ const normalizeDateKey = (input) => {
   return date.toISOString().slice(0, 10);
 };
 
+const normalizeSeriesContainer = (raw) => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "object") {
+    if (Array.isArray(raw.data)) return raw.data;
+    if (Array.isArray(raw.values)) return raw.values;
+    if (Array.isArray(raw.timeline)) return raw.timeline;
+    if (Array.isArray(raw.points)) return raw.points;
+    return Object.entries(raw).map(([dateKey, value]) => ({
+      __dateKey: dateKey,
+      value,
+    }));
+  }
+  return [];
+};
+
+const normalizeSeriesEntry = (entry) => {
+  if (entry == null) return null;
+  if (Array.isArray(entry)) {
+    if (entry.length === 0) return null;
+    if (entry.length === 1) return { value: entry[0] };
+    return { __dateKey: entry[0], value: entry[1] };
+  }
+  if (typeof entry === "number" || typeof entry === "string") {
+    return { value: entry };
+  }
+  if (typeof entry === "object") {
+    return entry;
+  }
+  return null;
+};
+
+const DAY_SECONDS = 86400;
+
+const bucketUnixDay = (value) => {
+  if (value == null) return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  return numeric - (numeric % DAY_SECONDS);
+};
+
+const unixToIsoDate = (value) => {
+  const bucketed = bucketUnixDay(value);
+  if (bucketed == null) return null;
+  const date = new Date(bucketed * 1000);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
+};
+
 const seriesFromMetric = (metric) => {
   if (!metric) return [];
   const candidateKeys = ["timeline", "timeseries", "series", "history", "values", "data"];
   for (const key of candidateKeys) {
-    const entries = metric[key];
-    if (Array.isArray(entries) && entries.length) {
-      return entries
-        .map((entry) => {
-          const dateKey = normalizeDateKey(
-            entry.date ||
-            entry.end_time ||
-            entry.endTime ||
-            entry.timestamp ||
-            entry.period ||
-            entry.label,
-          );
-          if (!dateKey) return null;
-          const value = extractNumber(entry.value ?? entry.count ?? entry.total ?? entry.metric ?? entry.amount, 0);
-          return { date: dateKey, value };
-        })
-        .filter(Boolean);
-    }
+    const entries = normalizeSeriesContainer(metric[key]);
+    if (!entries.length) continue;
+    const normalized = entries
+      .map((rawEntry) => {
+        const entry = normalizeSeriesEntry(rawEntry);
+        if (!entry) return null;
+        const dateKey = normalizeDateKey(
+          entry.date ||
+          entry.end_time ||
+          entry.endTime ||
+          entry.timestamp ||
+          entry.period ||
+          entry.label ||
+          entry.__dateKey,
+        );
+        if (!dateKey) return null;
+        const value = extractNumber(
+          entry.value ?? entry.count ?? entry.total ?? entry.metric ?? entry.amount ?? entry.sum,
+          null,
+        );
+        if (value == null) return null;
+        return { date: dateKey, value };
+      })
+      .filter(Boolean);
+    if (normalized.length) return normalized;
   }
   return [];
 };
@@ -539,6 +624,7 @@ export default function InstagramDashboard() {
   const [followerSeries, setFollowerSeries] = useState([]);
   const [followerCounts, setFollowerCounts] = useState(null);
   const [overviewSnapshot, setOverviewSnapshot] = useState(null);
+  const [reachCacheSeries, setReachCacheSeries] = useState([]);
 
   useEffect(() => {
     if (!accountConfig?.instagramUserId) {
@@ -626,62 +712,6 @@ export default function InstagramDashboard() {
     })
     .filter(Boolean), [followerSeries]);
 
-  const profileReachData = useMemo(() => {
-    if (timelineReachSeries.length) {
-      let runningTotal = 0;
-      return [...timelineReachSeries]
-        .sort((a, b) => (a.date > b.date ? 1 : -1))
-        .map(({ date, value }) => {
-          const numericValue = extractNumber(value, 0);
-          runningTotal += numericValue;
-          const parsedDate = new Date(`${date}T00:00:00`);
-          return {
-            dateKey: date,
-            label: SHORT_DATE_FORMATTER.format(parsedDate),
-            value: runningTotal,
-          };
-        });
-    }
-
-    if (reachValue > 0) {
-      const inferredEnd = startOfDay(untilDate || defaultEnd);
-      const inferredStart = startOfDay(
-        sinceDate || subDays(inferredEnd, Math.max(IG_TOPBAR_PRESETS[0]?.days || 7, 2) - 1),
-      );
-      const totalDays = differenceInCalendarDays(inferredEnd, inferredStart);
-
-      if (totalDays <= 0) {
-        const label = SHORT_DATE_FORMATTER.format(inferredStart);
-        return [
-          {
-            dateKey: `${inferredStart.toISOString().slice(0, 10)}-baseline`,
-            label,
-            value: 0,
-          },
-          {
-            dateKey: `${inferredStart.toISOString().slice(0, 10)}-total`,
-            label,
-            value: reachValue,
-          },
-        ];
-      }
-
-      const points = [];
-      for (let dayIndex = 0; dayIndex <= totalDays; dayIndex += 1) {
-        const currentDate = addDays(inferredStart, dayIndex);
-        const progress = dayIndex / totalDays;
-        points.push({
-          dateKey: currentDate.toISOString().slice(0, 10),
-          label: SHORT_DATE_FORMATTER.format(currentDate),
-          value: dayIndex === totalDays ? reachValue : Math.round(reachValue * progress),
-        });
-      }
-      return points;
-    }
-
-    return [];
-  }, [defaultEnd, reachValue, sinceDate, timelineReachSeries, untilDate]);
-
   const filteredPosts = useMemo(() => {
     if (!posts.length) return [];
     if (!sinceDate && !untilDate) return posts;
@@ -694,6 +724,151 @@ export default function InstagramDashboard() {
       return true;
     });
   }, [posts, sinceDate, untilDate]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!accountConfig?.instagramUserId) {
+      setReachCacheSeries([]);
+      return;
+    }
+
+    const resolveUnix = (rawValue, fallbackDate) => {
+      if (rawValue != null) {
+        const numeric = Number(rawValue);
+        if (Number.isFinite(numeric)) return numeric;
+      }
+      if (!fallbackDate) return null;
+      const numeric = Math.floor(fallbackDate.getTime() / 1000);
+      return Number.isFinite(numeric) ? numeric : null;
+    };
+
+    const sinceUnix = resolveUnix(sinceParam, sinceDate);
+    const untilUnix = resolveUnix(untilParam, untilDate);
+    const sinceIso = unixToIsoDate(sinceUnix);
+    const untilIso = unixToIsoDate(untilUnix);
+
+    if (!sinceIso || !untilIso) {
+      setReachCacheSeries([]);
+      return undefined;
+    }
+
+    setReachCacheSeries([]);
+
+    const loadFromCache = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("app_msl")
+          .select("payload, fetched_at")
+          .eq("resource", "instagram_metrics")
+          .eq("owner_id", accountConfig.instagramUserId)
+          .eq("since_date", sinceIso)
+          .eq("until_date", untilIso)
+          .order("fetched_at", { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+
+        const payload = data?.[0]?.payload ?? null;
+        const metricsList = Array.isArray(payload?.metrics) ? payload.metrics : [];
+        const reachMetricFromCache = metricsList.find((item) => item?.key === "reach") || null;
+        const timeline = seriesFromMetric(reachMetricFromCache);
+
+        if (!cancelled) {
+          setReachCacheSeries(Array.isArray(timeline) ? timeline : []);
+        }
+      } catch (err) {
+        console.warn("Falha ao carregar alcance em cache", err);
+        if (!cancelled) {
+          setReachCacheSeries([]);
+        }
+      }
+    };
+
+    loadFromCache();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accountConfig?.instagramUserId, sinceParam, untilParam, sinceDate, untilDate]);
+
+  const reachTimelineFromCache = useMemo(() => {
+    if (!reachCacheSeries.length) return [];
+    return [...reachCacheSeries]
+      .sort((a, b) => (a.date > b.date ? 1 : -1))
+      .map(({ date, value }) => {
+        const numericValue = extractNumber(value, 0);
+        const parsedDate = new Date(`${date}T00:00:00`);
+        return {
+          dateKey: date,
+          label: SHORT_DATE_FORMATTER.format(parsedDate),
+          value: numericValue,
+        };
+      })
+      .filter((entry) => Number.isFinite(entry.value));
+  }, [reachCacheSeries]);
+
+  const reachTimelineFromMetric = useMemo(() => {
+    if (!timelineReachSeries.length) return [];
+    return [...timelineReachSeries]
+      .sort((a, b) => (a.date > b.date ? 1 : -1))
+      .map(({ date, value }) => {
+        const numericValue = extractNumber(value, 0);
+        const parsedDate = new Date(`${date}T00:00:00`);
+        return {
+          dateKey: date,
+          label: SHORT_DATE_FORMATTER.format(parsedDate),
+          value: numericValue,
+        };
+      })
+      .filter((entry) => Number.isFinite(entry.value));
+  }, [timelineReachSeries]);
+
+  const reachTimelineFromPosts = useMemo(() => {
+    if (!filteredPosts.length) return [];
+    const totals = new Map();
+    filteredPosts.forEach((post) => {
+      if (!post.timestamp) return;
+      const dateObj = new Date(post.timestamp);
+      if (Number.isNaN(dateObj.getTime())) return;
+      const reachMetricValue = resolvePostMetric(post, "reach", null);
+      const numericValue = reachMetricValue != null ? extractNumber(reachMetricValue, null) : null;
+      if (numericValue == null) return;
+      const key = dateObj.toISOString().slice(0, 10);
+      totals.set(key, (totals.get(key) || 0) + numericValue);
+    });
+    return Array.from(totals.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([dateKey, value]) => ({
+        dateKey,
+        label: SHORT_DATE_FORMATTER.format(new Date(`${dateKey}T00:00:00`)),
+        value,
+      }));
+  }, [filteredPosts]);
+
+  const profileReachData = useMemo(() => {
+    const baseSeries = reachTimelineFromCache.length
+      ? reachTimelineFromCache
+      : reachTimelineFromMetric.length
+        ? reachTimelineFromMetric
+        : reachTimelineFromPosts;
+    if (baseSeries.length) {
+      return baseSeries.map((entry) => ({
+        ...entry,
+        value: extractNumber(entry.value, 0),
+      }));
+    }
+
+    return DEFAULT_PROFILE_REACH_SERIES;
+  }, [reachTimelineFromCache, reachTimelineFromMetric, reachTimelineFromPosts]);
+
+  const peakReachPoint = useMemo(() => {
+    if (!profileReachData.length) return null;
+    return profileReachData.reduce(
+      (currentMax, entry) => (entry.value > currentMax.value ? entry : currentMax),
+      profileReachData[0],
+    );
+  }, [profileReachData]);
 
   useEffect(() => {
     setOverviewSnapshot(null);
@@ -1092,47 +1267,49 @@ export default function InstagramDashboard() {
 
                         return (
                           <div key={post.id || post.timestamp} className="ig-top-post-compact">
-                            <div
-                              className="ig-top-post-compact__thumb"
-                              onClick={handleThumbClick}
-                              role="button"
-                              tabIndex={0}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  handleThumbClick();
-                                }
-                              }}
-                            >
-                              {previewUrl ? (
-                                <img src={previewUrl} alt="Post" />
-                              ) : (
-                                <div className="ig-empty-thumb">Sem imagem</div>
-                              )}
-                            </div>
-                            <div className="ig-top-post-compact__content">
-                              <div className="ig-top-post-compact__metrics-grid">
-                                <span className="ig-metric ig-metric--like">
-                                  <Heart size={18} fill="#ef4444" color="#ef4444" />
-                                  <span className="ig-metric__value">{formatNumber(likes)}</span>
-                                </span>
-                                <span className="ig-metric ig-metric--comment">
-                                  <MessageCircle size={18} fill="#a855f7" color="#a855f7" />
-                                  <span className="ig-metric__value">{formatNumber(comments)}</span>
-                                </span>
-                                <span className="ig-metric ig-metric--share">
-                                  <Share2 size={18} color="#f97316" />
-                                  <span className="ig-metric__value">{formatNumber(shares)}</span>
-                                </span>
-                                <span className="ig-metric ig-metric--save">
-                                  <Bookmark size={18} fill="#3b82f6" color="#3b82f6" />
-                                  <span className="ig-metric__value">{formatNumber(saves)}</span>
-                                </span>
+                            <div className="ig-top-post-compact__thumb-wrapper">
+                              <div
+                                className="ig-top-post-compact__thumb"
+                                onClick={handleThumbClick}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    handleThumbClick();
+                                  }
+                                }}
+                              >
+                                {previewUrl ? (
+                                  <img src={previewUrl} alt="Post" />
+                                ) : (
+                                  <div className="ig-empty-thumb">Sem imagem</div>
+                                )}
                               </div>
                               <div className="ig-top-post-compact__datetime">
                                 {dateStr}
                                 <br />
                                 {timeStr}
+                              </div>
+                            </div>
+                            <div className="ig-top-post-compact__content">
+                              <div className="ig-top-post-compact__metrics-grid">
+                                <span className="ig-metric ig-metric--like">
+                                  <Heart size={20} fill="#ef4444" color="#ef4444" />
+                                  <span className="ig-metric__value">{formatNumber(likes)}</span>
+                                </span>
+                                <span className="ig-metric ig-metric--comment">
+                                  <MessageCircle size={20} fill="#a855f7" color="#a855f7" />
+                                  <span className="ig-metric__value">{formatNumber(comments)}</span>
+                                </span>
+                                <span className="ig-metric ig-metric--share">
+                                  <Share2 size={20} color="#f97316" />
+                                  <span className="ig-metric__value">{formatNumber(shares)}</span>
+                                </span>
+                                <span className="ig-metric ig-metric--save">
+                                  <Bookmark size={20} fill="#3b82f6" color="#3b82f6" />
+                                  <span className="ig-metric__value">{formatNumber(saves)}</span>
+                                </span>
                               </div>
                               <div className="ig-top-post-compact__caption">
                                 {truncate(post.caption || "Aqui vai o texto da legenda que post está sendo apresentado se não tiver espaço...", 100)}
@@ -1177,35 +1354,113 @@ export default function InstagramDashboard() {
               <div className="ig-chart-area">
                 {profileReachData.length ? (
                   <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={profileReachData}>
+                    <ComposedChart
+                      data={profileReachData}
+                      margin={{ top: 24, right: 28, left: 12, bottom: 12 }}
+                    >
                       <defs>
-                        <linearGradient id="cleanPurple" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                        <linearGradient id="igReachGradient" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#ec4899" />
+                          <stop offset="100%" stopColor="#f97316" />
+                        </linearGradient>
+                        <linearGradient id="igReachGlow" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="rgba(236, 72, 153, 0.32)" />
+                          <stop offset="100%" stopColor="rgba(249, 115, 22, 0)" />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffffff" />
-                      <XAxis dataKey="label" tick={{ fill: '#111827' }} fontSize={12} />
-                      <YAxis tick={{ fill: '#111827' }} fontSize={12} tickFormatter={(value) => value.toLocaleString("pt-BR")} />
+                      <CartesianGrid vertical={false} strokeDasharray="4 8" stroke="#f3f4f6" />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fill: '#111827' }}
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={{ stroke: '#e5e7eb' }}
+                      />
+                      <YAxis
+                        tick={{ fill: '#111827' }}
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={{ stroke: '#e5e7eb' }}
+                        tickFormatter={(value) => value.toLocaleString("pt-BR")}
+                        domain={['dataMin', (dataMax) => (Number.isFinite(dataMax) ? Math.ceil(dataMax * 1.1) : dataMax)]}
+                      />
                       <Tooltip
+                        cursor={{ stroke: 'rgba(17, 24, 39, 0.2)', strokeDasharray: '4 4' }}
                         content={({ active, payload }) => {
                           if (!active || !payload?.length) return null;
-                          const item = payload[0];
-                          const value = Number(item?.value ?? item?.payload?.value ?? 0);
-                          const label = item?.payload?.label ?? "Período";
+                          const [{ payload: item, value }] = payload;
+                          const numericValue = Number(value ?? item?.value ?? 0);
+                          const label = item?.label ?? "Período";
+                          const isPeak =
+                            !!peakReachPoint &&
+                            item?.dateKey === peakReachPoint.dateKey &&
+                            numericValue === peakReachPoint.value;
                           return (
                             <div className="ig-tooltip">
                               <span className="ig-tooltip__title">{label}</span>
                               <div className="ig-tooltip__row">
-                                <span>Alcance</span>
-                                <strong>{value.toLocaleString("pt-BR")}</strong>
+                                <span>Contas alcançadas</span>
+                                <strong>{numericValue.toLocaleString("pt-BR")}</strong>
                               </div>
+                              {isPeak ? (
+                                <div style={{ marginTop: 6, fontSize: 12, color: '#6b7280' }}>
+                                  Pico do período
+                                </div>
+                              ) : null}
                             </div>
                           );
                         }}
                       />
-                      <Area type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={2.5} fill="url(#cleanPurple)" />
-                    </AreaChart>
+                      <Area
+                        type="monotone"
+                        dataKey="value"
+                        fill="url(#igReachGlow)"
+                        stroke="none"
+                        isAnimationActive={false}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="url(#igReachGradient)"
+                        strokeWidth={7}
+                        strokeOpacity={0.2}
+                        dot={false}
+                        isAnimationActive={false}
+                        activeDot={false}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="url(#igReachGradient)"
+                        strokeWidth={3}
+                        dot={false}
+                        activeDot={{ r: 6, fill: '#ffffff', stroke: '#ef4444', strokeWidth: 2 }}
+                      />
+                      {peakReachPoint ? (
+                        <>
+                          <ReferenceLine
+                            x={peakReachPoint.label}
+                            stroke="#111827"
+                            strokeDasharray="4 4"
+                            strokeOpacity={0.45}
+                          />
+                          <ReferenceLine
+                            y={peakReachPoint.value}
+                            stroke="#111827"
+                            strokeDasharray="4 4"
+                            strokeOpacity={0.45}
+                          />
+                          <ReferenceDot
+                            x={peakReachPoint.label}
+                            y={peakReachPoint.value}
+                            r={6}
+                            fill="#111827"
+                            stroke="#ffffff"
+                            strokeWidth={2}
+                          />
+                        </>
+                      ) : null}
+                    </ComposedChart>
                   </ResponsiveContainer>
                 ) : (
                 <div className="ig-empty-state">Sem dados disponíveis</div>
@@ -1531,7 +1786,7 @@ export default function InstagramDashboard() {
 
         <section className="ig-card-white ig-analytics-card ig-analytics-card--large">
           <div className="ig-analytics-card__header">
-            <h4>HashTags mais usadas</h4>
+            <h4>Hashtags mais usadas</h4>
             <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
           </div>
           <div className="ig-analytics-card__body">
