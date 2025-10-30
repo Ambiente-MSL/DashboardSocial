@@ -14,8 +14,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  LineChart,
-  Line,
 } from "recharts";
 import {
   BarChart3,
@@ -58,12 +56,12 @@ const DEFAULT_GENDER_STATS = [
   { name: "Mulheres", value: 70 },
 ];
 
-const HEATMAP_WEEK_LABELS = ["Sem 1", "Sem 2", "Sem 3", "Sem 4", "Sem 5", "Sem 6"];
-const HEATMAP_DAY_LABELS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-const DEFAULT_HEATMAP_MATRIX = HEATMAP_DAY_LABELS.map((day, dayIndex) => ({
-  day,
-  values: HEATMAP_WEEK_LABELS.map((_, weekIndex) => ((dayIndex + weekIndex) % 6) + 1),
-}));
+// const HEATMAP_WEEK_LABELS = ["Sem 1", "Sem 2", "Sem 3", "Sem 4", "Sem 5", "Sem 6"];
+// const HEATMAP_DAY_LABELS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+// const DEFAULT_HEATMAP_MATRIX = HEATMAP_DAY_LABELS.map((day, dayIndex) => ({
+//   day,
+//   values: HEATMAP_WEEK_LABELS.map((_, weekIndex) => ((dayIndex + weekIndex) % 6) + 1),
+// }));
 
 const buildWeeklyPattern = (values) => {
   const max = Math.max(...values, 0);
@@ -818,10 +816,10 @@ export default function InstagramDashboard() {
     ? [...filteredPosts].sort((a, b) => sumInteractions(b) - sumInteractions(a)).slice(0, 6)
     : []), [filteredPosts]);
 
-  const followerGrowthData = useMemo(() => followerSeriesNormalized.map((item) => ({
-    label: SHORT_DATE_FORMATTER.format(new Date(`${item.date}T00:00:00`)),
-    followers: item.value,
-  })), [followerSeriesNormalized]);
+  // const followerGrowthData = useMemo(() => followerSeriesNormalized.map((item) => ({
+  //   label: SHORT_DATE_FORMATTER.format(new Date(`${item.date}T00:00:00`)),
+  //   followers: item.value,
+  // })), [followerSeriesNormalized]);
 
   const genderDistribution = useMemo(() => {
     const breakdown =
@@ -853,14 +851,14 @@ export default function InstagramDashboard() {
       : DEFAULT_GENDER_STATS
   ), [genderDistribution]);
 
-  const heatmapData = useMemo(() => DEFAULT_HEATMAP_MATRIX, []);
+  // const heatmapData = useMemo(() => DEFAULT_HEATMAP_MATRIX, []);
 
-  const maxHeatmapValue = useMemo(() => (
-    heatmapData.reduce((acc, row) => {
-      const rowMax = Math.max(...row.values);
-      return rowMax > acc ? rowMax : acc;
-    }, 0)
-  ), [heatmapData]);
+  // const maxHeatmapValue = useMemo(() => (
+  //   heatmapData.reduce((acc, row) => {
+  //     const rowMax = Math.max(...row.values);
+  //     return rowMax > acc ? rowMax : acc;
+  //   }, 0)
+  // ), [heatmapData]);
 
   const keywordList = useMemo(() => buildKeywordFrequency(filteredPosts), [filteredPosts]);
   const hashtagList = useMemo(() => buildHashtagFrequency(filteredPosts), [filteredPosts]);
@@ -1058,6 +1056,96 @@ export default function InstagramDashboard() {
                     <div className="ig-empty-state">Sem dados</div>
                   )}
                 </div>
+
+                {/* Posts em Destaque */}
+                <div className="ig-profile-vertical__divider" />
+                <div className="ig-profile-vertical__top-posts">
+                  <h4>Top posts</h4>
+                  <div className="ig-top-posts-list">
+                    {loadingPosts && !topPosts.length ? (
+                      <div className="ig-empty-state">Carregando...</div>
+                    ) : topPosts.length ? (
+                      topPosts.slice(0, 4).map((post) => {
+                        const likes = resolvePostMetric(post, "likes");
+                        const comments = resolvePostMetric(post, "comments");
+                        const saves = resolvePostMetric(post, "saves");
+                        const shares = resolvePostMetric(post, "shares");
+                        const previewUrl = [
+                          post.previewUrl,
+                          post.preview_url,
+                          post.thumbnailUrl,
+                          post.thumbnail_url,
+                          post.mediaUrl,
+                          post.media_url,
+                        ].find((url) => url && !/\.(mp4|mov)$/i.test(url));
+
+                        const postDate = post.timestamp ? new Date(post.timestamp) : null;
+                        const dateStr = postDate ? postDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
+                        const timeStr = postDate ? postDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
+                        const postUrl = post.permalink || post.url || `https://www.instagram.com/p/${post.id || ''}`;
+
+                        const handleThumbClick = () => {
+                          if (postUrl) {
+                            window.open(postUrl, '_blank', 'noopener,noreferrer');
+                          }
+                        };
+
+                        return (
+                          <div key={post.id || post.timestamp} className="ig-top-post-compact">
+                            <div
+                              className="ig-top-post-compact__thumb"
+                              onClick={handleThumbClick}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  handleThumbClick();
+                                }
+                              }}
+                            >
+                              {previewUrl ? (
+                                <img src={previewUrl} alt="Post" />
+                              ) : (
+                                <div className="ig-empty-thumb">Sem imagem</div>
+                              )}
+                            </div>
+                            <div className="ig-top-post-compact__content">
+                              <div className="ig-top-post-compact__metrics-grid">
+                                <span className="ig-metric ig-metric--like">
+                                  <Heart size={18} fill="#ef4444" color="#ef4444" />
+                                  <span className="ig-metric__value">{formatNumber(likes)}</span>
+                                </span>
+                                <span className="ig-metric ig-metric--comment">
+                                  <MessageCircle size={18} fill="#a855f7" color="#a855f7" />
+                                  <span className="ig-metric__value">{formatNumber(comments)}</span>
+                                </span>
+                                <span className="ig-metric ig-metric--share">
+                                  <Share2 size={18} color="#f97316" />
+                                  <span className="ig-metric__value">{formatNumber(shares)}</span>
+                                </span>
+                                <span className="ig-metric ig-metric--save">
+                                  <Bookmark size={18} fill="#3b82f6" color="#3b82f6" />
+                                  <span className="ig-metric__value">{formatNumber(saves)}</span>
+                                </span>
+                              </div>
+                              <div className="ig-top-post-compact__datetime">
+                                {dateStr}
+                                <br />
+                                {timeStr}
+                              </div>
+                              <div className="ig-top-post-compact__caption">
+                                {truncate(post.caption || "Aqui vai o texto da legenda que post está sendo apresentado se não tiver espaço...", 100)}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="ig-empty-state">Nenhum post disponível</div>
+                    )}
+                  </div>
+                </div>
               </div>
             </section>
           </div>
@@ -1067,8 +1155,8 @@ export default function InstagramDashboard() {
             <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
-                  <h3>Crescimento do Perfil</h3>
-                  <p className="ig-card-subtitle">Alcance</p>
+                  <h2 className="ig-clean-title2">Crescimento do perfil</h2>
+                  <h3>Alcance</h3>
                 </div>
                 <div className="ig-filter-pills">
                   {IG_TOPBAR_PRESETS.map((preset) => (
@@ -1096,9 +1184,9 @@ export default function InstagramDashboard() {
                           <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis dataKey="label" stroke="#9ca3af" fontSize={12} />
-                      <YAxis stroke="#9ca3af" fontSize={12} tickFormatter={(value) => value.toLocaleString("pt-BR")} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffffff" />
+                      <XAxis dataKey="label" tick={{ fill: '#111827' }} fontSize={12} />
+                      <YAxis tick={{ fill: '#111827' }} fontSize={12} tickFormatter={(value) => value.toLocaleString("pt-BR")} />
                       <Tooltip
                         content={({ active, payload }) => {
                           if (!active || !payload?.length) return null;
@@ -1126,7 +1214,7 @@ export default function InstagramDashboard() {
             </section>
 
             {/* Card de Crescimento de Seguidores */}
-            <section className="ig-growth-clean ig-growth-followers">
+            <section className="ig-growth-clean ig-growth-followers ig-follower-growth-card">
               <header className="ig-card-header">
                 <div>
                   <h3>Crescimento de Seguidores</h3>
@@ -1146,44 +1234,65 @@ export default function InstagramDashboard() {
               </header>
 
               <div className="ig-chart-area">
-                <ResponsiveContainer width="100%" height={280}>
-                  <LineChart data={FOLLOWER_GROWTH_SERIES} margin={{ top: 12, right: 16, bottom: 8, left: 0 }}>
-                    <CartesianGrid stroke="#f1f5f9" strokeDasharray="4 4" />
-                    <XAxis dataKey="label" stroke="#9ca3af" fontSize={12} />
-                    <YAxis
-                      stroke="#9ca3af"
-                      fontSize={12}
-                      tickFormatter={(value) => value.toLocaleString("pt-BR")}
-                      width={60}
-                    />
-                    <Tooltip
-                      cursor={{ stroke: "#ef4444", strokeDasharray: "4 4" }}
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        const item = payload[0];
-                        const value = Number(item?.value ?? item?.payload?.value ?? 0);
-                        const label = item?.payload?.label ?? "Período";
-                        return (
-                          <div className="ig-tooltip">
-                            <span className="ig-tooltip__title">{label}</span>
-                            <div className="ig-tooltip__row">
-                              <span>Seguidores</span>
-                              <strong>{value.toLocaleString("pt-BR")}</strong>
-                            </div>
-                          </div>
-                        );
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="value"
-                      stroke="#ec4899"
-                      strokeWidth={2.5}
-                      dot={{ r: 4, stroke: "#ec4899", fill: "#ffffff", strokeWidth: 2 }}
-                      activeDot={{ r: 6, strokeWidth: 0, fill: "#fb7185" }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                {FOLLOWER_GROWTH_SERIES.length ? (
+                  <>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={FOLLOWER_GROWTH_SERIES} margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
+                        <defs>
+                          <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#a855f7" stopOpacity={1} />
+                            <stop offset="100%" stopColor="#ec4899" stopOpacity={1} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                        <XAxis
+                          dataKey="label"
+                          tick={{ fill: '#111827' }}
+                          fontSize={11}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          tick={{ fill: '#111827' }}
+                          fontSize={11}
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={(value) => {
+                            if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                            return value;
+                          }}
+                        />
+                        <Tooltip
+                          cursor={{ fill: 'rgba(168, 85, 247, 0.1)' }}
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const data = payload[0];
+                            return (
+                              <div className="ig-follower-tooltip">
+                                <div className="ig-follower-tooltip__label">Total seguidores: {data.value?.toLocaleString('pt-BR')}</div>
+                                <div className="ig-follower-tooltip__date">{data.payload.label}</div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar
+                          dataKey="value"
+                          fill="url(#barGradient)"
+                          radius={[8, 8, 0, 0]}
+                          maxBarSize={40}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                    <div className="ig-chart-slider">
+                      <div className="ig-chart-slider__track">
+                        <div className="ig-chart-slider__handle ig-chart-slider__handle--left" />
+                        <div className="ig-chart-slider__handle ig-chart-slider__handle--right" />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="ig-empty-state">Sem histórico recente.</div>
+                )}
               </div>
         </section>
 
@@ -1194,21 +1303,35 @@ export default function InstagramDashboard() {
               <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
             </div>
             <div className="ig-analytics-card__body">
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
+                  {/* Purple circle (background) */}
+                  <Pie
+                    data={[{ value: 100 }]}
+                    dataKey="value"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={85}
+                    innerRadius={0}
+                    fill="#8b5cf6"
+                    stroke="none"
+                    isAnimationActive={false}
+                  />
+                  {/* Teal circle (foreground - overlapping) */}
                   <Pie
                     data={genderStatsSeries}
                     dataKey="value"
                     nameKey="name"
-                    innerRadius={55}
+                    cx="50%"
+                    cy="50%"
                     outerRadius={85}
+                    innerRadius={0}
+                    startAngle={90}
+                    endAngle={90 + (genderStatsSeries[0]?.value || 0) * 3.6}
+                    fill="#14b8a6"
                     stroke="none"
-                    paddingAngle={2}
-                  >
-                    {genderStatsSeries.map((entry, index) => (
-                      <Cell key={entry.name || index} fill={IG_DONUT_COLORS[index % IG_DONUT_COLORS.length]} />
-                    ))}
-                  </Pie>
+                    paddingAngle={0}
+                  />
                   <Tooltip content={(props) => <BubbleTooltip {...props} suffix="%" />} />
                 </PieChart>
               </ResponsiveContainer>
@@ -1217,7 +1340,7 @@ export default function InstagramDashboard() {
                   <div key={slice.name || index} className="ig-analytics-legend__item">
                     <span
                       className="ig-analytics-legend__swatch"
-                      style={{ backgroundColor: IG_DONUT_COLORS[index % IG_DONUT_COLORS.length] }}
+                      style={{ backgroundColor: index === 0 ? "#14b8a6" : "#8b5cf6" }}
                     />
                     <span className="ig-analytics-legend__label">{slice.name}</span>
                   </div>
@@ -1229,117 +1352,207 @@ export default function InstagramDashboard() {
           <section className="ig-card-white ig-analytics-card">
             <div className="ig-analytics-card__header">
               <h4>Quantidade de publicações por dia</h4>
-              <select className="ig-card-filter" defaultValue="mar">
-                <option value="mar">Mar 26 - Abr 01</option>
-                <option value="abr">Abr 02 - Abr 08</option>
+              <select className="ig-card-filter" defaultValue="abril">
+                <option value="janeiro">Janeiro 2024</option>
+                <option value="fevereiro">Fevereiro 2024</option>
+                <option value="marco">Março 2024</option>
+                <option value="abril">Abril 2024</option>
+                <option value="maio">Maio 2024</option>
+                <option value="junho">Junho 2024</option>
+                <option value="julho">Julho 2024</option>
+                <option value="agosto">Agosto 2024</option>
+                <option value="setembro">Setembro 2024</option>
+                <option value="outubro">Outubro 2024</option>
               </select>
             </div>
             <div className="ig-analytics-card__body">
-              <div className="ig-heatmap">
-                <div className="ig-heatmap__header">
-                  <span />
-                  {HEATMAP_WEEK_LABELS.map((week) => (
-                    <span key={week} className="ig-heatmap__col-label">{week}</span>
-                  ))}
+              <div className="ig-calendar">
+                <div className="ig-calendar__weekdays">
+                  <span className="ig-calendar__weekday">Dom</span>
+                  <span className="ig-calendar__weekday">Seg</span>
+                  <span className="ig-calendar__weekday">Ter</span>
+                  <span className="ig-calendar__weekday">Qua</span>
+                  <span className="ig-calendar__weekday">Qui</span>
+                  <span className="ig-calendar__weekday">Sex</span>
+                  <span className="ig-calendar__weekday">Sáb</span>
                 </div>
-                <div className="ig-heatmap__rows">
-                  {heatmapData.map((row) => (
-                    <div key={row.day} className="ig-heatmap__row">
-                      <span className="ig-heatmap__row-label">{row.day}</span>
-                      {row.values.map((value, idx) => {
-                        const level = maxHeatmapValue > 0 ? Math.ceil((value / maxHeatmapValue) * 4) : 0;
-                        return (
-                          <button
-                            key={`${row.day}-${idx}`}
-                            type="button"
-                            className={`ig-heatmap__cell ig-heatmap__cell--level-${level}`}
-                            data-tooltip={`${value} publicações`}
-                          />
-                        );
-                      })}
-                    </div>
-                  ))}
+                <div className="ig-calendar__grid">
+                  {/* Abril 2024 - começa na segunda-feira (1º dia) */}
+                  {/* Dias vazios do mês anterior */}
+                  <div className="ig-calendar__day ig-calendar__day--empty" />
+
+                  {/* Dias de Abril */}
+                  {Array.from({ length: 30 }, (_, i) => {
+                    const day = i + 1;
+                    const posts = Math.floor(Math.random() * 6); // Mock: 0-5 publicações
+                    const level = posts === 0 ? 0 : Math.ceil((posts / 5) * 4);
+
+                    return (
+                      <div
+                        key={day}
+                        className={`ig-calendar__day ig-calendar__day--level-${level}`}
+                        data-tooltip={`${posts} publicaç${posts === 1 ? 'ão' : 'ões'}`}
+                      >
+                        <span className="ig-calendar__day-number">{day}</span>
+                      </div>
+                    );
+                  })}
+
+                  {/* Dias vazios do próximo mês para completar a grade */}
+                  <div className="ig-calendar__day ig-calendar__day--empty" />
                 </div>
               </div>
             </div>
           </section>
         </div>
-      </div>
-    </div>
 
-        {/* Terceira Linha: Top Posts */}
-        <div className="ig-card-white ig-card-full">
-          <h4>Posts em destaque</h4>
-          <div className="ig-top-posts-grid">
-            {loadingPosts && !topPosts.length ? (
-              <div className="ig-empty-state">Carregando...</div>
-            ) : topPosts.length ? (
-              topPosts.map((post) => {
-                const likes = resolvePostMetric(post, "likes");
-                const comments = resolvePostMetric(post, "comments");
-                const saves = resolvePostMetric(post, "saves");
-                const shares = resolvePostMetric(post, "shares");
-                const previewUrl = [
-                  post.previewUrl,
-                  post.preview_url,
-                  post.thumbnailUrl,
-                  post.thumbnail_url,
-                  post.mediaUrl,
-                  post.media_url,
-                ].find((url) => url && !/\.(mp4|mov)$/i.test(url));
-
-                return (
-                  <div key={post.id || post.timestamp} className="ig-top-post-item">
-                    <div className="ig-top-post-item__thumb">
-                      {previewUrl ? (
-                        <img src={previewUrl} alt="Post" />
-                      ) : (
-                        <div className="ig-empty-thumb">Sem imagem</div>
-                      )}
-                    </div>
-                    <div className="ig-top-post-item__caption">
-                      {truncate(post.caption || "Sem legenda", 80)}
-                    </div>
-                    <div className="ig-top-post-item__stats">
-                      <span><Heart size={14} /> {formatNumber(likes)}</span>
-                      <span><MessageCircle size={14} /> {formatNumber(comments)}</span>
-                      <span><Share2 size={14} /> {formatNumber(shares)}</span>
-                      <span><Bookmark size={14} /> {formatNumber(saves)}</span>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="ig-empty-state">Nenhum post disponível</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Quarta linha: crescimento */}
-      <div className="ig-clean-grid">
-        <div className="ig-card-white">
-          <h4>Crescimento de seguidores</h4>
-          <div className="ig-chart-container">
-            {followerGrowthData.length ? (
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={followerGrowthData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
-                  <XAxis dataKey="label" stroke="var(--text-secondary)" />
-                  <YAxis stroke="var(--text-secondary)" tickFormatter={(value) => value.toLocaleString("pt-BR")} />
-                  <Tooltip formatter={(value) => Number(value).toLocaleString("pt-BR")} />
-                  <Bar dataKey="followers" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
+        <div className="ig-analytics-grid ig-analytics-grid--pair">
+          <section className="ig-card-white ig-analytics-card">
+            <div className="ig-analytics-card__header">
+              <h4>Idade</h4>
+              <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
+            </div>
+            <div className="ig-analytics-card__body">
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart
+                  data={[
+                    { age: "13-17", male: 20, female: 30 },
+                    { age: "18-24", male: 60, female: 80 },
+                    { age: "25-34", male: 70, female: 75 },
+                    { age: "35-44", male: 40, female: 35 },
+                    { age: "45++", male: 30, female: 25 },
+                  ]}
+                  layout="vertical"
+                  margin={{ left: 0, right: 0, top: 5, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                  <XAxis type="number" tick={{ fill: '#111827' }} fontSize={12} />
+                  <YAxis type="category" dataKey="age" tick={{ fill: '#111827' }} fontSize={12} width={60} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(139, 92, 246, 0.1)' }}
+                    formatter={(value) => Number(value).toLocaleString("pt-BR")}
+                  />
+                  <Bar dataKey="male" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="female" fill="#ec4899" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="ig-empty-state">Sem histórico recente.</div>
-            )}
-          </div>
+            </div>
+          </section>
+
+          <section className="ig-card-white ig-analytics-card">
+            <div className="ig-analytics-card__header">
+              <h4>Top Cidades</h4>
+              <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
+            </div>
+            <div className="ig-analytics-card__body">
+              <div className="ig-top-cities">
+                <div className="ig-top-cities__header">
+                  <div className="ig-top-cities__total">
+                    <span className="ig-top-cities__total-number">1.500</span>
+                    <div className="ig-top-cities__trend">
+                      <svg width="80" height="30" viewBox="0 0 80 30">
+                        <path
+                          d="M 0 25 Q 20 20, 40 15 T 80 5"
+                          fill="none"
+                          stroke="#14b8a6"
+                          strokeWidth="2"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="ig-top-cities__legend">
+                    <span className="ig-top-cities__legend-item">
+                      <span className="ig-top-cities__legend-dot" style={{ backgroundColor: "#14b8a6" }} />
+                      Crato
+                    </span>
+                  </div>
+                </div>
+                <div className="ig-top-cities__list">
+                  <div className="ig-top-city-item">
+                    <span className="ig-top-city-item__icon" style={{ backgroundColor: "#3b82f6" }}>📍</span>
+                    <span className="ig-top-city-item__name">Fortaleza</span>
+                    <span className="ig-top-city-item__value">350</span>
+                  </div>
+                  <div className="ig-top-city-item">
+                    <span className="ig-top-city-item__icon" style={{ backgroundColor: "#ef4444" }}>📍</span>
+                    <span className="ig-top-city-item__name">Crato</span>
+                    <span className="ig-top-city-item__value">200</span>
+                  </div>
+                  <div className="ig-top-city-item">
+                    <span className="ig-top-city-item__icon" style={{ backgroundColor: "#f97316" }}>📍</span>
+                    <span className="ig-top-city-item__name">Massape</span>
+                    <span className="ig-top-city-item__value">500</span>
+                  </div>
+                  <div className="ig-top-city-item">
+                    <span className="ig-top-city-item__icon" style={{ backgroundColor: "#14b8a6" }}>📍</span>
+                    <span className="ig-top-city-item__name">France</span>
+                    <span className="ig-top-city-item__value">700</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
+
+      </div>
       </div>
 
-      {/* Quinta linha: volume e hashtags */}
-      <div className="ig-clean-grid">
+      {/* Palavras-chave e Hashtags - Largura Total */}
+      <div className="ig-analytics-grid ig-analytics-grid--pair">
+        <section className="ig-card-white ig-analytics-card ig-analytics-card--large">
+          <div className="ig-analytics-card__header">
+            <h4>Palavras chaves mais comentadas</h4>
+            <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
+          </div>
+          <div className="ig-analytics-card__body">
+            <div className="ig-word-cloud ig-word-cloud--large">
+              <span className="ig-word-cloud__word ig-word-cloud__word--xl" style={{ color: '#ef4444' }}>dance</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--lg" style={{ color: '#f97316' }}>travel</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--lg" style={{ color: '#ec4899' }}>photography</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--md" style={{ color: '#a855f7' }}>design</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--md" style={{ color: '#f97316' }}>fashion</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--sm" style={{ color: '#fbbf24' }}>makeup</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--md" style={{ color: '#ef4444' }}>indian</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--sm" style={{ color: '#ec4899' }}>life</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--xl" style={{ color: '#f97316' }}>frocks</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--sm" style={{ color: '#fbbf24' }}>girl</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--md" style={{ color: '#a855f7' }}>travel</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--lg" style={{ color: '#ef4444' }}>hot</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--sm" style={{ color: '#ec4899' }}>beautiful</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--md" style={{ color: '#fbbf24' }}>shorthair</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--sm" style={{ color: '#a855f7' }}>brunette</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--md" style={{ color: '#f97316' }}>ctress</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--sm" style={{ color: '#ef4444' }}>model</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--lg" style={{ color: '#ec4899' }}>shopping</span>
+              <span className="ig-word-cloud__word ig-word-cloud__word--sm" style={{ color: '#fbbf24' }}>short</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="ig-card-white ig-analytics-card ig-analytics-card--large">
+          <div className="ig-analytics-card__header">
+            <h4>HashTags mais usadas</h4>
+            <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
+          </div>
+          <div className="ig-analytics-card__body">
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={hashtagList.slice(0, 10)} layout="vertical" margin={{ left: 12, right: 12, top: 5, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
+                <XAxis type="number" tick={{ fill: '#111827' }} fontSize={12} allowDecimals={false} />
+                <YAxis type="category" dataKey="name" tick={{ fill: '#111827' }} fontSize={12} width={100} />
+                <Tooltip
+                  cursor={{ fill: 'rgba(236, 72, 153, 0.1)' }}
+                  formatter={(value) => [String(value), "Ocorrências"]}
+                />
+                <Bar dataKey="value" fill="#ec4899" radius={[0, 6, 6, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      </div>
+
+      {/* Hashtags e palavras-chave (seção antiga - manter para compatibilidade) */}
+      <div className="ig-clean-grid" style={{ display: 'none' }}>
         <div className="ig-card-white">
           <div className="ig-card__title">
             <Hash size={16} />
@@ -1350,8 +1563,8 @@ export default function InstagramDashboard() {
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={hashtagList} layout="vertical" margin={{ left: 12, right: 12 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
-                  <XAxis type="number" stroke="var(--text-secondary)" allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" width={140} stroke="var(--text-secondary)" />
+                  <XAxis type="number" tick={{ fill: '#111827' }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" width={140} tick={{ fill: '#111827' }} />
                   <Tooltip formatter={(value) => [String(value), "Ocorrências"]} />
                   <Bar dataKey="value" fill="#ec4899" radius={[0, 6, 6, 0]} />
                 </BarChart>
@@ -1374,7 +1587,7 @@ export default function InstagramDashboard() {
           </div>
         </div>
       </div>
-
+      </div>
     </div>
   );
 }

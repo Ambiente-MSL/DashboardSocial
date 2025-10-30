@@ -1,7 +1,9 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { addDays, endOfDay, format, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Filter, X } from "lucide-react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { Calendar, X } from "lucide-react";
 import useQueryState from "../hooks/useQueryState";
 
 const parseDateParam = (value) => {
@@ -15,7 +17,6 @@ const parseDateParam = (value) => {
 
 const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
 const fmt = (d) => (d ? format(d, "dd MMM yy", { locale: ptBR }).toUpperCase() : "");
-const toInputValue = (d) => (d ? format(d, "yyyy-MM-dd") : "");
 
 export default function DateRangePicker({ onRangeChange, variant = "default" }) {
   // Usar momento atual
@@ -36,8 +37,6 @@ export default function DateRangePicker({ onRangeChange, variant = "default" }) 
   const [startDate, setStartDate] = useState(initialStart);
   const [endDate, setEndDate] = useState(initialEnd);
   const [isOpen, setIsOpen] = useState(false);
-  const [tempStart, setTempStart] = useState(toInputValue(initialStart));
-  const [tempEnd, setTempEnd] = useState(toInputValue(initialEnd));
   const dropdownRef = useRef(null);
   const firstSync = useRef(false);
 
@@ -60,13 +59,9 @@ export default function DateRangePicker({ onRangeChange, variant = "default" }) 
       const e = endOfDay(ne);
       setStartDate(s);
       setEndDate(e);
-      setTempStart(toInputValue(s));
-      setTempEnd(toInputValue(e));
     } else if (!qSince && !qUntil) {
       setStartDate(defaultStart);
       setEndDate(defaultEnd);
-      setTempStart(toInputValue(defaultStart));
-      setTempEnd(toInputValue(defaultEnd));
     }
   }, [qSince, qUntil, defaultStart, defaultEnd]);
 
@@ -95,22 +90,23 @@ export default function DateRangePicker({ onRangeChange, variant = "default" }) 
     }
   };
 
-  const applyDates = () => {
-    if (tempStart && tempEnd) {
-      const s = startOfDay(new Date(tempStart));
-      const e = endOfDay(new Date(tempEnd));
-      setStartDate(s);
-      setEndDate(e);
+  const handleDateChange = (dates) => {
+    const [start, end] = dates;
+    setStartDate(start);
+    setEndDate(end);
+
+    // Aplicar automaticamente quando ambas as datas são selecionadas
+    if (start && end) {
+      const s = startOfDay(start);
+      const e = endOfDay(end);
       updateQuery(s, e);
+      setTimeout(() => setIsOpen(false), 300);
     }
-    setIsOpen(false);
   };
 
   const clearDates = () => {
     setStartDate(defaultStart);
     setEndDate(defaultEnd);
-    setTempStart(toInputValue(defaultStart));
-    setTempEnd(toInputValue(defaultEnd));
     updateQuery(defaultStart, defaultEnd);
     setIsOpen(false);
   };
@@ -120,16 +116,16 @@ export default function DateRangePicker({ onRangeChange, variant = "default" }) 
     const e = defaultEnd;
     setStartDate(s);
     setEndDate(e);
-    setTempStart(toInputValue(s));
-    setTempEnd(toInputValue(e));
     updateQuery(s, e);
+    setIsOpen(false);
   };
 
   const presets = [
-    { days: 7, label: '7d' },
-    { days: 15, label: '15d' },
-    { days: 30, label: '30d' },
-    { days: 60, label: '60d' }
+    { days: 7, label: 'Últimos 7 dias' },
+    { days: 15, label: 'Últimos 15 dias' },
+    { days: 30, label: 'Últimos 30 dias' },
+    { days: 60, label: 'Últimos 60 dias' },
+    { days: 90, label: 'Últimos 90 dias' }
   ];
 
   const activeDays = startDate && endDate
@@ -140,7 +136,7 @@ export default function DateRangePicker({ onRangeChange, variant = "default" }) 
 
   return (
     <div className={wrapperClass}>
-      {presets.map(({ days, label }) => (
+      {variant !== "compact" && presets.slice(0, 4).map(({ days, label }) => (
         <button
           key={days}
           type="button"
@@ -161,11 +157,11 @@ export default function DateRangePicker({ onRangeChange, variant = "default" }) 
           <span className="date-range-btn__text">
             {startDate && endDate ? `${fmt(startDate)} — ${fmt(endDate)}` : "Selecione o período"}
           </span>
-          <Filter size={16} className="date-range-btn__icon" />
+          {variant !== "compact" && <Calendar size={16} className="date-range-btn__icon" />}
         </button>
 
         {isOpen && (
-          <div className="date-range-dropdown">
+          <div className="date-range-dropdown date-range-dropdown--modern date-range-dropdown--calendar-only">
             <div className="date-range-dropdown__header">
               <span>Selecionar período</span>
               <button
@@ -178,25 +174,20 @@ export default function DateRangePicker({ onRangeChange, variant = "default" }) 
             </div>
 
             <div className="date-range-dropdown__body">
-              <div className="date-input-group">
-                <label htmlFor="start-date">Data inicial</label>
-                <input
-                  id="start-date"
-                  type="date"
-                  value={tempStart}
-                  onChange={(e) => setTempStart(e.target.value)}
-                  className="date-input"
-                />
-              </div>
-
-              <div className="date-input-group">
-                <label htmlFor="end-date">Data final</label>
-                <input
-                  id="end-date"
-                  type="date"
-                  value={tempEnd}
-                  onChange={(e) => setTempEnd(e.target.value)}
-                  className="date-input"
+              <div className="date-range-calendar-wrapper">
+                <DatePicker
+                  selected={startDate}
+                  onChange={handleDateChange}
+                  startDate={startDate}
+                  endDate={endDate}
+                  selectsRange
+                  inline
+                  locale={ptBR}
+                  maxDate={new Date()}
+                  showMonthDropdown
+                  showYearDropdown
+                  dropdownMode="select"
+                  calendarClassName="custom-datepicker"
                 />
               </div>
             </div>
@@ -212,7 +203,8 @@ export default function DateRangePicker({ onRangeChange, variant = "default" }) 
               <button
                 type="button"
                 className="date-range-dropdown__btn date-range-dropdown__btn--primary"
-                onClick={applyDates}
+                onClick={() => setIsOpen(false)}
+                disabled={!startDate || !endDate}
               >
                 Aplicar período
               </button>

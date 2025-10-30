@@ -708,13 +708,13 @@ body.theme-light {
   top: 0;
   z-index: 30;
   width: 100%;
-  background: #1e1e1e;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
   padding: 14px 24px;
   display: flex;
   justify-content: center;
-  color: #f8fafc;
-  box-shadow: 0 14px 24px rgba(15, 23, 42, 0.18);
+  color: #111827;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
 
 .topbar--dark {
@@ -740,8 +740,8 @@ body.theme-light {
   width: 40px;
   height: 40px;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
   color: #f472b6;
   display: inline-flex;
   align-items: center;
@@ -751,8 +751,8 @@ body.theme-light {
 
 .topbar__notif-btn:hover {
   transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: #d1d5db;
+  background: #f3f4f6;
 }
 
 .topbar__notif-badge {
@@ -787,11 +787,11 @@ body.theme-light {
 }
 
 .topbar__chip {
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid #e5e7eb;
   border-radius: 999px;
   padding: 8px 18px;
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.75);
+  background: #f9fafb;
+  color: #6b7280;
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -800,9 +800,9 @@ body.theme-light {
 
 .topbar__chip:hover {
   transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.28);
+  background: #f3f4f6;
+  color: #111827;
+  border-color: #d1d5db;
 }
 
 .topbar__chip--active {
@@ -815,12 +815,12 @@ body.theme-light {
 .topbar__range {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.08);
-  padding: 8px 16px;
-  color: #f8fafc;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  padding: 8px 12px;
+  color: #111827;
   font-weight: 600;
   font-size: 0.85rem;
 }
@@ -845,10 +845,14 @@ body.theme-light {
   border: none;
   color: inherit;
   font-weight: inherit;
+  display: inline-flex;
+  align-items: center;
+  min-width: auto;
 }
 
 .date-range-wrapper--compact .date-range-btn__text {
   color: inherit;
+  white-space: nowrap;
 }
 
 .date-range-wrapper--compact .date-range-btn__icon {
@@ -873,9 +877,9 @@ body.theme-light {
   gap: 10px;
   border-radius: 18px;
   padding: 6px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.08);
-  color: #f8fafc;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
   font-weight: 600;
 }
 
@@ -914,7 +918,7 @@ body.theme-light {
 .topbar__account .filter-select__input {
   background: transparent;
   border: none;
-  color: #f8fafc;
+  color: #111827;
   font-weight: 600;
 }
 
@@ -923,7 +927,7 @@ body.theme-light {
 }
 
 .topbar__account .filter-select__icon {
-  color: rgba(248, 250, 252, 0.75);
+  color: #6b7280;
 }
 
 @media (max-width: 768px) {
@@ -1357,6 +1361,261 @@ body.theme-light {
 
   box-shadow: var(--shadow-md);
 
+}
+
+.date-range-dropdown__btn--primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Modern Date Picker Styles */
+.date-range-dropdown--modern {
+  min-width: 700px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.date-range-dropdown--calendar-only {
+  min-width: 420px;
+}
+
+.date-range-dropdown--modern .date-range-dropdown__header {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+  color: #ffffff;
+  border-bottom: none;
+  font-size: 0.875rem;
+}
+
+.date-range-dropdown--modern .date-range-dropdown__close {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+.date-range-dropdown--modern .date-range-dropdown__close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.date-range-dropdown--modern .date-range-dropdown__body {
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  padding: 0;
+}
+
+.date-range-dropdown--calendar-only .date-range-dropdown__body {
+  padding: 20px;
+}
+
+.date-range-presets {
+  flex: 0 0 200px;
+  padding: 20px;
+  border-right: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.date-range-presets__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 12px 0;
+}
+
+.date-range-presets__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.date-range-preset-btn {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.date-range-preset-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  transform: translateX(2px);
+}
+
+.date-range-preset-btn--active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+  border-color: #8b5cf6;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.date-range-preset-btn--active:hover {
+  transform: translateX(2px);
+  filter: brightness(1.05);
+}
+
+.date-range-calendar-wrapper {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.date-range-dropdown--calendar-only .date-range-calendar-wrapper {
+  padding: 0;
+}
+
+/* Custom DatePicker Styling */
+.custom-datepicker {
+  font-family: inherit;
+  border: none;
+}
+
+.react-datepicker {
+  font-family: inherit;
+  border: none;
+  background: transparent;
+}
+
+.react-datepicker__header {
+  background: transparent;
+  border-bottom: 1px solid #e5e7eb;
+  padding-top: 16px;
+}
+
+.react-datepicker__current-month {
+  color: #111827;
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+
+.react-datepicker__day-name {
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 0.875rem;
+  width: 2.5rem;
+  line-height: 2.5rem;
+}
+
+.react-datepicker__day {
+  color: #374151;
+  width: 2.5rem;
+  line-height: 2.5rem;
+  border-radius: 8px;
+  transition: all 150ms ease;
+  font-size: 0.875rem;
+}
+
+.react-datepicker__day:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--in-range,
+.react-datepicker__day--range-start,
+.react-datepicker__day--range-end {
+  background: #a855f7;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.react-datepicker__day--keyboard-selected {
+  background: #e9d5ff;
+  color: #6b21a8;
+}
+
+.react-datepicker__day--in-selecting-range:not(.react-datepicker__day--in-range) {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+.react-datepicker__day--disabled {
+  color: #d1d5db;
+  cursor: not-allowed;
+}
+
+.react-datepicker__day--disabled:hover {
+  background: transparent;
+}
+
+.react-datepicker__day--outside-month {
+  color: #d1d5db;
+}
+
+.react-datepicker__month-dropdown,
+.react-datepicker__year-dropdown {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.react-datepicker__month-option,
+.react-datepicker__year-option {
+  padding: 8px 12px;
+  color: #374151;
+}
+
+.react-datepicker__month-option:hover,
+.react-datepicker__year-option:hover {
+  background: #f3f4f6;
+}
+
+.react-datepicker__month-option--selected,
+.react-datepicker__year-option--selected {
+  background: #a855f7;
+  color: #ffffff;
+}
+
+.react-datepicker__navigation {
+  top: 18px;
+}
+
+.react-datepicker__navigation-icon::before {
+  border-color: #6b7280;
+}
+
+.react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
+  border-color: #111827;
+}
+
+.date-range-dropdown--modern .date-range-dropdown__footer {
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+
+.date-range-dropdown--modern .date-range-dropdown__btn--secondary {
+  background: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.date-range-dropdown--modern .date-range-dropdown__btn--secondary:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.date-range-dropdown--modern .date-range-dropdown__btn--primary {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+  color: #ffffff;
+  border: none;
+}
+
+.date-range-dropdown--modern .date-range-dropdown__btn--primary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
 }
 
 
@@ -6196,8 +6455,8 @@ td.posts-table__metric + td.posts-table__metric {
 .recharts-default-tooltip .recharts-tooltip-item,
 .recharts-default-tooltip .recharts-tooltip-item-label,
 .recharts-default-tooltip .recharts-tooltip-item-value {
-  color: #f8fafc !important;
-  fill: #f8fafc !important;
+  color: #ffffffff !important;
+  fill: #ffffffff !important;
 }
 .recharts-cartesian-axis-tick text,
 .recharts-cartesian-axis-tick-value,
@@ -6208,8 +6467,8 @@ td.posts-table__metric + td.posts-table__metric {
 .recharts-polar-radius-axis-tick-value tspan,
 .recharts-legend-item-text,
 .recharts-legend-item-text tspan {
-  fill: #f8fafc !important;
-  color: #f8fafc !important;
+  fill: #000000ff !important;
+  color: #000000ff !important;
 }
 .recharts-cartesian-axis line,
 .recharts-cartesian-axis .recharts-cartesian-axis-line,
@@ -6497,9 +6756,9 @@ td.posts-table__metric + td.posts-table__metric {
   gap: 8px;
   padding: 0.45rem 1rem;
   border-radius: 999px;
-  border: 1px solid var(--border-color);
+  border: 1px solid #e5e7eb;
   background: #ffffff;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .ig-topbar-controls__account .filter-select__label {
@@ -6508,9 +6767,9 @@ td.posts-table__metric + td.posts-table__metric {
 
 .ig-topbar-controls__account .filter-select__input {
   border: none;
-  background: transparent;
+  background: #ffffff;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #111827;
 }
 
 .ig-topbar-controls__account .filter-select__input:focus {
@@ -6518,7 +6777,7 @@ td.posts-table__metric + td.posts-table__metric {
 }
 
 .ig-topbar-controls__account .filter-select__icon {
-  color: var(--text-secondary);
+  color: #111827;
 }
 
 .ig-topbar-controls__date {
@@ -6527,13 +6786,13 @@ td.posts-table__metric + td.posts-table__metric {
   gap: 10px;
   padding: 0.45rem 1rem;
   border-radius: 999px;
-  border: 1px solid var(--border-color);
+  border: 1px solid #e5e7eb;
   background: #ffffff;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .ig-topbar-controls__date svg {
-  color: var(--color-primary);
+  color: #111827;
 }
 
 .ig-topbar-controls__date .date-range-wrapper {
@@ -6552,7 +6811,7 @@ td.posts-table__metric + td.posts-table__metric {
   border: none;
   padding: 0;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #111827;
   min-height: 0;
 }
 
@@ -7938,7 +8197,19 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 .ig-clean-title {
   font-size: 28px;
   font-weight: 700;
-  color: #111827;
+  color: #ffffffff;
+  margin: 0 0 20px 0;
+}
+
+
+
+
+
+/* Título Coluna Direita */
+.ig-clean-title2 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #000000ff;
   margin: 0 0 20px 0;
 }
 
@@ -8164,6 +8435,14 @@ body:has(.instagram-dashboard--clean) .app-main__content {
   margin: 0 0 16px 0;
 }
 
+.ig-profile-vertical__top-posts h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 16px 0;
+  padding: 0 24px;
+}
+
 .ig-profile-vertical__engagement-chart {
   height: 240px;
   display: flex;
@@ -8237,6 +8516,9 @@ body:has(.instagram-dashboard--clean) .app-main__content {
   flex-direction: column;
   gap: 6px;
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.25);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .ig-engagement-mini-card--teal {
@@ -8428,7 +8710,7 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 .ig-analytics-card {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
 }
 
 .ig-analytics-card__header {
@@ -8447,15 +8729,20 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 .ig-analytics-card__body {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
 .ig-analytics-legend {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   font-size: 12px;
   color: #475569;
+  width: 100%;
+  padding: 8px 16px 0 16px;
 }
 
 .ig-analytics-legend__item {
@@ -8509,8 +8796,8 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 .ig-heatmap__header,
 .ig-heatmap__rows {
   display: grid;
-  grid-template-columns: 80px repeat(6, 1fr);
-  gap: 8px;
+  grid-template-columns: 60px repeat(6, 1fr);
+  gap: 6px;
   align-items: center;
 }
 
@@ -8536,9 +8823,9 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 .ig-heatmap__cell {
   position: relative;
   width: 100%;
-  padding-top: 100%;
+  padding-top: 85%;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #e2e8f0;
   cursor: pointer;
   transition: transform 0.15s ease;
@@ -8808,6 +9095,130 @@ body:has(.instagram-dashboard--clean) .app-main__content {
   gap: 4px;
 }
 
+/* Top Posts Compact (Sidebar) */
+.ig-top-posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.ig-top-post-compact {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.ig-top-post-compact:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.ig-top-post-compact__thumb {
+  flex-shrink: 0;
+  width: 84px;
+  height: 84px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f3f4f6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ig-top-post-compact__thumb:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.ig-top-post-compact__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ig-top-post-compact__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ig-top-post-compact__metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 6px 12px;
+  width: fit-content;
+}
+
+.ig-metric {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ig-metric__value {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.ig-metric--like {
+  color: #ef4444;
+}
+
+.ig-metric--like .ig-metric__value {
+  color: #ef4444;
+}
+
+.ig-metric--share {
+  color: #f97316;
+}
+
+.ig-metric--share .ig-metric__value {
+  color: #f97316;
+}
+
+.ig-metric--comment {
+  color: #a855f7;
+}
+
+.ig-metric--comment .ig-metric__value {
+  color: #a855f7;
+}
+
+.ig-metric--save {
+  color: #3b82f6;
+}
+
+.ig-metric--save .ig-metric__value {
+  color: #3b82f6;
+}
+
+.ig-top-post-compact__datetime {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.3;
+}
+
+.ig-top-post-compact__caption {
+  font-size: 12px;
+  color: #4b5563;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
 .ig-empty-state {
   display: flex;
   align-items: center;
@@ -8815,6 +9226,343 @@ body:has(.instagram-dashboard--clean) .app-main__content {
   min-height: 200px;
   color: #9ca3af;
   font-size: 14px;
+}
+
+/* Top Cities Card */
+.ig-top-cities {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ig-top-cities__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.ig-top-cities__total {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ig-top-cities__total-number {
+  font-size: 32px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.ig-top-cities__trend {
+  display: flex;
+  align-items: center;
+}
+
+.ig-top-cities__legend {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.ig-top-cities__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.ig-top-cities__legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.ig-top-cities__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ig-top-city-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.ig-top-city-item:hover {
+  background: #f3f4f6;
+  transform: translateX(2px);
+}
+
+.ig-top-city-item__icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.ig-top-city-item__name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.ig-top-city-item__value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Follower Growth Chart with Slider */
+.ig-follower-growth-card .ig-chart-container {
+  position: relative;
+  padding-bottom: 20px;
+}
+
+.ig-chart-slider {
+  position: relative;
+  width: calc(100% - 40px);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.ig-chart-slider__track {
+  position: relative;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  margin-top: 10px;
+}
+
+.ig-chart-slider__track::before {
+  content: '';
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 100%;
+  background: linear-gradient(90deg, #a855f7 0%, #ec4899 100%);
+  border-radius: 2px;
+}
+
+.ig-chart-slider__handle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  background: #ffffff;
+  border: 3px solid #a855f7;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.ig-chart-slider__handle:hover {
+  transform: translateY(-50%) scale(1.15);
+  box-shadow: 0 3px 8px rgba(168, 85, 247, 0.3);
+}
+
+.ig-chart-slider__handle--left {
+  left: 10%;
+}
+
+.ig-chart-slider__handle--right {
+  right: 10%;
+}
+
+.ig-follower-tooltip {
+  background: rgba(17, 24, 39, 0.95);
+  padding: 10px 14px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.ig-follower-tooltip__label {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.ig-follower-tooltip__date {
+  color: #d1d5db;
+  font-size: 11px;
+}
+
+/* Word Cloud */
+.ig-word-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 16px;
+  padding: 20px;
+  min-height: 240px;
+}
+
+.ig-word-cloud__word {
+  font-weight: 700;
+  line-height: 1.2;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.ig-word-cloud__word:hover {
+  transform: scale(1.1);
+  opacity: 0.8;
+}
+
+.ig-word-cloud__word--xl {
+  font-size: 32px;
+}
+
+.ig-word-cloud__word--lg {
+  font-size: 24px;
+}
+
+.ig-word-cloud__word--md {
+  font-size: 18px;
+}
+
+.ig-word-cloud__word--sm {
+  font-size: 14px;
+}
+
+.ig-word-cloud--large {
+  min-height: 280px;
+  padding: 30px;
+}
+
+/* Calendar */
+.ig-calendar {
+  width: 100%;
+}
+
+.ig-calendar__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 0 8px;
+}
+
+.ig-calendar__weekday {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ig-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.ig-calendar__day {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #f3f4f6;
+}
+
+.ig-calendar__day:not(.ig-calendar__day--empty):hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.ig-calendar__day--empty {
+  background: transparent;
+  cursor: default;
+}
+
+.ig-calendar__day-number {
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
+  z-index: 1;
+}
+
+/* Níveis de atividade (baseado em número de publicações) */
+.ig-calendar__day--level-0 {
+  background: #f3f4f6;
+}
+
+.ig-calendar__day--level-1 {
+  background: #e9d5ff;
+}
+
+.ig-calendar__day--level-2 {
+  background: #d8b4fe;
+}
+
+.ig-calendar__day--level-3 {
+  background: #c084fc;
+}
+
+.ig-calendar__day--level-4 {
+  background: #a855f7;
+}
+
+/* Tooltip */
+.ig-calendar__day[data-tooltip]::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: rgba(17, 24, 39, 0.95);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 100;
+}
+
+.ig-calendar__day[data-tooltip]::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: rgba(17, 24, 39, 0.95);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 100;
+}
+
+.ig-calendar__day:not(.ig-calendar__day--empty):hover::before,
+.ig-calendar__day:not(.ig-calendar__day--empty):hover::after {
+  opacity: 1;
 }
 
 /* Responsive */
