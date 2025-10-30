@@ -20,6 +20,8 @@ const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 
 const FALLBACK_ACCOUNT_ID = DEFAULT_ACCOUNTS[0]?.id || '';
 
+const FACEBOOK_FEATURE_ENABLED = false;
+
 
 
 const safeNumber = (value) => {
@@ -277,7 +279,7 @@ const { setTopbarConfig, resetTopbarConfig } = outletContext;
 
 
 
-      if (accountConfig?.facebookPageId) {
+      if (FACEBOOK_FEATURE_ENABLED && accountConfig?.facebookPageId) {
 
         try {
 
@@ -693,25 +695,19 @@ const { setTopbarConfig, resetTopbarConfig } = outletContext;
 
               </Link>
 
-              <Link to={buildLink("/facebook")} className="overview-highlight-card overview-highlight-card--facebook">
-
-                <span className="overview-highlight-label" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <Facebook size={18} /> Curtidas da pagina
-                </span>
-
-                <span className="overview-highlight-value">
-
-                  {formatNumber(currentFacebookSummary?.followersTotal)}
-
-                </span>
-
-                <span className="overview-highlight-foot">
-
-                  Atualizado em {formatDateTime(currentFacebookSummary?.cacheAt)}
-
-                </span>
-
-              </Link>
+              {FACEBOOK_FEATURE_ENABLED ? (
+                <Link to={buildLink("/facebook")} className="overview-highlight-card overview-highlight-card--facebook">
+                  <span className="overview-highlight-label" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <Facebook size={18} /> Curtidas da pagina
+                  </span>
+                  <span className="overview-highlight-value">
+                    {formatNumber(currentFacebookSummary?.followersTotal)}
+                  </span>
+                  <span className="overview-highlight-foot">
+                    Atualizado em {formatDateTime(currentFacebookSummary?.cacheAt)}
+                  </span>
+                </Link>
+              ) : null}
 
             </div>
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Link, useLocation, useOutletContext } from "react-router-dom";
 import { differenceInCalendarDays, endOfDay, startOfDay, subDays } from "date-fns";
 import {
@@ -38,6 +38,7 @@ import { supabase } from "../lib/supabaseClient";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const FALLBACK_ACCOUNT_ID = DEFAULT_ACCOUNTS[0]?.id || "";
+const COVER_BUCKET = "fotos_capa";
 const HASHTAG_REGEX = /#([A-Za-z0-9_]+)/g;
 const STOP_WORDS = new Set([
   "a", "ao", "aos", "as", "com", "da", "das", "de", "do", "dos", "e", "em", "no", "nos", "na", "nas", "o", "os", "para",
@@ -555,6 +556,16 @@ export default function InstagramDashboard() {
     [availableAccounts, accountId],
   );
 
+  const accountSnapshotKey = useMemo(
+    () => accountConfig?.instagramUserId || accountConfig?.id || "",
+    [accountConfig?.id, accountConfig?.instagramUserId],
+  );
+
+  const coverStoragePath = useMemo(() => {
+    if (!accountSnapshotKey) return null;
+    return `instagram/${accountSnapshotKey}/cover`;
+  }, [accountSnapshotKey]);
+
   const sinceParam = getQuery("since");
   const untilParam = getQuery("until");
   const sinceDate = useMemo(() => parseQueryDate(sinceParam), [sinceParam]);
@@ -625,6 +636,113 @@ export default function InstagramDashboard() {
   const [followerCounts, setFollowerCounts] = useState(null);
   const [overviewSnapshot, setOverviewSnapshot] = useState(null);
   const [reachCacheSeries, setReachCacheSeries] = useState([]);
+  const coverInputRef = useRef(null);
+  const [coverImageUrl, setCoverImageUrl] = useState("");
+  const [coverError, setCoverError] = useState("");
+  const [coverUploading, setCoverUploading] = useState(false);
+
+  const activeSnapshot = useMemo(
+    () => (overviewSnapshot?.accountId === accountSnapshotKey && accountSnapshotKey ? overviewSnapshot : null),
+    [accountSnapshotKey, overviewSnapshot],
+  );
+
+  useEffect(() => {
+    setMetrics([]);
+    setFollowerSeries([]);
+    setFollowerCounts(null);
+    setPosts([]);
+    setAccountInfo(null);
+    setReachCacheSeries([]);
+    setCoverImageUrl("");
+    setCoverError("");
+    setOverviewSnapshot(null);
+  }, [accountSnapshotKey]);
+
+  useEffect(() => {
+    const path = coverStoragePath;
+    if (!path) {
+      setCoverImageUrl("");
+      setCoverError("");
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase.storage
+          .from(COVER_BUCKET)
+          .createSignedUrl(path, 3600);
+        if (error) throw error;
+        if (!cancelled) {
+          const signedUrl = data?.signedUrl ? `${data.signedUrl}&cb=${Date.now()}` : "";
+          setCoverImageUrl(signedUrl);
+          setCoverError("");
+        }
+      } catch (err) {
+        if (cancelled) return;
+        const message = err?.message || String(err || "");
+        const notFound = /not\s+found|no such/gim.test(message);
+        if (!notFound) {
+          console.warn("Falha ao carregar capa do perfil", err);
+          setCoverError("Não foi possível carregar a capa.");
+        } else {
+          setCoverError("");
+        }
+        setCoverImageUrl("");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [coverStoragePath]);
+
+  const handleCoverButtonClick = useCallback(() => {
+    setCoverError("");
+    coverInputRef.current?.click();
+  }, []);
+
+  const handleCoverUpload = useCallback(
+    async (event) => {
+      const file = event.target?.files?.[0];
+      if (!file || !coverStoragePath) {
+        if (event.target) event.target.value = "";
+        return;
+      }
+      setCoverUploading(true);
+      setCoverError("");
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from(COVER_BUCKET)
+          .upload(coverStoragePath, file, {
+            cacheControl: "3600",
+            upsert: true,
+            contentType: file.type || "image/jpeg",
+          });
+        if (uploadError) throw uploadError;
+        const { data, error: signedError } = await supabase.storage
+          .from(COVER_BUCKET)
+          .createSignedUrl(coverStoragePath, 3600);
+        if (signedError) throw signedError;
+        const signedUrl = data?.signedUrl ? `${data.signedUrl}&cb=${Date.now()}` : "";
+        setCoverImageUrl(signedUrl);
+      } catch (err) {
+        console.error("Falha ao enviar capa do perfil", err);
+        setCoverError(err?.message || "Não foi possível salvar a capa.");
+      } finally {
+        setCoverUploading(false);
+        if (event.target) {
+          event.target.value = "";
+        }
+      }
+    },
+    [coverStoragePath],
+  );
+
+  const coverStyle = useMemo(() => {
+    if (!coverImageUrl) return undefined;
+    return {
+      backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.25) 0%, rgba(15, 23, 42, 0.55) 100%), url(${coverImageUrl})`,
+    };
+  }, [coverImageUrl]);
 
   useEffect(() => {
     if (!accountConfig?.instagramUserId) {
@@ -758,21 +876,21 @@ export default function InstagramDashboard() {
     const loadFromCache = async () => {
       try {
         const { data, error } = await supabase
-          .from("app_msl")
-          .select("payload, fetched_at")
-          .eq("resource", "instagram_metrics")
-          .eq("owner_id", accountConfig.instagramUserId)
-          .eq("since_date", sinceIso)
-          .eq("until_date", untilIso)
-          .order("fetched_at", { ascending: false })
-          .limit(1);
+          .from("metrics_daily")
+          .select("metric_date,value")
+          .eq("account_id", accountConfig.instagramUserId)
+          .eq("platform", "instagram")
+          .eq("metric_key", "reach")
+          .gte("metric_date", sinceIso)
+          .lte("metric_date", untilIso)
+          .order("metric_date", { ascending: true });
 
         if (error) throw error;
 
-        const payload = data?.[0]?.payload ?? null;
-        const metricsList = Array.isArray(payload?.metrics) ? payload.metrics : [];
-        const reachMetricFromCache = metricsList.find((item) => item?.key === "reach") || null;
-        const timeline = seriesFromMetric(reachMetricFromCache);
+        const timeline = (data || []).map((row) => ({
+          date: row.metric_date,
+          value: extractNumber(row.value, 0),
+        }));
 
         if (!cancelled) {
           setReachCacheSeries(Array.isArray(timeline) ? timeline : []);
@@ -872,9 +990,12 @@ export default function InstagramDashboard() {
 
   useEffect(() => {
     setOverviewSnapshot(null);
-  }, [accountConfig?.instagramUserId]);
+  }, [accountSnapshotKey]);
 
   const totalFollowers = useMemo(() => {
+    const snapshotFollowers = tryParseNumber(activeSnapshot?.followers);
+    if (snapshotFollowers !== null) return snapshotFollowers;
+
     const accountFollowers = pickFirstNumber(
       [
         accountInfo?.followers_count,
@@ -900,7 +1021,7 @@ export default function InstagramDashboard() {
     }
 
     return 0;
-  }, [accountInfo, followerCounts, followersMetric?.value, followerSeriesNormalized]);
+  }, [accountInfo, activeSnapshot?.followers, followerCounts, followersMetric?.value, followerSeriesNormalized]);
 
   const engagementRateValue = tryParseNumber(engagementRateMetric?.value);
 
@@ -922,23 +1043,24 @@ export default function InstagramDashboard() {
   const weeklyPostsPattern = useMemo(() => buildWeeklyPattern(DEFAULT_WEEKLY_POSTS), []);
 
   useEffect(() => {
-    if (!accountConfig?.instagramUserId) return;
-    if (overviewSnapshot) return;
+    if (!accountSnapshotKey) return;
+    if (activeSnapshot) return;
     const hasValues = Number.isFinite(totalFollowers)
       || Number.isFinite(reachValue)
       || Number.isFinite(avgFollowersPerDay)
       || postsCount > 0;
     if (!hasValues) return;
     setOverviewSnapshot({
+      accountId: accountSnapshotKey,
       followers: Number.isFinite(totalFollowers) ? totalFollowers : 0,
       reach: Number.isFinite(reachValue) ? reachValue : 0,
       followersDaily: Number.isFinite(avgFollowersPerDay) ? avgFollowersPerDay : 0,
       posts: postsCount,
     });
   }, [
-    accountConfig?.instagramUserId,
+    accountSnapshotKey,
+    activeSnapshot,
     avgFollowersPerDay,
-    overviewSnapshot,
     postsCount,
     reachValue,
     totalFollowers,
@@ -946,12 +1068,12 @@ export default function InstagramDashboard() {
 
   const overviewMetrics = useMemo(
     () => ({
-      followers: overviewSnapshot?.followers ?? totalFollowers ?? 0,
-      reach: overviewSnapshot?.reach ?? reachValue ?? 0,
-      followersDaily: overviewSnapshot?.followersDaily ?? avgFollowersPerDay ?? 0,
-      posts: overviewSnapshot?.posts ?? postsCount ?? 0,
+      followers: activeSnapshot?.followers ?? totalFollowers ?? 0,
+      reach: activeSnapshot?.reach ?? reachValue ?? 0,
+      followersDaily: activeSnapshot?.followersDaily ?? avgFollowersPerDay ?? 0,
+      posts: activeSnapshot?.posts ?? postsCount ?? 0,
     }),
-    [avgFollowersPerDay, overviewSnapshot, postsCount, reachValue, totalFollowers],
+    [activeSnapshot, avgFollowersPerDay, postsCount, reachValue, totalFollowers],
   );
 
   const followersDailyDisplay = useMemo(() => (
@@ -1088,10 +1210,28 @@ export default function InstagramDashboard() {
         <h2 className="ig-clean-title">Visão Geral</h2>
 
         {/* Grid Principal */}
-        <div className="ig-clean-grid">
-          <div className="ig-clean-grid__left">
-            <section className="ig-profile-vertical">
-              <div className="ig-profile-vertical__cover" />
+          <div className="ig-clean-grid">
+            <div className="ig-clean-grid__left">
+              <section className="ig-profile-vertical">
+              <div className="ig-profile-vertical__cover" style={coverStyle}>
+                <div className="ig-profile-vertical__cover-actions">
+                  <button
+                    type="button"
+                    className="ig-profile-vertical__cover-button"
+                    onClick={handleCoverButtonClick}
+                    disabled={coverUploading}
+                  >
+                    {coverUploading ? "Salvando..." : "Mudar imagem"}
+                  </button>
+                </div>
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  className="ig-profile-vertical__file-input"
+                  onChange={handleCoverUpload}
+                />
+              </div>
 
               <div className="ig-profile-vertical__avatar-wrapper">
                 <div className="ig-profile-vertical__avatar">
@@ -1104,6 +1244,9 @@ export default function InstagramDashboard() {
               </div>
 
               <div className="ig-profile-vertical__body">
+                {coverError ? (
+                  <p className="ig-profile-vertical__cover-error">{coverError}</p>
+                ) : null}
                 <h3 className="ig-profile-vertical__username">
                   @{accountInfo?.username || accountInfo?.name || "insta_sample"}
                 </h3>

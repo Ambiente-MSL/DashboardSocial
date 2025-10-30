@@ -2,8 +2,9 @@
 import os
 import time
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from collections import defaultdict
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Sequence
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -26,7 +27,9 @@ from meta import (
     ig_window,
     gget,
 )
+from jobs.instagram_ingest import ingest_account_range, daterange
 from scheduler import MetaSyncScheduler
+from supabase_client import get_supabase_client
 
 # Configurar logging
 logging.basicConfig(
@@ -587,6 +590,295 @@ def _safe_int(value: Optional[Any]) -> Optional[int]:
         return None
 
 
+def _unix_to_date(value: int) -> date:
+    return datetime.fromtimestamp(value, tz=timezone.utc).date()
+
+
+def _ensure_instagram_daily_metrics(ig_id: str, start_date: date, end_date: date) -> None:
+    client = get_supabase_client()
+    if client is None:
+        logger.debug("Supabase n\u00e3o configurado; pulando _ensure_instagram_daily_metrics.")
+        return
+
+    response = (
+        client.table("metrics_daily")
+        .select("metric_date")
+        .eq("account_id", ig_id)
+        .eq("platform", "instagram")
+        .gte("metric_date", start_date.isoformat())
+        .lte("metric_date", end_date.isoformat())
+        .execute()
+    )
+    if getattr(response, "error", None):
+        logger.warning("Falha ao consultar metrics_daily: %s", response.error)
+        return
+
+    existing_dates = {row["metric_date"] for row in (response.data or [])}
+    missing_dates = [
+        day
+        for day in daterange(start_date, end_date)
+        if day.isoformat() not in existing_dates
+    ]
+    if not missing_dates:
+        return
+
+    missing_start = missing_dates[0]
+    missing_end = missing_dates[-1]
+    logger.info(
+        "Preenchendo lacunas Instagram %s (%s -> %s)",
+        ig_id,
+        missing_start,
+        missing_end,
+    )
+    ingest_account_range(ig_id, missing_start, missing_end, refresh_rollup=False, warm_posts=False)
+
+
+def _load_metrics_map(ig_id: str, start_date: date, end_date: date) -> Dict[str, List[Dict[str, Any]]]:
+    client = get_supabase_client()
+    if client is None:
+        return {}
+
+    response = (
+        client.table("metrics_daily")
+        .select("metric_key,metric_date,value,metadata")
+        .eq("account_id", ig_id)
+        .eq("platform", "instagram")
+        .gte("metric_date", start_date.isoformat())
+        .lte("metric_date", end_date.isoformat())
+        .execute()
+    )
+    if getattr(response, "error", None):
+        logger.warning("Falha ao carregar metrics_daily: %s", response.error)
+        return {}
+
+    grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for row in response.data or []:
+        metric_date = row.get("metric_date")
+        try:
+            metric_dt = datetime.fromisoformat(metric_date).date()
+        except (TypeError, ValueError):
+            continue
+        grouped[row["metric_key"]].append(
+            {
+                "metric_date": metric_dt,
+                "value": row.get("value"),
+                "metadata": row.get("metadata"),
+            }
+        )
+
+    for entries in grouped.values():
+        entries.sort(key=lambda item: item["metric_date"])
+
+    return grouped
+
+
+def _sum_metric(data: Dict[str, List[Dict[str, Any]]], metric_key: str) -> float:
+    return sum(
+        float(entry["value"])
+        for entry in data.get(metric_key, [])
+        if entry.get("value") is not None
+    )
+
+
+def _latest_metric(data: Dict[str, List[Dict[str, Any]]], metric_key: str) -> Optional[float]:
+    entries = data.get(metric_key, [])
+    if not entries:
+        return None
+    return float(entries[-1]["value"]) if entries[-1].get("value") is not None else None
+
+
+def _first_metric(data: Dict[str, List[Dict[str, Any]]], metric_key: str) -> Optional[float]:
+    entries = data.get(metric_key, [])
+    if not entries:
+        return None
+    return float(entries[0]["value"]) if entries[0].get("value") is not None else None
+
+
+def _percentage_delta(current: Optional[float], previous: Optional[float]) -> Optional[float]:
+    if current is None or previous in (None, 0):
+        return None
+    return round(((current - previous) / previous) * 100.0, 2)
+
+
+def _combine_visitors(rows: Sequence[Dict[str, Any]]) -> Optional[Dict[str, int]]:
+    totals = {"followers": 0.0, "non_followers": 0.0, "other": 0.0, "total": 0.0}
+    for entry in rows:
+        meta = entry.get("metadata") or {}
+        for key in totals:
+            value = meta.get(key)
+            if value is None:
+                continue
+            try:
+                totals[key] += float(value)
+            except (TypeError, ValueError):
+                continue
+    if totals["total"] <= 0:
+        return None
+    return {key: int(round(val)) for key, val in totals.items()}
+
+
+def _as_int(value: Optional[float]) -> Optional[int]:
+    if value is None:
+        return None
+    return int(round(value))
+
+
+def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) -> Optional[Dict[str, Any]]:
+    client = get_supabase_client()
+    if client is None:
+        return None
+
+    since_date = _unix_to_date(since_ts)
+    until_date = _unix_to_date(until_ts)
+
+    _ensure_instagram_daily_metrics(ig_id, since_date, until_date)
+
+    period_days = (until_date - since_date).days + 1
+    previous_since = since_date - timedelta(days=period_days)
+    previous_until = since_date - timedelta(days=1)
+    if previous_since <= previous_until:
+        _ensure_instagram_daily_metrics(ig_id, previous_since, previous_until)
+
+    current_data = _load_metrics_map(ig_id, since_date, until_date)
+    if not current_data:
+        return None
+    previous_data = _load_metrics_map(ig_id, previous_since, previous_until) if previous_since <= previous_until else {}
+
+    reach_total = _sum_metric(current_data, "reach")
+    reach_previous = _sum_metric(previous_data, "reach") if previous_data else None
+
+    interactions_total = _sum_metric(current_data, "interactions")
+    interactions_previous = _sum_metric(previous_data, "interactions") if previous_data else None
+
+    likes_total = _sum_metric(current_data, "likes")
+    likes_previous = _sum_metric(previous_data, "likes") if previous_data else None
+
+    saves_total = _sum_metric(current_data, "saves")
+    saves_previous = _sum_metric(previous_data, "saves") if previous_data else None
+
+    shares_total = _sum_metric(current_data, "shares")
+    shares_previous = _sum_metric(previous_data, "shares") if previous_data else None
+
+    comments_total = _sum_metric(current_data, "comments")
+    comments_previous = _sum_metric(previous_data, "comments") if previous_data else None
+
+    followers_growth = _sum_metric(current_data, "followers_delta")
+
+    followers_end = _latest_metric(current_data, "followers_total")
+    followers_previous_end = _latest_metric(previous_data, "followers_total") if previous_data else None
+
+    followers_start = _first_metric(current_data, "followers_start")
+    if followers_start is None:
+        followers_start = _latest_metric(previous_data, "followers_total") if previous_data else None
+
+    follows_total = _sum_metric(current_data, "follows")
+    unfollows_total = _sum_metric(current_data, "unfollows")
+
+    engagement_rate = None
+    if reach_total:
+        engagement_rate = round((interactions_total / reach_total) * 100.0, 2)
+
+    visitor_rows = current_data.get("profile_visitors_total", [])
+    profile_visitors_breakdown = _combine_visitors(visitor_rows) if visitor_rows else None
+    if profile_visitors_breakdown:
+        profile_visitors_breakdown["source"] = "metrics_daily"
+
+    follower_counts = {
+        "start": _as_int(followers_start),
+        "end": _as_int(followers_end),
+        "follows": _as_int(follows_total) or 0,
+        "unfollows": _as_int(unfollows_total) or 0,
+    }
+
+    follower_series = [
+        {
+            "date": entry["metric_date"].isoformat(),
+            "value": _as_int(entry.get("value")),
+        }
+        for entry in current_data.get("followers_total", [])
+        if entry.get("value") is not None
+    ]
+
+    metrics_payload = [
+        {
+            "key": "followers_total",
+            "label": "SEGUIDORES",
+            "value": _as_int(followers_end),
+            "deltaPct": _percentage_delta(followers_end, followers_previous_end),
+        },
+        {
+            "key": "reach",
+            "label": "ALCANCE",
+            "value": _as_int(reach_total),
+            "deltaPct": _percentage_delta(reach_total, reach_previous),
+            "timeseries": [
+                {"date": entry["metric_date"].isoformat(), "value": _as_int(entry.get("value"))}
+                for entry in current_data.get("reach", [])
+                if entry.get("value") is not None
+            ],
+        },
+        {
+            "key": "interactions",
+            "label": "INTERACOES",
+            "value": _as_int(interactions_total),
+            "deltaPct": _percentage_delta(interactions_total, interactions_previous),
+        },
+        {
+            "key": "likes",
+            "label": "CURTIDAS",
+            "value": _as_int(likes_total),
+            "deltaPct": _percentage_delta(likes_total, likes_previous),
+        },
+        {
+            "key": "saves",
+            "label": "SALVAMENTOS",
+            "value": _as_int(saves_total),
+            "deltaPct": _percentage_delta(saves_total, saves_previous),
+        },
+        {
+            "key": "shares",
+            "label": "COMPARTILHAMENTOS",
+            "value": _as_int(shares_total),
+            "deltaPct": _percentage_delta(shares_total, shares_previous),
+        },
+        {
+            "key": "comments",
+            "label": "COMENTARIOS",
+            "value": _as_int(comments_total),
+            "deltaPct": _percentage_delta(comments_total, comments_previous),
+        },
+        {
+            "key": "engagement_rate",
+            "label": "TAXA ENGAJAMENTO",
+            "value": engagement_rate,
+            "deltaPct": None,
+        },
+        {
+            "key": "follower_growth",
+            "label": "CRESCIMENTO DE SEGUIDORES",
+            "value": _as_int(followers_growth),
+            "deltaPct": None,
+        },
+    ]
+
+    response = {
+        "since": since_ts,
+        "until": until_ts,
+        "metrics": metrics_payload,
+        "profile_visitors_breakdown": profile_visitors_breakdown,
+        "follower_counts": follower_counts,
+        "follower_series": follower_series,
+        "top_posts": {"reach": [], "engagement": [], "saves": []},
+    }
+    response["cache"] = {
+        "source": "metrics_daily",
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "stale": False,
+        "reason": "precomputed",
+    }
+    return response
+
+
 def fetch_ads_highlights(
     act_id: str,
     since_ts: Optional[int],
@@ -734,6 +1026,15 @@ def instagram_metrics():
     if not ig:
         return jsonify({"error": "META_IG_USER_ID is not configured"}), 500
     since, until = unix_range(request.args)
+
+    try:
+        db_payload = build_instagram_metrics_from_db(ig, since, until)
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Falha ao montar métricas via metrics_daily", exc_info=err)
+        db_payload = None
+    if db_payload:
+        return jsonify(db_payload)
+
     try:
         payload, meta = get_cached_payload(
             "instagram_metrics",

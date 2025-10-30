@@ -7922,13 +7922,64 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 }
 
 .ig-profile-vertical__cover {
-  height: 100px;
+  position: relative;
+  height: 140px;
   background: linear-gradient(135deg, #d1d5db 0%, #f3f4f6 100%);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: background-image 0.2s ease;
+}
+
+.ig-profile-vertical__cover-actions {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ig-profile-vertical__cover-button {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #ec4899 0%, #f97316 100%);
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(236, 72, 153, 0.28);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.ig-profile-vertical__cover-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(236, 72, 153, 0.32);
+}
+
+.ig-profile-vertical__cover-button:disabled {
+  cursor: progress;
+  opacity: 0.7;
+  transform: none;
+  box-shadow: none;
+}
+
+.ig-profile-vertical__file-input {
+  display: none;
+}
+
+.ig-profile-vertical__cover-error {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #dc2626;
 }
 
 .ig-profile-vertical__avatar-wrapper {
   position: absolute;
-  top: 50px;
+  top: 90px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
@@ -7956,7 +8007,7 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 }
 
 .ig-profile-vertical__body {
-  padding: 60px 24px 24px;
+  padding: 90px 24px 24px;
   text-align: center;
 }
 
@@ -7965,6 +8016,43 @@ body:has(.instagram-dashboard--clean) .app-main__content {
   font-weight: 700;
   color: #111827;
   margin: 0 0 24px 0;
+}
+
+.fb-disabled {
+  display: flex;
+  justify-content: center;
+  padding: 56px 24px;
+}
+
+.fb-disabled__card {
+  max-width: 520px;
+  padding: 48px 40px;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.08);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fb-disabled__card h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.fb-disabled__card p {
+  margin: 0;
+  color: #4b5563;
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+.fb-disabled__tip {
+  font-weight: 600;
+  color: #2563eb;
 }
 
 .ig-profile-vertical__stats-grid {
