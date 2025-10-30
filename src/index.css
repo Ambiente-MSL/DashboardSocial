@@ -732,7 +732,8 @@ body.theme-light {
 }
 
 .topbar__notif {
-  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
 }
 
 .topbar__notif-btn {

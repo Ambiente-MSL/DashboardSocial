@@ -89,14 +89,14 @@ export default function Topbar({
   return (
     <header className={`topbar topbar--dark ${className}`.trim()}>
       <div className="topbar__inner">
-        <div className="topbar__notif">
-          <button type="button" className="topbar__notif-btn" aria-label="Notificacoes">
-            <Bell size={16} />
-            {displayNotification && <span className="topbar__notif-badge">{notificationCount}</span>}
-          </button>
-        </div>
-
         <div className="topbar__controls">
+          <div className="topbar__notif">
+            <button type="button" className="topbar__notif-btn" aria-label="Notificacoes">
+              <Bell size={16} />
+              {displayNotification && <span className="topbar__notif-badge">{notificationCount}</span>}
+            </button>
+          </div>
+
           <div className="topbar__chips topbar__chips--compact">
             {presets.map((preset) => (
               <button
