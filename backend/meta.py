@@ -640,6 +640,7 @@ def ig_window(ig_user_id: str, since: int, until: int):
             "until": until,
         },
     )
+    reach_timeseries = extract_time_series(ins, "reach")
 
     def by(name):
         m = next((m for m in ins.get("data", []) if m.get("name") == name), {})
@@ -835,6 +836,7 @@ def ig_window(ig_user_id: str, since: int, until: int):
         "profile_visitors_breakdown": profile_visitors_breakdown,
         "follower_series": follower_series,
         "posts_detailed": post_details,
+        "reach_timeseries": reach_timeseries,
     }
 
 

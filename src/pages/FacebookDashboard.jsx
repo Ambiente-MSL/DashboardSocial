@@ -1,539 +1,176 @@
-// pages/FacebookDashboard.jsx
-
-import { useCallback, useEffect, useMemo, useState } from "react";
-
-import { useOutletContext } from "react-router-dom";
-
-import { Heart, MessageCircle, Share2 } from "lucide-react";
-
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { Link, useLocation, useOutletContext } from "react-router-dom";
 import { differenceInCalendarDays, endOfDay, startOfDay, subDays } from "date-fns";
-
-import DemographicsSection from "../components/DemographicsSection";
-import Topbar from "../components/Topbar";
-
-
 import {
-
   ResponsiveContainer,
-
-  LineChart,
-
-  Line,
-
+  Area,
   CartesianGrid,
-
   XAxis,
-
   YAxis,
-
   Tooltip,
-
-  Legend,
-
   BarChart,
-
   Bar,
-
-  Cell,
-
   PieChart,
-
-  Pie
-
+  Pie,
+  Cell,
+  ComposedChart,
+  Line,
+  ReferenceDot,
+  ReferenceLine,
 } from "recharts";
-
-
-import Modal from "../components/Modal";
-
-import MetricCard from "../components/MetricCard";
-
-import Section from "../components/Section";
-
-import FilterButton from "../components/FilterButton";
-
+import {
+  BarChart3,
+  FileText,
+  Facebook,
+  Instagram as InstagramIcon,
+  Settings,
+  Shield,
+} from "lucide-react";
 import useQueryState from "../hooks/useQueryState";
-
 import { useAccounts } from "../context/AccountsContext";
-
 import { DEFAULT_ACCOUNTS } from "../data/accounts";
-
-
+import { supabase } from "../lib/supabaseClient";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
-
 const FALLBACK_ACCOUNT_ID = DEFAULT_ACCOUNTS[0]?.id || "";
+const COVER_BUCKET = "fotos_capa";
 
-const CACHE_KEYS = {
-
-  facebook_metrics: "facebookMetrics",
-
-  ads_highlights: "adsHighlights",
-
-};
-
-const PERFORMANCE_FILTER_OPTIONS = [
-  { value: "all", label: "Tudo" },
-  { value: "organic", label: "Organico" },
-  { value: "paid", label: "Pago" },
+const FB_TOPBAR_PRESETS = [
+  { id: "7d", label: "7 dias", days: 7 },
+  { id: "1m", label: "1 mês", days: 30 },
+  { id: "3m", label: "3 meses", days: 90 },
 ];
 
-const DATE_PRESETS = [
-  { id: "7d", label: "7 Days", days: 7 },
-  { id: "1m", label: "1 Month", days: 30 },
-  { id: "3m", label: "3 Months", days: 90 },
+const WEEKDAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"];
+const DEFAULT_WEEKLY_FOLLOWERS = [3, 4, 5, 6, 7, 5, 4];
+const DEFAULT_WEEKLY_POSTS = [2, 3, 4, 5, 6, 4, 3];
+
+const DEFAULT_GENDER_STATS = [
+  { name: "Homens", value: 40 },
+  { name: "Mulheres", value: 60 },
 ];
 
+const HERO_TABS = [
+  { id: "instagram", label: "Instagram", href: "/instagram", icon: InstagramIcon },
+  { id: "facebook", label: "Facebook", href: "/facebook", icon: Facebook },
+  { id: "ads", label: "Ads", icon: BarChart3 },
+  { id: "reports", label: "Relatórios", href: "/relatorios", icon: FileText },
+  { id: "admin", label: "Admin", href: "/admin", icon: Shield },
+  { id: "settings", label: "Configurações", href: "/configuracoes", icon: Settings },
+];
 
+const FOLLOWER_GROWTH_PRESETS = [
+  { id: "7d", label: "7 dias" },
+  { id: "1m", label: "1 mês" },
+  { id: "3m", label: "3 meses" },
+  { id: "6m", label: "6 meses" },
+  { id: "1y", label: "1 ano" },
+  { id: "max", label: "Máximo" },
+];
 
+const FOLLOWER_GROWTH_SERIES = [
+  { label: "Jan", value: 28000 },
+  { label: "Fev", value: 58000 },
+  { label: "Mar", value: 12000 },
+  { label: "Abr", value: 36000 },
+  { label: "Mai", value: 58000 },
+  { label: "Jun", value: 18000 },
+  { label: "Jul", value: 28000 },
+  { label: "Ago", value: 88000 },
+  { label: "Set", value: 26000 },
+  { label: "Out", value: 34000 },
+  { label: "Nov", value: 9000 },
+  { label: "Dez", value: 52000 },
+];
 
-const toNumber = (value) => {
+const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
 
-  if (value == null) return null;
+const SHORT_DATE_FORMATTER = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" });
 
-  const num = Number(value);
-
-  return Number.isFinite(num) ? num : null;
-
+const safeParseJson = (text) => {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    console.warn("Falha ao converter resposta JSON", err);
+    return null;
+  }
 };
 
+const describeApiError = (payload, fallback) => {
+  if (!payload) return fallback;
+  if (payload.error) {
+    return payload.graph?.code ? `${payload.error} (Graph code ${payload.graph.code})` : payload.error;
+  }
+  return payload.message || fallback;
+};
 
+const extractNumber = (value, fallback = 0) => {
+  if (value === null || value === undefined) return fallback;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+};
 
-const toIsoDate = (value) => {
+const formatNumber = (value) => {
+  if (value === null || value === undefined) return "-";
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "-";
+  if (Math.abs(numeric) >= 1000) {
+    return numeric.toLocaleString("pt-BR");
+  }
+  return numeric.toString();
+};
 
-  const num = toNumber(value);
+const formatShortNumber = (value) => {
+  if (!Number.isFinite(value)) return "0";
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
+  return value.toLocaleString("pt-BR");
+};
 
-  if (!Number.isFinite(num)) return null;
-
-  const ms = num > 1_000_000_000_000 ? num : num * 1000;
-
-  return new Date(ms).toISOString().slice(0, 10);
-
+const buildWeeklyPattern = (values) => {
+  const max = Math.max(...values, 0);
+  return values.map((value, index) => ({
+    label: WEEKDAY_LABELS[index] || "",
+    value,
+    percentage: max > 0 ? Math.round((value / max) * 100) : 0,
+    active: max > 0 && value === max,
+  }));
 };
 
 const parseQueryDate = (value) => {
-  const num = toNumber(value);
-  if (!Number.isFinite(num)) return null;
-  const ms = num > 1_000_000_000_000 ? num : num * 1000;
+  if (!value) return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  const ms = numeric > 1_000_000_000_000 ? numeric : numeric * 1000;
   const date = new Date(ms);
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
+const BubbleTooltip = ({ active, payload, suffix = "" }) => {
+  if (!active || !payload?.length) return null;
+  const item = payload[0];
+  const label = item?.name || item?.payload?.name || "";
+  const value = Number(item?.value ?? item?.payload?.value ?? 0);
 
-
-
-const safeParseJson = (text) => {
-
-  if (!text) return null;
-
-  try {
-
-    return JSON.parse(text);
-
-  } catch (err) {
-
-    console.error("Falha ao converter resposta JSON", err);
-
-    return null;
-
-  }
-
+  return (
+    <div className="ig-bubble-tooltip">
+      <span>{label}</span>
+      <strong>{`${value.toLocaleString("pt-BR")}${suffix}`}</strong>
+    </div>
+  );
 };
-
-
-
-const describeApiError = (payload, fallback) => {
-
-  if (!payload) return fallback;
-
-  if (payload.error) {
-
-    const graph = payload.graph;
-
-    if (graph?.code) {
-
-      return `${payload.error} (Graph code ${graph.code})`;
-
-    }
-
-    return payload.error;
-
-  }
-
-  if (payload.message) return payload.message;
-
-  return fallback;
-
-};
-
-
-
-const formatShortNumber = (value) => {
-
-  if (!Number.isFinite(value)) return "0";
-
-  const abs = Math.abs(value);
-
-  if (abs >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
-
-  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-
-  if (abs >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
-
-  return value.toLocaleString("pt-BR");
-
-};
-
-
-
-const formatDateLabel = (isoDate) => {
-
-  if (!isoDate) return "";
-
-  const date = new Date(`${isoDate}T00:00:00Z`);
-
-  if (Number.isNaN(date.getTime())) return isoDate;
-
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(date);
-
-};
-
-
-
-const formatDateFull = (isoDate) => {
-
-  if (!isoDate) return "";
-
-  const date = new Date(`${isoDate}T00:00:00Z`);
-
-  if (Number.isNaN(date.getTime())) return isoDate;
-
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(date);
-
-};
-
-
-
-const formatSignedNumber = (value) => {
-
-  if (!Number.isFinite(value) || value === 0) return '0';
-
-  const formatted = Math.abs(Math.trunc(value)).toLocaleString('pt-BR');
-
-  return `${value > 0 ? '+' : '-'}${formatted}`;
-
-};
-
-
-
-const FACEBOOK_CARD_CONFIG = [
-
-  {
-
-    key: "impressions",
-
-    title: "ImpressAes",
-
-    hint: "Total de vezes que o conteAodo foi exibido.",
-
-    group: "primary",
-
-    order: 0,
-
-  },
-
-  {
-
-    key: "reach",
-
-    title: "Alcance orgAnico",
-
-    hint: "Pessoas alcancadas no perAodo.",
-
-    group: "primary",
-
-    order: 1,
-
-  },
-
-  {
-
-    key: "post_engagement_total",
-
-    title: "Engajamento total",
-
-    hint: "ReaAAes, comentArios e compartilhamentos em posts.",
-
-    type: "engagement",
-
-    group: "primary",
-
-    order: 2,
-
-  },
-
-  {
-
-    key: "page_views",
-
-    title: "VisualizaAAes da pAgina",
-
-    hint: "VisualizaAAes registradas na pAgina.",
-
-    group: "primary",
-
-    order: 3,
-
-  },
-
-  {
-
-    key: "content_activity",
-
-    title: "InteraAAes totais",
-
-    hint: "SomatA3rio de cliques, reaAAes e engajamentos.",
-
-    group: "engagement",
-
-    order: 1,
-
-    hidden: true,
-
-  },
-
-  {
-
-    key: "cta_clicks",
-
-    title: "Cliques em CTA",
-
-    hint: "Cliques em botAes de call-to-action.",
-
-    group: "engagement",
-
-    order: 2,
-
-    hidden: true,
-
-  },
-
-  {
-
-    key: "post_clicks",
-
-    title: "Cliques em posts",
-
-    hint: "Cliques gerados pelos posts publicados.",
-
-    group: "engagement",
-
-    order: 3,
-
-    hidden: true,
-
-  },
-
-  {
-
-    key: "likes_add",
-
-    title: "Novos curtidores",
-
-    hint: "Novos curtidores da pAgina no perAodo.",
-
-    group: "primary",
-
-    order: 4,
-
-  },
-
-  {
-
-    key: "followers_total",
-
-    title: "Seguidores da pAgina",
-
-    hint: "Total de seguidores no final do perAodo selecionado.",
-
-    group: "audience",
-
-    order: 0,
-
-  },
-
-  {
-
-    key: "followers_gained",
-
-    title: "Novos seguidores",
-
-    hint: "Seguidores ganhos no perAodo.",
-
-    group: "audience",
-
-    order: 1,
-
-  },
-
-  {
-
-    key: "followers_lost",
-
-    title: "Deixaram de seguir",
-
-    hint: "Seguidores perdidos no perAodo.",
-
-    group: "audience",
-
-    order: 2,
-
-  },
-
-  {
-
-    key: "net_followers",
-
-    title: "Crescimento lAquido",
-
-    hint: "Saldo entre ganhos e perdas de seguidores.",
-
-    group: "audience",
-
-    order: 3,
-
-  },
-
-  {
-
-    key: "video_watch_time_total",
-
-    title: "Tempo total assistido",
-
-    hint: "Tempo acumulado de visualizaAAo dos vAdeos.",
-
-    format: "duration",
-
-    group: "video",
-
-    order: 1,
-
-  },
-
-  {
-
-    key: "video_views_total",
-
-    title: "Video views",
-
-    hint: "Total de visualizaAAes de vAdeos no perAodo.",
-
-    group: "video",
-
-    order: 2,
-
-  },
-
-  {
-
-    key: "video_engagement_total",
-
-    title: "VAdeos (reaAAes, comentArios, compartilhamentos)",
-
-    hint: "Engajamento gerado pelos vAdeos: reaAAes, comentArios e compartilhamentos.",
-
-    type: "engagement",
-
-    group: "video",
-
-    order: 3,
-
-  },
-
-];
-
-
-
-
-
-const formatNumber = (value) => {
-
-  if (!Number.isFinite(value)) return "-";
-
-  return Math.trunc(value).toLocaleString("pt-BR");
-
-};
-
-
-
-const formatDuration = (value) => {
-
-  if (!Number.isFinite(value)) return "-";
-
-  let seconds = Math.round(Math.max(0, Number(value)));
-
-  if (seconds > 1_000_000) {
-
-    seconds = Math.round(seconds / 1000);
-
-  }
-
-  const hours = Math.floor(seconds / 3600);
-
-  const minutes = Math.floor((seconds % 3600) / 60);
-
-  const remaining = seconds % 60;
-
-  if (hours > 0) {
-
-    return `${hours}h ${minutes}min`;
-
-  }
-
-  if (minutes > 0) {
-
-    return `${minutes}min ${remaining}s`;
-
-  }
-
-  return `${remaining}s`;
-
-};
-
-
-
-const formatPercent = (value) => {
-
-  if (!Number.isFinite(value)) return "-";
-
-  return `${value.toFixed(2)}%`;
-
-};
-
-
-
-const formatCurrency = (value) => {
-
-  if (!Number.isFinite(value)) return "-";
-
-  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-};
-
-
 
 export default function FacebookDashboard() {
-
-  const outletContext = useOutletContext() || {};
-  const { setTopbarConfig, resetTopbarConfig } = outletContext;
-
+  const outlet = useOutletContext() || {};
+  const { setTopbarConfig, resetTopbarConfig } = outlet;
+  const location = useLocation();
   const { accounts } = useAccounts();
-
   const availableAccounts = accounts.length ? accounts : DEFAULT_ACCOUNTS;
-
-  const [get, setQuery] = useQueryState({ account: FALLBACK_ACCOUNT_ID });
-
-  const queryAccountId = get("account");
+  const [getQuery, setQuery] = useQueryState({ account: FALLBACK_ACCOUNT_ID });
+  const queryAccountId = getQuery("account");
 
   useEffect(() => {
     if (!availableAccounts.length) return;
@@ -543,2020 +180,1131 @@ export default function FacebookDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableAccounts.length, queryAccountId]);
 
-
-
   const accountId = queryAccountId && availableAccounts.some((account) => account.id === queryAccountId)
-
     ? queryAccountId
-
     : availableAccounts[0]?.id || "";
 
-
-
   const accountConfig = useMemo(
-
     () => availableAccounts.find((item) => item.id === accountId) || null,
-
     [availableAccounts, accountId],
-
   );
 
+  const accountSnapshotKey = useMemo(
+    () => accountConfig?.facebookPageId || accountConfig?.id || "",
+    [accountConfig?.id, accountConfig?.facebookPageId],
+  );
 
+  const coverStoragePath = useMemo(() => {
+    if (!accountSnapshotKey) return null;
+    return `facebook/${accountSnapshotKey}/cover`;
+  }, [accountSnapshotKey]);
 
-  const since = get("since");
-  const until = get("until");
-  const sinceDate = useMemo(() => parseQueryDate(since), [since]);
-  const untilDate = useMemo(() => parseQueryDate(until), [until]);
+  const sinceParam = getQuery("since");
+  const untilParam = getQuery("until");
+  const sinceDate = useMemo(() => parseQueryDate(sinceParam), [sinceParam]);
+  const untilDate = useMemo(() => parseQueryDate(untilParam), [untilParam]);
   const now = useMemo(() => new Date(), []);
   const defaultEnd = useMemo(() => endOfDay(subDays(startOfDay(now), 1)), [now]);
 
-  const activeDatePreset = useMemo(() => {
+  const activePreset = useMemo(() => {
     if (!sinceDate || !untilDate) return "custom";
     const diff = differenceInCalendarDays(endOfDay(untilDate), startOfDay(sinceDate)) + 1;
-    const match = DATE_PRESETS.find((preset) => preset.days === diff);
-    return match?.id ?? "custom";
+    const preset = FB_TOPBAR_PRESETS.find((item) => item.days === diff);
+    return preset?.id ?? "custom";
   }, [sinceDate, untilDate]);
 
-  const handlePresetSelect = useCallback((presetId) => {
-    const preset = DATE_PRESETS.find((item) => item.id === presetId);
-    if (!preset?.days || preset.days <= 0) return;
-    const endDate = defaultEnd;
-    const startDate = startOfDay(subDays(endDate, preset.days - 1));
-    setQuery({ since: toUnixSeconds(startDate), until: toUnixSeconds(endDate) });
-  }, [defaultEnd, setQuery]);
+  const handlePresetSelect = useCallback(
+    (presetId) => {
+      const preset = FB_TOPBAR_PRESETS.find((item) => item.id === presetId);
+      if (!preset?.days || preset.days <= 0) return;
+      const endDate = defaultEnd;
+      const startDate = startOfDay(subDays(endDate, preset.days - 1));
+      setQuery({
+        since: toUnixSeconds(startDate),
+        until: toUnixSeconds(endDate),
+      });
+    },
+    [defaultEnd, setQuery],
+  );
 
-  const handleDateChange = useCallback((start, end) => {
-    if (!start || !end) return;
-    const normalizedStart = startOfDay(start);
-    const normalizedEnd = endOfDay(end);
-    setQuery({ since: toUnixSeconds(normalizedStart), until: toUnixSeconds(normalizedEnd) });
-  }, [setQuery]);
+  const handleDateChange = useCallback(
+    (start, end) => {
+      if (!start || !end) return;
+      const normalizedStart = startOfDay(start);
+      const normalizedEnd = endOfDay(end);
+      setQuery({
+        since: toUnixSeconds(normalizedStart),
+        until: toUnixSeconds(normalizedEnd),
+      });
+    },
+    [setQuery],
+  );
 
   useEffect(() => {
     if (!setTopbarConfig) return undefined;
-    setTopbarConfig({ hidden: true });
+    setTopbarConfig({
+      hidden: false,
+      presets: FB_TOPBAR_PRESETS,
+      selectedPreset: activePreset,
+      onPresetSelect: handlePresetSelect,
+      onDateChange: handleDateChange,
+    });
     return () => resetTopbarConfig?.();
-  }, [setTopbarConfig, resetTopbarConfig]);
-
-
+  }, [
+    activePreset,
+    handleDateChange,
+    handlePresetSelect,
+    resetTopbarConfig,
+    setTopbarConfig,
+  ]);
 
   const [pageMetrics, setPageMetrics] = useState([]);
-
   const [pageError, setPageError] = useState("");
-
+  // eslint-disable-next-line no-unused-vars
   const [loadingPage, setLoadingPage] = useState(false);
-
-  const [, setPageOverview] = useState({});
-
   const [netFollowersSeries, setNetFollowersSeries] = useState([]);
-
   const [demographicsData, setDemographicsData] = useState(null);
-
+  // eslint-disable-next-line no-unused-vars
   const [loadingDemographics, setLoadingDemographics] = useState(true);
-
+  // eslint-disable-next-line no-unused-vars
   const [demographicsError, setDemographicsError] = useState(null);
 
-
-
-
-
-  const [performanceScope, setPerformanceScope] = useState("all");
-
-
-
-  const showOrganicSections = performanceScope !== "paid";
-
-  const showPaidSections = performanceScope !== "organic";
-
-
-
-
-
-  const [adsData, setAdsData] = useState({
-
-    best_ad: null,
-
-    totals: {},
-
-    averages: {},
-
-    actions: [],
-
-    demographics: {},
-
-    ads_breakdown: [],
-
-  });
-
-  const [adsError, setAdsError] = useState("");
-
-  const [loadingAds, setLoadingAds] = useState(false);
-
-  const [, setCacheMeta] = useState({});
-
-  const [openEngagementModal, setOpenEngagementModal] = useState(false);
-
-
-
-  useEffect(() => {
-
-    setCacheMeta({});
-
-  }, [accountId]);
-
-
-
-
-  useEffect(() => {
-
-    if (!accountConfig?.facebookPageId) {
-
-      setPageMetrics([]);
-
-      setPageOverview({});
-
-      setNetFollowersSeries([]);
-
-      setPageError("PAgina do Facebook nAo configurada.");
-
-      return;
-
-    }
-
-
-
-    const controller = new AbortController();
-
-
-
-    const loadMetrics = async () => {
-
-      setLoadingPage(true);
-
-      setPageError("");
-
-      try {
-
-        const params = new URLSearchParams();
-
-        params.set("pageId", accountConfig.facebookPageId);
-
-        if (since) params.set("since", since);
-
-        if (until) params.set("until", until);
-
-
-
-        const url = `${API_BASE_URL}/api/facebook/metrics?${params.toString()}`;
-
-        const response = await fetch(url, { signal: controller.signal });
-
-        const raw = await response.text();
-
-        const json = safeParseJson(raw) || {};
-
-        if (!response.ok) {
-
-          throw new Error(describeApiError(json, "Falha ao carregar mAtricas de pAgina."));
-
-        }
-
-        setPageMetrics(json.metrics || []);
-
-        setPageOverview(json.page_overview || {});
-
-        setNetFollowersSeries(json.net_followers_series || []);
-
-        if (json.cache) {
-
-          setCacheMeta((prev) => ({
-
-            ...prev,
-
-            [CACHE_KEYS.facebook_metrics]: json.cache,
-
-          }));
-
-        }
-
-      } catch (err) {
-
-        if (err.name !== "AbortError") {
-
-          console.error(err);
-
-          setPageMetrics([]);
-
-          setPageOverview({});
-
-          setNetFollowersSeries([]);
-
-          setPageError(err.message || "NAo foi possAvel carregar as mAtricas de pAgina.");
-
-        }
-
-      } finally {
-
-        setLoadingPage(false);
-
-      }
-
-    };
-
-
-
-    loadMetrics();
-
-    return () => controller.abort();
-
-  }, [accountConfig?.facebookPageId, since, until]);
-
-
-  //Carregar dados demogrAficos
-  useEffect(() => {
-  if (!accountConfig?.facebookPageId) return;
-
-  const controller = new AbortController();
-  const loadDemographics = async () => {
-    try {
-      setLoadingDemographics(true);
-      setDemographicsError(null);
-      
-      const url = `${API_BASE_URL}/api/facebook/audience?pageId=${accountConfig.facebookPageId}`;
-      const response = await fetch(url, { signal: controller.signal });
-      
-      if (!response.ok) {
-        throw new Error(`Erro HTTP ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setDemographicsData(data);
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.error('Erro ao carregar demografia:', err);
-        setDemographicsError(err.message);
-      }
-    } finally {
-      setLoadingDemographics(false);
-    }
-  };
-
-  loadDemographics();
-  return () => controller.abort();
-}, [accountConfig?.facebookPageId]);
-
-
-
-
-
-
-
-
-  useEffect(() => {
-
-    if (!accountConfig?.adAccountId) {
-
-      setAdsData({
-
-        best_ad: null,
-
-        totals: {},
-
-        averages: {},
-
-        actions: [],
-
-        demographics: {},
-
-        ads_breakdown: [],
-
-      });
-
-      setAdsError("Conta de anAoncios nAo configurada.");
-
-      return;
-
-    }
-
-
-    
-
-
-    const controller = new AbortController();
-
-
-
-    const loadAds = async () => {
-
-      setLoadingAds(true);
-
-      setAdsError("");
-
-      try {
-
-        const params = new URLSearchParams({
-
-          actId: accountConfig.adAccountId,
-
-        });
-
-        const isoSince = since ? toIsoDate(since) : null;
-
-        const isoUntil = until ? toIsoDate(until) : null;
-
-        if (isoSince) params.set("since", isoSince);
-
-        if (isoUntil) params.set("until", isoUntil);
-
-
-
-        const url = `${API_BASE_URL}/api/ads/highlights?${params.toString()}`;
-
-        const response = await fetch(url, { signal: controller.signal });
-
-        const raw = await response.text();
-
-        const json = safeParseJson(raw) || {};
-
-        if (!response.ok) {
-
-          throw new Error(describeApiError(json, "Falha ao carregar mAtricas de anAoncios."));
-
-        }
-
-        setAdsData({
-
-          best_ad: null,
-
-          totals: {},
-
-          averages: {},
-
-          actions: [],
-
-          demographics: {},
-
-          ads_breakdown: [],
-
-          ...json,
-
-        });
-
-        if (json.cache) {
-
-          setCacheMeta((prev) => ({
-
-            ...prev,
-
-            [CACHE_KEYS.ads_highlights]: json.cache,
-
-          }));
-
-        }
-
-      } catch (err) {
-
-        if (err.name !== "AbortError") {
-
-          console.error(err);
-
-          setAdsError(err.message || "NAo foi possAvel carregar os destaques de anAoncios.");
-
-        }
-
-      } finally {
-
-        setLoadingAds(false);
-
-      }
-
-    };
-
-
-
-    loadAds();
-
-    return () => controller.abort();
-
-  }, [accountConfig?.adAccountId, since, until]);
-
-
-
-  const pageMetricsByKey = useMemo(() => {
-
-    const map = {};
-
-    pageMetrics.forEach((metric) => {
-
-      if (metric?.key) map[metric.key] = metric;
-
-    });
-
-    return map;
-
-  }, [pageMetrics]);
-
-
-
-  const formatMetricValue = (metric, config) => {
-
-    if (!metric) return "-";
-
-    const raw = metric.value;
-
-    if (raw == null) return "-";
-
-    if (config?.format === "duration") {
-
-      return formatDuration(raw);
-
-    }
-
-    if (Number.isFinite(raw)) {
-
-      return formatNumber(raw);
-
-    }
-
-    return String(raw);
-
-  };
-
-
-
-  const renderEngagementBreakdown = (metric) => {
-
-    const breakdown = metric?.breakdown || {};
-
-    const items = [
-
-      { key: "reactions", label: "ReaAAes", icon: Heart },
-
-      { key: "comments", label: "ComentArios", icon: MessageCircle },
-
-      { key: "shares", label: "Compartilhamentos", icon: Share2 },
-
-    ]
-
-      .map((item) => ({ ...item, value: Number(breakdown[item.key] || 0) }))
-
-      .filter((item) => item.value > 0);
-
-    if (!items.length) return null;
-
-    return (
-
-      <ul className="metric-card__list metric-card__list--icons">
-
-        {items.map((item) => {
-
-          const Icon = item.icon;
-
-          return (
-
-            <li key={item.key}>
-
-              <Icon size={14} />
-
-              <span>{item.label}:</span>
-
-              <strong>{formatNumber(item.value)}</strong>
-
-            </li>
-
-          );
-
-        })}
-
-      </ul>
-
-    );
-
-  };
-
-
-
-  const cardGroups = useMemo(() => {
-
-    const groups = {};
-
-    FACEBOOK_CARD_CONFIG.forEach((config) => {
-
-      const metric = pageMetricsByKey[config.key];
-
-      const groupKey = config.group || "other";
-
-      if (!groups[groupKey]) groups[groupKey] = [];
-
-      groups[groupKey].push({
-
-        ...config,
-
-        metric,
-
-        value: loadingPage ? "..." : formatMetricValue(metric, config),
-
-        delta: loadingPage ? null : metric?.deltaPct ?? null,
-
-      });
-
-    });
-
-    Object.values(groups).forEach((items) => {
-
-      items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-
-    });
-
-    return groups;
-
-  }, [loadingPage, pageMetricsByKey]);
-
-
-
-  const primaryCards = cardGroups.primary || [];
-
-
-
-  const netFollowersTrend = useMemo(() => {
-
-    if (!Array.isArray(netFollowersSeries)) return [];
-
-    return netFollowersSeries
-
-      .map((point) => {
-
-        const date = point?.date;
-
-        if (!date) return null;
-
-        const cumulative = Number(point?.cumulative ?? 0);
-
-        const net = Number(point?.net ?? 0);
-
-        return {
-
-          date,
-
-          label: formatDateLabel(date),
-
-          cumulative: Number.isFinite(cumulative) ? cumulative : 0,
-
-          net: Number.isFinite(net) ? net : 0,
-
-        };
-
-      })
-
-      .filter(Boolean);
-
-  }, [netFollowersSeries]);
-
-
-
-  // Unused variable - kept for potential future use
-
-  // const netFollowersSummary = useMemo(() => {
-
-  //   if (!Array.isArray(netFollowersSeries) || !netFollowersSeries.length) return null;
-
-  //   const last = netFollowersSeries[netFollowersSeries.length - 1] || {};
-
-  //   const total = Number(last.cumulative ?? 0);
-
-  //   const latestNet = Number(last.net ?? 0);
-
-  //   const adds = Number(last.adds ?? 0);
-
-  //   const removes = Number(last.removes ?? 0);
-
-  //   const lastDate = last.date || null;
-
-  //   return {
-
-  //     total: Number.isFinite(total) ? total : 0,
-
-  //     latestNet: Number.isFinite(latestNet) ? latestNet : 0,
-
-  //     adds: Number.isFinite(adds) ? adds : 0,
-
-  //     removes: Number.isFinite(removes) ? removes : 0,
-
-  //     lastDate,
-
-  //   };
-
-  // }, [netFollowersSeries]);
-
-
-
-  const hasNetFollowersTrend = netFollowersTrend.length > 0;
-
-
-
-
-
-  // Dados de engajamento por post (reaAAes, comentArios, compartilhamentos)
-
-  const postsEngagementData = useMemo(() => {
-
-    const metric = pageMetricsByKey.post_engagement_total;
-
-    const breakdown = metric?.breakdown || {};
-
-
-
-    if (!breakdown.reactions && !breakdown.comments && !breakdown.shares) {
-
-      return [];
-
-    }
-
-
-
-    return [
-
-      {
-
-        name: "ReaAAes",
-
-        value: Number(breakdown.reactions || 0),
-
-        color: "#00FFD3"
-
-      },
-
-      {
-
-        name: "ComentArios",
-
-        value: Number(breakdown.comments || 0),
-
-        color: "#22A3FF"
-
-      },
-
-      {
-
-        name: "Compartilhamentos",
-
-        value: Number(breakdown.shares || 0),
-
-        color: "#9B8CFF"
-
-      },
-
-    ].filter(item => item.value > 0);
-
-  }, [pageMetricsByKey]);
-
-
-
-  const hasPostsEngagement = postsEngagementData.length > 0 && postsEngagementData.some(item => item.value > 0);
-
-
-
-  // Dados de insights por post (impressAes, alcance, engajados, cliques)
-
-  const postsInsightsData = useMemo(() => {
-
-    const impressions = Number(pageMetricsByKey.reach?.value || 0);
-
-    const reach = Number(pageMetricsByKey.reach?.value || 0);
-
-    const engaged = Number(pageMetricsByKey.post_engagement_total?.value || 0);
-
-    const clicks = Number(pageMetricsByKey.post_clicks?.value || 0);
-
-
-
-    return [
-
-      {
-
-        name: "ImpressAes",
-
-        value: impressions,
-
-        color: "var(--chart-1)"
-
-      },
-
-      {
-
-        name: "Alcance",
-
-        value: reach,
-
-        color: "var(--chart-2)"
-
-      },
-
-      {
-
-        name: "UsuArios Engajados",
-
-        value: engaged,
-
-        color: "var(--chart-3)"
-
-      },
-
-      {
-
-        name: "Cliques",
-
-        value: clicks,
-
-        color: "#FFA500"
-
-      },
-
-    ].filter(item => item.value > 0);
-
-  }, [pageMetricsByKey]);
-
-
-
-  const hasPostsInsights = postsInsightsData.length > 0 && postsInsightsData.some(item => item.value > 0);
-
-
-
-  // CA3digo comentado - grAfico "OrgAnico x Pago" foi substituAdo por grAficos de posts
-
-  // const filteredOrganicVsPaidData = useMemo(() => { ... }, [adsData?.totals, pageMetricsByKey, performanceScope]);
-
-  // const hasFilteredOrgVsPaidData = filteredOrganicVsPaidData.length > 0;
-
-
-
-  // EvoluAAo temporal de engajamento (linha do tempo)
-
-  const engagementTimelineData = useMemo(() => {
-
-    if (!Array.isArray(netFollowersSeries) || netFollowersSeries.length === 0) {
-
-      return [];
-
-    }
-
-
-
-    // Usar a sArie de seguidores como base temporal e adicionar dados de engajamento
-
-    return netFollowersSeries.map((point) => {
-
-      const date = point?.date;
-
-      if (!date) return null;
-
-
-
-      // Valores simulados baseados nos dados disponAveis (em produAAo, viriam do backend)
-
-      const reactions = Number(point?.adds || 0) * 2; // ProporAAo aproximada
-
-      const comments = Number(point?.adds || 0) * 0.5;
-
-      const shares = Number(point?.adds || 0) * 0.3;
-
-
-
-      return {
-
-        date,
-
-        label: formatDateLabel(date),
-
-        reactions: reactions > 0 ? reactions : 0,
-
-        comments: comments > 0 ? comments : 0,
-
-        shares: shares > 0 ? shares : 0,
-
-        total: reactions + comments + shares,
-
-      };
-
-    }).filter(Boolean);
-
-  }, [netFollowersSeries]);
-
-
-
-  const hasEngagementTimeline = engagementTimelineData.length > 0 &&
-
-    engagementTimelineData.some(item => item.total > 0);
-
-
-
-  // DistribuiAAo de visualizaAAes por tipo de visitante (seguidores vs nAo-seguidores)
-
-  // Nota: Essa mAtrica estA disponAvel apenas para Instagram, nAo para Facebook
-
-  const visitorsBreakdownData = useMemo(() => {
-
-    // Para Facebook, nAo temos breakdown por seguidor, entAo vamos simular baseado em dados disponAveis
-
-    // Em produAAo, isso viria do endpoint especAfico do Instagram
-
-    const reach = Number(pageMetricsByKey.reach?.value || 0);
-
-
-
-    if (reach === 0) return [];
-
-
-
-    // Estimativa: assumindo que seguidores tAam maior engajamento
-
-    // Em produAAo com Instagram, esses valores viriam de profile_visitors_breakdown
-
-    const estimatedFollowersViews = Math.round(reach * 0.65); // 65% seguidores
-
-    const estimatedNonFollowersViews = Math.round(reach * 0.30); // 30% nAo-seguidores
-
-    const estimatedOther = reach - estimatedFollowersViews - estimatedNonFollowersViews; // resto
-
-
-
-    return [
-
-      {
-
-        name: "Seguidores",
-
-        value: estimatedFollowersViews,
-
-        percentage: ((estimatedFollowersViews / reach) * 100).toFixed(1),
-
-        color: "#00FFD3"
-
-      },
-
-      {
-
-        name: "NAo-seguidores",
-
-        value: estimatedNonFollowersViews,
-
-        percentage: ((estimatedNonFollowersViews / reach) * 100).toFixed(1),
-
-        color: "#22A3FF"
-
-      },
-
-      {
-
-        name: "Outros",
-
-        value: estimatedOther,
-
-        percentage: ((estimatedOther / reach) * 100).toFixed(1),
-
-        color: "#9B8CFF"
-
-      },
-
-    ].filter(item => item.value > 0);
-
-  }, [pageMetricsByKey]);
-
-
-
-  const hasVisitorsBreakdown = visitorsBreakdownData.length > 0;
-
-  const totalVisitors = visitorsBreakdownData.reduce((sum, item) => sum + item.value, 0);
-
-
-
-  const adsTotals = adsData?.totals || {};
-
-  const adsAverages = adsData?.averages || {};
-
-  const frequencyValue = toNumber(adsAverages.frequency);
-
-  const frequencyDisplay = frequencyValue != null ? frequencyValue.toFixed(2) : "-";
-
-  const frequencyDelta = toNumber(adsAverages.frequency_change_pct);
-
-  const volumeBarData = useMemo(() => {
-
-    const totals = adsData?.totals || {};
-
-    return [
-
-      { name: "Impressoes", value: Number(totals.impressions) || 0, color: "var(--chart-1)" },
-
-      { name: "Alcance", value: Number(totals.reach) || 0, color: "var(--chart-2)" },
-
-      { name: "Cliques", value: Number(totals.clicks) || 0, color: "var(--chart-3)" },
-
-    ];
-
-  }, [adsData?.totals]);
-
-  const hasVolumeData = volumeBarData.some((item) => item.value > 0);
-
-
-
-  const adsActionsData = useMemo(() => {
-
-    const list = Array.isArray(adsData?.actions) ? adsData.actions : [];
-
-    const map = new Map();
-
-    list.forEach((action) => {
-
-      const key = String(action?.action_type || "").replace(/_/g, " ").trim();
-
-      const value = Number(action?.value || 0);
-
-      if (!key || !Number.isFinite(value)) return;
-
-      map.set(key, (map.get(key) || 0) + value);
-
-    });
-
-    return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
-
-  }, [adsData?.actions]);
-
-  const hasAdsActions = adsActionsData.some((item) => (item?.value ?? 0) > 0);
-
-
-
-
-
-  return (
-    <>
-      <Topbar
-        presets={DATE_PRESETS}
-        selectedPreset={activeDatePreset}
-        onPresetSelect={handlePresetSelect}
-        onDateChange={handleDateChange}
-        userName={accountConfig?.label}
-      />
-
-      <div className="page-toolbar">
-        <FilterButton
-          value={performanceScope}
-          onChange={setPerformanceScope}
-          options={PERFORMANCE_FILTER_OPTIONS}
-        />
-      </div>
-
-      <div className="page-content page-content--unified">
-
-        {pageError && <div className="alert alert--error">{pageError}</div>}
-
-
-
-        {showOrganicSections && (
-
-          <>
-
-            <Section title="Pagina do Facebook" description="">
-
-              {/* === 7 KPIs compactos na primeira fileira === */}
-
-              <div className="dashboard-kpis">
-
-                {/* 1. ImpressAes */}
-
-                <MetricCard
-
-                  title="ImpressAes"
-
-                  value={primaryCards.find(c=>c.key==="impressions")?.value}
-
-                  delta={primaryCards.find(c=>c.key==="impressions")?.delta}
-
-                  compact
-
-                />
-
-
-
-                {/* 2. Alcance organico */}
-
-                <MetricCard
-
-                  title="Alcance orgAnico"
-
-                  value={primaryCards.find(c=>c.key==="reach")?.value}
-
-                  delta={primaryCards.find(c=>c.key==="reach")?.delta}
-
-                  compact
-
-                />
-
-
-
-                {/* 3. Engajamento total (abre modal com detalhes) */}
-
-                <MetricCard
-
-                  title="Engajamento total"
-
-                  value={primaryCards.find(c=>c.key==="post_engagement_total")?.value}
-
-                  delta={primaryCards.find(c=>c.key==="post_engagement_total")?.delta}
-
-                  compact
-
-                  onOpen={()=>setOpenEngagementModal(true)}
-
-                />
-
-
-
-                {/* 4. Visualizacoes da pagina */}
-
-                <MetricCard
-
-                  title="VisualizaAAes da pAgina"
-
-                  value={primaryCards.find(c=>c.key==="page_views")?.value}
-
-                  delta={primaryCards.find(c=>c.key==="page_views")?.delta}
-
-                  compact
-
-                />
-
-
-
-                {/* 5. Novos curtidores */}
-
-                <MetricCard
-
-                  title="Novos curtidores"
-
-                  value={primaryCards.find(c=>c.key==="likes_add")?.value}
-
-                  delta={primaryCards.find(c=>c.key==="likes_add")?.delta}
-
-                  compact
-
-                />
-
-
-
-                {/* 6. Crescimento liquido */}
-
-                <MetricCard
-
-                  title="Crescimento lAquido"
-
-                  value={(cardGroups.audience||[]).find(c=>c.key==="net_followers")?.value}
-
-                  delta={(cardGroups.audience||[]).find(c=>c.key==="net_followers")?.delta}
-
-                  compact
-
-                />
-
-
-
-                {/* 7. Tempo total assistido */}
-
-                <MetricCard
-
-                  title="Tempo total assistido"
-
-                  value={(cardGroups.video||[]).find(c=>c.key==="video_watch_time_total")?.value}
-
-                  delta={(cardGroups.video||[]).find(c=>c.key==="video_watch_time_total")?.delta}
-
-                  compact
-
-                />
-
-              </div>
-
-
-
-              {/* === Segunda linha de 7 KPIs compactos === */}
-
-              <div className="dashboard-kpis-extended">
-
-                <MetricCard
-
-                  title="Novos seguidores"
-
-                  value={(cardGroups.audience||[]).find(c=>c.key==="followers_gained")?.value}
-
-                  delta={(cardGroups.audience||[]).find(c=>c.key==="followers_gained")?.delta}
-
-                  compact
-
-                />
-
-                <MetricCard
-
-                  title="Seguidores da pAgina"
-
-                  value={(cardGroups.audience || []).find((c) => c.key === "followers_total")?.value}
-
-                  delta={(cardGroups.audience || []).find((c) => c.key === "followers_total")?.delta}
-
-                  compact
-
-                />
-
-                <MetricCard
-
-                  title="Deixaram de seguir"
-
-                  value={(cardGroups.audience || []).find((c) => c.key === "followers_lost")?.value}
-
-                  delta={(cardGroups.audience || []).find((c) => c.key === "followers_lost")?.delta}
-
-                  compact
-
-                />
-
-                <MetricCard
-
-                  title="Video views"
-
-                  value={(cardGroups.video || []).find((c) => c.key === "video_views_total")?.value}
-
-                  delta={(cardGroups.video || []).find((c) => c.key === "video_views_total")?.delta}
-
-                  compact
-
-                />
-
-                <MetricCard
-
-                  title="VAdeo engajamento"
-
-                  value={(cardGroups.video || []).find((c) => c.key === "video_engagement_total")?.value}
-
-                  delta={(cardGroups.video || []).find((c) => c.key === "video_engagement_total")?.delta}
-
-                  compact
-
-                />
-
-                <MetricCard
-
-                  title="Cliques em posts"
-
-                  value={(cardGroups.engagement || []).find((c) => c.key === "post_clicks")?.value}
-
-                  delta={(cardGroups.engagement || []).find((c) => c.key === "post_clicks")?.delta}
-
-                  compact
-
-                />
-
-                <MetricCard
-
-                  title="Cliques no CTA"
-
-                  value={(cardGroups.engagement || []).find((c) => c.key === "cta_clicks")?.value}
-
-                  delta={(cardGroups.engagement || []).find((c) => c.key === "cta_clicks")?.delta}
-
-                  compact
-
-                />
-
-              </div>
-
-            </Section>
-
-
-
-            <Section title="" description="">
-
-              <div className="dashboard-charts">
-
-                {/* Esquerda: Crescimento liquido (seguidores) */}
-
-                <div className="chart-card chart-card--sm">
-
-                  <div className="fb-line-card__header" style={{marginBottom:12}}>
-
-                    <h3>Crescimento liquido</h3>
-
-                    <p className="muted">Saldo diario de seguidores</p>
-
-                  </div>
-
-                  {loadingPage ? (
-
-                    <div className="chart-card__empty">Carregando dados...</div>
-
-                  ) : hasNetFollowersTrend ? (
-
-                    <ResponsiveContainer width="100%" height={260}>
-
-                      <LineChart data={netFollowersTrend} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
-
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
-
-                        <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-
-                        <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={formatShortNumber} width={64} />
-
-                        <Tooltip
-
-                          contentStyle={{
-
-                            backgroundColor: '#f7fafc',
-
-                            color: '#0f1720',
-
-                            border: '1px solid #e3e8ef',
-
-                            borderRadius: '10px',
-
-                            boxShadow: '0 6px 20px rgba(0,0,0,.25)'
-
-                          }}
-
-                          labelFormatter={(label, payload) => {
-
-                            const rawDate = payload && payload[0]?.payload?.date;
-
-                            return rawDate ? formatDateFull(rawDate) : label;
-
-                          }}
-
-                          formatter={(value, name) => {
-
-                            const numeric = Number(value);
-
-                            if (name === 'net') return [formatSignedNumber(numeric), 'Liquido'];
-
-                            return [formatNumber(Number(numeric)), 'Acumulado'];
-
-                          }}
-
-                        />
-
-                        <Line type="monotone" dataKey="cumulative" stroke="var(--accent)" strokeWidth={2.5} dot={false} />
-
-                        <Line type="monotone" dataKey="net" stroke="#0ea5e9" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
-
-                      </LineChart>
-
-                    </ResponsiveContainer>
-
-                  ) : (
-
-                    <div className="chart-card__empty">Sem dados suficientes para o periodo.</div>
-
-                  )}
-
-                </div>
-
-
-
-                {/* Centro: Engajamento por post (reaAAes, comentArios, compartilhamentos) */}
-
-                <div className="chart-card chart-card--sm">
-
-                  <div className="fb-line-card__header" style={{marginBottom:12}}>
-
-                    <h3>Engajamento por tipo</h3>
-
-                    <p className="muted">DistribuiAAo de reaAAes, comentArios e compartilhamentos</p>
-
-                  </div>
-
-                  {loadingPage ? (
-
-                    <div className="chart-card__empty">Carregando dados...</div>
-
-                  ) : hasPostsEngagement ? (
-
-                    <ResponsiveContainer width="100%" height={260}>
-
-                      <BarChart data={postsEngagementData} layout="vertical" margin={{ left: 20, right: 20, bottom: 12 }}>
-
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" horizontal={false} />
-
-                        <XAxis type="number" tickFormatter={formatShortNumber} stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-
-                        <YAxis type="category" dataKey="name" width={140} stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-
-                        <Tooltip
-
-                          contentStyle={{
-
-                            backgroundColor: '#f7fafc',
-
-                            color: '#0f1720',
-
-                            border: '1px solid #e3e8ef',
-
-                            borderRadius: '10px',
-
-                            boxShadow: '0 6px 20px rgba(0,0,0,.25)'
-
-                          }}
-
-                          formatter={(value) => formatNumber(Number(value))}
-
-                        />
-
-                        <Bar dataKey="value" radius={[0, 12, 12, 0]}>
-
-                          {postsEngagementData.map((entry, index) => (
-
-                            <Cell key={`engagement-cell-${index}`} fill={entry.color} />
-
-                          ))}
-
-                        </Bar>
-
-                      </BarChart>
-
-                    </ResponsiveContainer>
-
-                  ) : (
-
-                    <div className="chart-card__empty">Sem dados de engajamento no perAodo.</div>
-
-                  )}
-
-                </div>
-
-
-
-                {/* Direita: Insights por post (impressAes, alcance, engajados, cliques) */}
-
-                <div className="chart-card chart-card--sm">
-
-                  <div className="fb-line-card__header" style={{marginBottom:12}}>
-
-                    <h3>Performance dos posts</h3>
-
-                    <p className="muted">ImpressAes, alcance, usuArios engajados e cliques</p>
-
-                  </div>
-
-                  {loadingPage ? (
-
-                    <div className="chart-card__empty">Carregando dados...</div>
-
-                  ) : hasPostsInsights ? (
-
-                    <ResponsiveContainer width="100%" height={260}>
-
-                      <BarChart data={postsInsightsData} layout="vertical" margin={{ left: 20, right: 20, bottom: 12 }}>
-
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" horizontal={false} />
-
-                        <XAxis type="number" tickFormatter={formatShortNumber} stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-
-                        <YAxis type="category" dataKey="name" width={140} stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-
-                        <Tooltip
-
-                          contentStyle={{
-
-                            backgroundColor: '#f7fafc',
-
-                            color: '#0f1720',
-
-                            border: '1px solid #e3e8ef',
-
-                            borderRadius: '10px',
-
-                            boxShadow: '0 6px 20px rgba(0,0,0,.25)'
-
-                          }}
-
-                          formatter={(value) => formatNumber(Number(value))}
-
-                        />
-
-                        <Bar dataKey="value" radius={[0, 12, 12, 0]}>
-
-                          {postsInsightsData.map((entry, index) => (
-
-                            <Cell key={`insights-cell-${index}`} fill={entry.color} />
-
-                          ))}
-
-                        </Bar>
-
-                      </BarChart>
-
-                    </ResponsiveContainer>
-
-                  ) : (
-
-                    <div className="chart-card__empty">Sem dados de insights no perAodo.</div>
-
-                  )}
-
-                </div>
-
-
-
-              </div>
-
-
-
-              {/* === Segunda linha de grAficos === */}
-
-              <div className="dashboard-charts dashboard-charts--two-cols" style={{marginTop: '20px'}}>
-
-                {/* GrAfico de Linha Temporal - EvoluAAo do Engajamento */}
-
-                <div className="chart-card chart-card--sm">
-
-                  <div className="fb-line-card__header" style={{marginBottom:12}}>
-
-                    <h3>EvoluAAo do Engajamento</h3>
-
-                    <p className="muted">TendAancia temporal de reaAAes, comentArios e compartilhamentos</p>
-
-                  </div>
-
-                  {loadingPage ? (
-
-                    <div className="chart-card__empty">Carregando dados...</div>
-
-                  ) : hasEngagementTimeline ? (
-
-                    <ResponsiveContainer width="100%" height={260}>
-
-                      <LineChart data={engagementTimelineData} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
-
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
-
-                        <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-
-                        <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={formatShortNumber} width={64} />
-
-                        <Tooltip
-
-                          contentStyle={{
-
-                            backgroundColor: '#f7fafc',
-
-                            color: '#0f1720',
-
-                            border: '1px solid #e3e8ef',
-
-                            borderRadius: '10px',
-
-                            boxShadow: '0 6px 20px rgba(0,0,0,.25)'
-
-                          }}
-
-                          labelFormatter={(label, payload) => {
-
-                            const rawDate = payload && payload[0]?.payload?.date;
-
-                            return rawDate ? formatDateFull(rawDate) : label;
-
-                          }}
-
-                          formatter={(value, name) => {
-
-                            const labels = {
-
-                              reactions: 'ReaAAes',
-
-                              comments: 'ComentArios',
-
-                              shares: 'Compartilhamentos',
-
-                              total: 'Total'
-
-                            };
-
-                            return [formatNumber(Number(value)), labels[name] || name];
-
-                          }}
-
-                        />
-
-                        <Legend />
-
-                        <Line type="monotone" dataKey="reactions" stroke="#00FFD3" strokeWidth={2.5} dot={false} name="ReaAAes" />
-
-                        <Line type="monotone" dataKey="comments" stroke="#22A3FF" strokeWidth={2.5} dot={false} name="ComentArios" />
-
-                        <Line type="monotone" dataKey="shares" stroke="#9B8CFF" strokeWidth={2.5} dot={false} name="Compartilhamentos" />
-
-                      </LineChart>
-
-                    </ResponsiveContainer>
-
-                  ) : (
-
-                    <div className="chart-card__empty">Sem dados de evoluAAo no perAodo.</div>
-
-                  )}
-
-                </div>
-
-
-
-                {/* GrAfico de Origem das VisualizaAAes - Pizza */}
-
-                <div className="chart-card chart-card--sm">
-
-                  <div className="fb-line-card__header" style={{marginBottom:12}}>
-
-                    <h3>Origem das VisualizaAAes</h3>
-
-                    <p className="muted">DistribuiAAo entre seguidores e nAo-seguidores</p>
-
-                  </div>
-
-                  {loadingPage ? (
-
-                    <div className="chart-card__empty">Carregando dados...</div>
-
-                  ) : hasVisitorsBreakdown ? (
-
-                    <div style={{ position: 'relative', width: '100%', height: 260 }}>
-
-                      <ResponsiveContainer width="100%" height={260}>
-
-                        <PieChart>
-
-                          <Pie
-
-                            data={visitorsBreakdownData}
-
-                            dataKey="value"
-
-                            nameKey="name"
-
-                            cx="50%"
-
-                            cy="50%"
-
-                            outerRadius={90}
-
-                            innerRadius={50}
-
-                            paddingAngle={5}
-
-                            stroke="none"
-
-                            label={({ name, percentage }) => `${name}: ${percentage}%`}
-
-                            labelLine={true}
-
-                          >
-
-                            {visitorsBreakdownData.map((entry, index) => (
-
-                              <Cell key={`visitor-pie-${index}`} fill={entry.color} />
-
-                            ))}
-
-                          </Pie>
-
-                          <Tooltip
-
-                            contentStyle={{
-
-                              backgroundColor: '#f7fafc',
-
-                              color: '#0f1720',
-
-                              border: '1px solid #e3e8ef',
-
-                              borderRadius: '10px',
-
-                              boxShadow: '0 6px 20px rgba(0,0,0,.25)'
-
-                            }}
-
-                            formatter={(value, name) => [formatNumber(Number(value)), name]}
-
-                          />
-
-                        </PieChart>
-
-                      </ResponsiveContainer>
-
-                      <div style={{
-
-                        position: 'absolute',
-
-                        top: '50%',
-
-                        left: '50%',
-
-                        transform: 'translate(-50%, -50%)',
-
-                        textAlign: 'center',
-
-                        pointerEvents: 'none'
-
-                      }}>
-
-                        <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600 }}>
-
-                          Total
-
-                        </div>
-
-                        <div style={{ fontSize: '20px', color: 'var(--text-primary)', fontWeight: 700, marginTop: '4px' }}>
-
-                          {formatShortNumber(totalVisitors)}
-
-                        </div>
-
-                        <div style={{ fontSize: '10px', color: 'var(--muted)' }}>
-
-                          VisualizaAAes
-
-                        </div>
-
-                      </div>
-
-                    </div>
-
-                  ) : (
-
-                    <div className="chart-card__empty">Sem dados de visualizaAAes no perAodo.</div>
-
-                  )}
-
-                </div>
-
-              </div>
-
-
-
-            </Section>
-
-          </>
-
-        )}
-
-      {showPaidSections && (
-
-        <Section title="Trafego pago" className="ads-section">
-
-          {adsError && <div className="alert alert--error">{adsError}</div>}
-
-
-
-          <div className="dashboard-kpis">
-
-            <MetricCard
-
-              title="Investimento"
-
-              value={loadingAds ? "..." : formatCurrency(Number(adsTotals.spend))}
-
-              delta={loadingAds ? null : toNumber(adsTotals.spend_change_pct)}
-
-              compact
-
-            />
-
-            <MetricCard
-
-              title="ImpressAes"
-
-              value={loadingAds ? "..." : formatNumber(Number(adsTotals.impressions))}
-
-              delta={loadingAds ? null : toNumber(adsTotals.impressions_change_pct)}
-
-              compact
-
-            />
-
-            <MetricCard
-
-              title="Alcance"
-
-              value={loadingAds ? "..." : formatNumber(Number(adsTotals.reach))}
-
-              delta={loadingAds ? null : toNumber(adsTotals.reach_change_pct)}
-
-              compact
-
-            />
-
-            <MetricCard
-
-              title="Cliques"
-
-              value={loadingAds ? "..." : formatNumber(Number(adsTotals.clicks))}
-
-              delta={loadingAds ? null : toNumber(adsTotals.clicks_change_pct)}
-
-              compact
-
-            />
-
-            <MetricCard
-
-              title="CPC mAdio"
-
-              value={loadingAds ? "..." : formatCurrency(Number(adsAverages.cpc))}
-
-              delta={loadingAds ? null : toNumber(adsAverages.cpc_change_pct)}
-
-              compact
-
-            />
-
-            <MetricCard
-
-              title="CPM mAdio"
-
-              value={loadingAds ? "..." : formatCurrency(Number(adsAverages.cpm))}
-
-              delta={loadingAds ? null : toNumber(adsAverages.cpm_change_pct)}
-
-              compact
-
-            />
-
-            <MetricCard
-
-              title="CTR mAdio"
-
-              value={loadingAds ? "..." : formatPercent(Number(adsAverages.ctr))}
-
-              delta={loadingAds ? null : toNumber(adsAverages.ctr_change_pct)}
-
-              compact
-
-            />
-
-            <MetricCard
-
-              title="FrequAancia"
-
-              value={loadingAds ? "..." : frequencyDisplay}
-
-              delta={loadingAds ? null : frequencyDelta}
-
-              compact
-
-            />
-
-            <MetricCard
-
-              title="ConversAes"
-
-              value={loadingAds ? "..." : formatNumber(Number(adsTotals.conversions || adsTotals.actions || 0))}
-
-              delta={loadingAds ? null : toNumber(adsTotals.conversions_change_pct)}
-
-              compact
-
-            />
-
-            <MetricCard
-
-              title="Custo/Resultado"
-
-              value={loadingAds ? "..." : formatCurrency(Number(adsAverages.cost_per_result || adsAverages.cost_per_action || 0))}
-
-              delta={loadingAds ? null : toNumber(adsAverages.cost_per_result_change_pct)}
-
-              compact
-
-            />
-
-            <MetricCard
-
-              title="Taxa de ConversAo"
-
-              value={loadingAds ? "..." : formatPercent(Number(adsAverages.conversion_rate || 0))}
-
-              delta={loadingAds ? null : toNumber(adsAverages.conversion_rate_change_pct)}
-
-              compact
-
-            />
-
-            <MetricCard
-
-              title="ROAS"
-
-              value={loadingAds ? "..." : (Number(adsAverages.roas || 0) > 0 ? Number(adsAverages.roas).toFixed(2) + "x" : "-")}
-
-              delta={loadingAds ? null : toNumber(adsAverages.roas_change_pct)}
-
-              compact
-
-            />
-
-          </div>
-
-
-
-          <div className="charts-row charts-row--ads">
-
-            <div className="card chart-card">
-
-              <div>
-
-                <h3 className="chart-card__title">Volume por indicador</h3>
-
-                <p className="chart-card__subtitle">Impressoes, alcance e cliques</p>
-
-              </div>
-
-              <div className="chart-card__viz">
-
-                {loadingAds ? (
-
-                  <div className="chart-card__empty">Carregando dados...</div>
-
-                ) : hasVolumeData ? (
-
-                  <ResponsiveContainer width="100%" height={240}>
-
-                    <BarChart data={volumeBarData} layout="vertical" margin={{ left: 20, right: 20 }}>
-
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" horizontal={false} />
-
-                      <XAxis type="number" tickFormatter={formatShortNumber} stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-
-                      <YAxis type="category" dataKey="name" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} width={100} />
-
-                      <Tooltip
-
-                        formatter={(value) => formatNumber(Number(value))}
-
-                        contentStyle={{
-
-                          backgroundColor: "var(--panel)",
-
-                          border: "1px solid var(--stroke)",
-
-                          borderRadius: "12px",
-
-                          padding: "8px 12px",
-
-                          boxShadow: "var(--shadow-lg)",
-
-                          color: "var(--text-primary)",
-
-                        }}
-
-                        cursor={{ fill: "var(--panel-hover)" }}
-
-                      />
-
-                      <Bar dataKey="value" radius={[0, 12, 12, 0]}>
-
-                        {volumeBarData.map((entry, index) => (
-
-                          <Cell key={`volume-cell-${index}`} fill={entry.color} />
-
-                        ))}
-
-                      </Bar>
-
-                    </BarChart>
-
-                  </ResponsiveContainer>
-
-                ) : (
-
-                  <div className="chart-card__empty">Sem dados no perAodo.</div>
-
-                )}
-
-              </div>
-
-            </div>
-
-
-
-            <div className="card chart-card">
-
-              <div>
-
-                <h3 className="chart-card__title">Acoes do anuncio</h3>
-
-                <p className="chart-card__subtitle">Cliques, visualizacoes e outras acoes</p>
-
-              </div>
-
-              <div className="chart-card__viz">
-
-                {loadingAds ? (
-
-                  <div className="chart-card__empty">Carregando dados...</div>
-
-                ) : hasAdsActions ? (
-
-                  <ResponsiveContainer width="100%" height={240}>
-
-                    <BarChart data={adsActionsData} margin={{ left: 12, right: 12 }}>
-
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
-
-                      <XAxis dataKey="name" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-
-                      <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={formatShortNumber} width={60} />
-
-                      <Tooltip
-
-                        formatter={(value) => formatNumber(Number(value))}
-
-                        contentStyle={{
-
-                          backgroundColor: "var(--panel)",
-
-                          border: "1px solid var(--stroke)",
-
-                          borderRadius: "12px",
-
-                          padding: "8px 12px",
-
-                          boxShadow: "var(--shadow-lg)",
-
-                          color: "var(--text-primary)",
-
-                        }}
-
-                        cursor={{ fill: "var(--panel-hover)" }}
-
-                      />
-
-                      <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="#6aa7ff">
-
-                        {adsActionsData.map((entry, index) => (
-
-                          <Cell key={`actions-cell-${index}`} />
-
-                        ))}
-
-                      </Bar>
-
-                    </BarChart>
-
-                  </ResponsiveContainer>
-
-                ) : (
-
-                  <div className="chart-card__empty">Sem acoes suficientes no periodo.</div>
-
-                )}
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </Section>
-
-      )}
-
-       {/* === DEMOGRAFIA === */}
-      <DemographicsSection 
-        data={demographicsData}
-        loading={loadingDemographics}
-        error={demographicsError}
-        platform="facebook"
-      />
-
-      <Modal
-
-        open={openEngagementModal}
-
-        title="Detalhes - Engajamento total"
-
-        onClose={()=>setOpenEngagementModal(false)}
-
-      >
-
-        <div style={{display:"grid", gap:8}}>
-
-          {renderEngagementBreakdown(pageMetricsByKey.post_engagement_total) || (
-
-            <p className="muted">Sem detalhes para o periodo.</p>
-
-          )}
-
-        </div>
-
-      </Modal>
-
-      </div>
-
-    </>
-
+  const coverInputRef = useRef(null);
+  const [coverImageUrl, setCoverImageUrl] = useState("");
+  const [coverError, setCoverError] = useState("");
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [overviewSnapshot, setOverviewSnapshot] = useState(null);
+
+  const activeSnapshot = useMemo(
+    () => (overviewSnapshot?.accountId === accountSnapshotKey && accountSnapshotKey ? overviewSnapshot : null),
+    [accountSnapshotKey, overviewSnapshot],
   );
 
-}
+  useEffect(() => {
+    setPageMetrics([]);
+    setNetFollowersSeries([]);
+    setCoverImageUrl("");
+    setCoverError("");
+    setOverviewSnapshot(null);
+  }, [accountSnapshotKey]);
 
+  useEffect(() => {
+    const path = coverStoragePath;
+    if (!path) {
+      setCoverImageUrl("");
+      setCoverError("");
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase.storage
+          .from(COVER_BUCKET)
+          .createSignedUrl(path, 3600);
+        if (error) throw error;
+        if (!cancelled) {
+          const signedUrl = data?.signedUrl ? `${data.signedUrl}&cb=${Date.now()}` : "";
+          setCoverImageUrl(signedUrl);
+          setCoverError("");
+        }
+      } catch (err) {
+        if (cancelled) return;
+        const message = err?.message || String(err || "");
+        const notFound = /not\s+found|no such/gim.test(message);
+        if (!notFound) {
+          console.warn("Falha ao carregar capa do perfil", err);
+          setCoverError("Não foi possível carregar a capa.");
+        } else {
+          setCoverError("");
+        }
+        setCoverImageUrl("");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [coverStoragePath]);
+
+  const handleCoverButtonClick = useCallback(() => {
+    setCoverError("");
+    coverInputRef.current?.click();
+  }, []);
+
+  const handleCoverUpload = useCallback(
+    async (event) => {
+      const file = event.target?.files?.[0];
+      if (!file || !coverStoragePath) {
+        if (event.target) event.target.value = "";
+        return;
+      }
+      setCoverUploading(true);
+      setCoverError("");
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from(COVER_BUCKET)
+          .upload(coverStoragePath, file, {
+            cacheControl: "3600",
+            upsert: true,
+            contentType: file.type || "image/jpeg",
+          });
+        if (uploadError) throw uploadError;
+        const { data, error: signedError } = await supabase.storage
+          .from(COVER_BUCKET)
+          .createSignedUrl(coverStoragePath, 3600);
+        if (signedError) throw signedError;
+        const signedUrl = data?.signedUrl ? `${data.signedUrl}&cb=${Date.now()}` : "";
+        setCoverImageUrl(signedUrl);
+      } catch (err) {
+        console.error("Falha ao enviar capa do perfil", err);
+        setCoverError(err?.message || "Não foi possível salvar a capa.");
+      } finally {
+        setCoverUploading(false);
+        if (event.target) {
+          event.target.value = "";
+        }
+      }
+    },
+    [coverStoragePath],
+  );
+
+  const coverStyle = useMemo(() => {
+    if (!coverImageUrl) return undefined;
+    return {
+      backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.25) 0%, rgba(15, 23, 42, 0.55) 100%), url(${coverImageUrl})`,
+    };
+  }, [coverImageUrl]);
+
+  // Load Facebook metrics
+  useEffect(() => {
+    if (!accountConfig?.facebookPageId) {
+      setPageMetrics([]);
+      setNetFollowersSeries([]);
+      setPageError("Página do Facebook não configurada.");
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const loadMetrics = async () => {
+      setLoadingPage(true);
+      setPageError("");
+      try {
+        const params = new URLSearchParams();
+        params.set("pageId", accountConfig.facebookPageId);
+        if (sinceParam) params.set("since", sinceParam);
+        if (untilParam) params.set("until", untilParam);
+
+        const url = `${API_BASE_URL}/api/facebook/metrics?${params.toString()}`;
+        const response = await fetch(url, { signal: controller.signal });
+        const raw = await response.text();
+        const json = safeParseJson(raw) || {};
+        if (!response.ok) {
+          throw new Error(describeApiError(json, "Falha ao carregar métricas de página."));
+        }
+        setPageMetrics(json.metrics || []);
+        setNetFollowersSeries(json.net_followers_series || []);
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          console.error(err);
+          setPageMetrics([]);
+          setNetFollowersSeries([]);
+          setPageError(err.message || "Não foi possível carregar as métricas de página.");
+        }
+      } finally {
+        setLoadingPage(false);
+      }
+    };
+
+    loadMetrics();
+    return () => controller.abort();
+  }, [accountConfig?.facebookPageId, sinceParam, untilParam]);
+
+  // Load demographics
+  useEffect(() => {
+    if (!accountConfig?.facebookPageId) return;
+
+    const controller = new AbortController();
+    const loadDemographics = async () => {
+      try {
+        setLoadingDemographics(true);
+        setDemographicsError(null);
+
+        const url = `${API_BASE_URL}/api/facebook/audience?pageId=${accountConfig.facebookPageId}`;
+        const response = await fetch(url, { signal: controller.signal });
+
+        if (!response.ok) {
+          throw new Error(`Erro HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        setDemographicsData(data);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('Erro ao carregar demografia:', err);
+          setDemographicsError(err.message);
+        }
+      } finally {
+        setLoadingDemographics(false);
+      }
+    };
+
+    loadDemographics();
+    return () => controller.abort();
+  }, [accountConfig?.facebookPageId]);
+
+  const pageMetricsByKey = useMemo(() => {
+    const map = {};
+    pageMetrics.forEach((metric) => {
+      if (metric?.key) map[metric.key] = metric;
+    });
+    return map;
+  }, [pageMetrics]);
+
+  // Calculate overview metrics
+  const totalFollowers = extractNumber(pageMetricsByKey.followers_total?.value, 0);
+  const reachValue = extractNumber(pageMetricsByKey.reach?.value, 0);
+  const newFollowers = extractNumber(pageMetricsByKey.followers_gained?.value, 0);
+  const postsCount = extractNumber(pageMetricsByKey.posts_count?.value, 3); // Mock value
+
+  const avgFollowersPerDay = useMemo(() => {
+    if (netFollowersSeries.length >= 2) {
+      const total = netFollowersSeries.reduce((sum, entry) => sum + extractNumber(entry.net, 0), 0);
+      return Math.round(total / netFollowersSeries.length);
+    }
+    return Math.round(newFollowers / 30);
+  }, [netFollowersSeries, newFollowers]);
+
+  const weeklyFollowersPattern = useMemo(() => buildWeeklyPattern(DEFAULT_WEEKLY_FOLLOWERS), []);
+  const weeklyPostsPattern = useMemo(() => buildWeeklyPattern(DEFAULT_WEEKLY_POSTS), []);
+
+  const overviewMetrics = useMemo(
+    () => ({
+      followers: activeSnapshot?.followers ?? totalFollowers ?? 0,
+      reach: activeSnapshot?.reach ?? reachValue ?? 0,
+      followersDaily: activeSnapshot?.followersDaily ?? avgFollowersPerDay ?? 0,
+      posts: activeSnapshot?.posts ?? postsCount ?? 0,
+    }),
+    [activeSnapshot, avgFollowersPerDay, postsCount, reachValue, totalFollowers],
+  );
+
+  const followersDailyDisplay = useMemo(() => (
+    Number.isFinite(overviewMetrics.followersDaily)
+      ? overviewMetrics.followersDaily.toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+      : "--"
+  ), [overviewMetrics.followersDaily]);
+
+  const engagementRateValue = extractNumber(pageMetricsByKey.engagement_rate?.value, null);
+  const engagementRateDisplay = useMemo(() => (
+    engagementRateValue != null
+      ? `${engagementRateValue.toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}%`
+      : "--"
+  ), [engagementRateValue]);
+
+  // Engagement breakdown
+  const engagementBreakdown = useMemo(() => {
+    const metric = pageMetricsByKey.post_engagement_total;
+    const breakdown = metric?.breakdown || {};
+
+    return [
+      {
+        name: "Reações",
+        value: extractNumber(breakdown.reactions, 0),
+      },
+      {
+        name: "Comentários",
+        value: extractNumber(breakdown.comments, 0),
+      },
+      {
+        name: "Compartilhamentos",
+        value: extractNumber(breakdown.shares, 0),
+      },
+    ].filter(item => item.value > 0);
+  }, [pageMetricsByKey]);
+
+  // Gender distribution
+  const genderStatsSeries = useMemo(() => {
+    if (!demographicsData?.gender) return DEFAULT_GENDER_STATS;
+
+    const genderData = demographicsData.gender;
+    const total = Object.values(genderData).reduce((sum, val) => sum + extractNumber(val, 0), 0);
+
+    if (total === 0) return DEFAULT_GENDER_STATS;
+
+    return Object.entries(genderData).map(([key, value]) => ({
+      name: key === 'M' ? 'Homens' : key === 'F' ? 'Mulheres' : key,
+      value: Math.round((extractNumber(value, 0) / total) * 100),
+    }));
+  }, [demographicsData]);
+
+  // Reach timeline
+  const reachTimelineData = useMemo(() => {
+    if (!netFollowersSeries.length) {
+      // Default mock data
+      return [
+        { dateKey: "2025-01-29", label: "29/01", value: 12000 },
+        { dateKey: "2025-01-30", label: "30/01", value: 28000 },
+        { dateKey: "2025-01-31", label: "31/01", value: 78000 },
+        { dateKey: "2025-02-01", label: "01/02", value: 36000 },
+        { dateKey: "2025-02-02", label: "02/02", value: 42000 },
+        { dateKey: "2025-02-03", label: "03/02", value: 48000 },
+        { dateKey: "2025-02-04", label: "04/02", value: 32000 },
+      ];
+    }
+
+    return netFollowersSeries.map((entry) => {
+      const dateStr = entry.date || "";
+      const parsedDate = new Date(`${dateStr}T00:00:00`);
+      return {
+        dateKey: dateStr,
+        label: SHORT_DATE_FORMATTER.format(parsedDate),
+        value: extractNumber(entry.cumulative, 0),
+      };
+    });
+  }, [netFollowersSeries]);
+
+  const peakReachPoint = useMemo(() => {
+    if (!reachTimelineData.length) return null;
+    return reachTimelineData.reduce(
+      (currentMax, entry) => (entry.value > currentMax.value ? entry : currentMax),
+      reachTimelineData[0],
+    );
+  }, [reachTimelineData]);
+
+  // Best posting times (mock data - to be implemented with real data)
+  const bestTimes = useMemo(() => ({
+    bestDay: "Sexta-feira",
+    bestTimeRange: "18:00 - 21:00",
+    avgEngagement: 1250,
+    confidence: "média",
+  }), []);
+
+  const accountInitial = (accountConfig?.label || accountConfig?.name || "FB").charAt(0).toUpperCase();
+
+  return (
+    <div className="facebook-dashboard facebook-dashboard--clean">
+      {pageError && <div className="alert alert--error">{pageError}</div>}
+
+      {/* Container Limpo (fundo branco) */}
+      <div className="ig-clean-container">
+        <div className="ig-hero-gradient" aria-hidden="true" />
+        {/* Header com Logo Facebook e Tabs */}
+        <div className="ig-clean-header fb-topbar">
+          <div className="ig-clean-header__brand">
+            <div className="ig-clean-header__logo">
+              <Facebook size={32} color="#1877F2" fill="#1877F2" />
+            </div>
+            <h1>Facebook</h1>
+          </div>
+
+          <nav className="ig-clean-tabs">
+            {HERO_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = tab.href ? location.pathname === tab.href : tab.id === "facebook";
+              return tab.href ? (
+                <Link
+                  key={tab.id}
+                  to={tab.href}
+                  className={`fb-clean-tab${isActive ? " fb-clean-tab--active" : ""}`}
+                >
+                  <Icon
+                    size={18}
+                    color={tab.id === "facebook" ? "#1877F2" : undefined}
+                    fill={tab.id === "facebook" ? "#1877F2" : undefined}
+                  />
+                  <span>{tab.label}</span>
+                </Link>
+              ) : (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`fb-clean-tab${isActive ? " fb-clean-tab--active" : ""}`}
+                  disabled={!tab.href}
+                >
+                  <Icon
+                    size={18}
+                    color={tab.id === "facebook" ? "#1877F2" : undefined}
+                    fill={tab.id === "facebook" ? "#1877F2" : undefined}
+                  />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        <h2 className="ig-clean-title">Visão Geral</h2>
+
+        {/* Grid Principal */}
+        <div className="ig-clean-grid">
+          <div className="ig-clean-grid__left">
+            <section className="ig-profile-vertical">
+              <div className="ig-profile-vertical__cover" style={coverStyle}>
+                <div className="ig-profile-vertical__cover-actions">
+                  <button
+                    type="button"
+                    className="ig-profile-vertical__cover-button"
+                    onClick={handleCoverButtonClick}
+                    disabled={coverUploading}
+                  >
+                    {coverUploading ? "Salvando..." : "Mudar imagem"}
+                  </button>
+                </div>
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  className="ig-profile-vertical__file-input"
+                  onChange={handleCoverUpload}
+                />
+              </div>
+
+              <div className="ig-profile-vertical__avatar-wrapper">
+                <div className="ig-profile-vertical__avatar">
+                  <span>{accountInitial}</span>
+                </div>
+              </div>
+
+              <div className="ig-profile-vertical__body">
+                {coverError ? (
+                  <p className="ig-profile-vertical__cover-error">{coverError}</p>
+                ) : null}
+                <h3 className="ig-profile-vertical__username">
+                  {accountConfig?.label || accountConfig?.name || "Página Facebook"}
+                </h3>
+
+                <div className="ig-profile-vertical__stats-grid">
+                  <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.followers)}</div>
+                    <div className="ig-overview-stat__label">Total de seguidores</div>
+                  </div>
+                  <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.reach)}</div>
+                    <div className="ig-overview-stat__label">Alcance (30 dias)</div>
+                  </div>
+                </div>
+
+                <div className="ig-overview-activity">
+                  <div className="ig-overview-metric">
+                    <div className="ig-overview-metric__row">
+                      <div className="ig-overview-metric__info">
+                        <div className="ig-overview-metric__value">{followersDailyDisplay}</div>
+                        <div className="ig-overview-metric__label">Seguidores diários</div>
+                      </div>
+                      <div className="ig-weekly-chart">
+                        {weeklyFollowersPattern.map((day) => (
+                          <div
+                            key={`followers-${day.label}`}
+                            className={`fb-weekly-chart__item${day.active ? " fb-weekly-chart__item--active" : ""}`}
+                          >
+                            <div
+                              className="ig-weekly-chart__bar"
+                              style={{ height: `${Math.max(day.percentage, 12)}%` }}
+                            />
+                            <span className="ig-weekly-chart__label">{day.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="ig-overview-metric">
+                    <div className="ig-overview-metric__row">
+                      <div className="ig-overview-metric__info">
+                        <div className="ig-overview-metric__value">{formatNumber(overviewMetrics.posts)}</div>
+                        <div className="ig-overview-metric__label">Posts criados</div>
+                        <select className="ig-overview-metric__select">
+                          <option>Esta semana</option>
+                          <option>Últimas 4 semanas</option>
+                          <option>Último trimestre</option>
+                        </select>
+                      </div>
+                      <div className="ig-weekly-chart fb-weekly-chart--compact">
+                        {weeklyPostsPattern.map((day) => (
+                          <div
+                            key={`posts-${day.label}`}
+                            className={`fb-weekly-chart__item${day.active ? " fb-weekly-chart__item--active" : ""}`}
+                          >
+                            <div
+                              className="ig-weekly-chart__bar"
+                              style={{ height: `${Math.max(day.percentage, 12)}%` }}
+                            />
+                            <span className="ig-weekly-chart__label">{day.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="ig-profile-vertical__divider" />
+
+                <div className="ig-profile-vertical__engagement">
+                  <h4>Engajamento por Conteúdo</h4>
+                  {engagementBreakdown.length ? (
+                    <>
+                      <div className="ig-profile-vertical__engagement-chart">
+                        <ResponsiveContainer width="100%" height={220}>
+                          <PieChart>
+                            <Pie
+                              data={engagementBreakdown}
+                              dataKey="value"
+                              nameKey="name"
+                              innerRadius={55}
+                              outerRadius={85}
+                              paddingAngle={3}
+                              stroke="none"
+                            >
+                              <Cell fill="#1877F2" />
+                              <Cell fill="#0A66C2" />
+                              <Cell fill="#42A5F5" />
+                            </Pie>
+                            <Tooltip formatter={(value, name) => [Number(value).toLocaleString("pt-BR"), name]} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      <div className="ig-engagement-legend">
+                        {engagementBreakdown.map((slice, index) => (
+                          <div key={slice.name || index} className="ig-engagement-legend__item">
+                            <span
+                              className="ig-engagement-legend__swatch"
+                              style={{ backgroundColor: index === 0 ? "#1877F2" : index === 1 ? "#0A66C2" : "#42A5F5" }}
+                            />
+                            <span className="ig-engagement-legend__label">{slice.name}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="ig-engagement-summary">
+                        <div className="ig-engagement-summary__value">{engagementRateDisplay}</div>
+                        <div className="ig-engagement-summary__label">Total de engajamento do período</div>
+                      </div>
+
+                      <div className="ig-engagement-mini-grid">
+                        <div className="ig-engagement-mini-card fb-engagement-mini-card--blue">
+                          <span className="ig-engagement-mini-card__label">Melhor horário para postar</span>
+                          <span className="ig-engagement-mini-card__value">{bestTimes.bestTimeRange || "--"}</span>
+                        </div>
+                        <div className="ig-engagement-mini-card fb-engagement-mini-card--darkblue">
+                          <span className="ig-engagement-mini-card__label">Melhor dia</span>
+                          <span className="ig-engagement-mini-card__value">{bestTimes.bestDay || "--"}</span>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="ig-empty-state">Sem dados</div>
+                  )}
+                </div>
+
+                {/* Posts em Destaque - Placeholder */}
+                <div className="ig-profile-vertical__divider" />
+                <div className="ig-profile-vertical__top-posts">
+                  <h4>Top posts</h4>
+                  <div className="ig-top-posts-list">
+                    <div className="ig-empty-state">
+                      <p style={{ fontSize: '14px', color: '#666', textAlign: 'center', padding: '20px 0' }}>
+                        Seção de Top Posts será implementada em breve
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div className="ig-clean-grid__right">
+            {/* Card de Crescimento do Perfil */}
+            <section className="ig-growth-clean">
+              <header className="ig-card-header">
+                <div>
+                  <h2 className="ig-clean-title2">Crescimento do perfil</h2>
+                  <h3>Alcance</h3>
+                </div>
+                <div className="ig-filter-pills">
+                  {FB_TOPBAR_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      className={`fb-filter-pill${activePreset === preset.id ? " fb-filter-pill--active" : ""}`}
+                      onClick={() => handlePresetSelect(preset.id)}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                  <button className="ig-filter-pill">1 ano</button>
+                  <button className="ig-filter-pill">Máximo</button>
+                </div>
+              </header>
+
+              <div className="ig-chart-area">
+                {reachTimelineData.length ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <ComposedChart
+                      data={reachTimelineData}
+                      margin={{ top: 24, right: 28, left: 12, bottom: 12 }}
+                    >
+                      <defs>
+                        <linearGradient id="fbReachGradient" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#1877F2" />
+                          <stop offset="100%" stopColor="#0A66C2" />
+                        </linearGradient>
+                        <linearGradient id="fbReachGlow" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="rgba(24, 119, 242, 0.32)" />
+                          <stop offset="100%" stopColor="rgba(10, 102, 194, 0)" />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid vertical={false} strokeDasharray="4 8" stroke="#f3f4f6" />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fill: '#111827' }}
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={{ stroke: '#e5e7eb' }}
+                      />
+                      <YAxis
+                        tick={{ fill: '#111827' }}
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={{ stroke: '#e5e7eb' }}
+                        tickFormatter={(value) => formatShortNumber(value)}
+                        domain={['dataMin', (dataMax) => (Number.isFinite(dataMax) ? Math.ceil(dataMax * 1.1) : dataMax)]}
+                      />
+                      <Tooltip
+                        cursor={{ stroke: 'rgba(17, 24, 39, 0.2)', strokeDasharray: '4 4' }}
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const [{ payload: item, value }] = payload;
+                          const numericValue = Number(value ?? item?.value ?? 0);
+                          const label = item?.label ?? "Período";
+                          const isPeak =
+                            !!peakReachPoint &&
+                            item?.dateKey === peakReachPoint.dateKey &&
+                            numericValue === peakReachPoint.value;
+                          return (
+                            <div className="ig-tooltip">
+                              <span className="ig-tooltip__title">{label}</span>
+                              <div className="ig-tooltip__row">
+                                <span>Contas alcançadas</span>
+                                <strong>{numericValue.toLocaleString("pt-BR")}</strong>
+                              </div>
+                              {isPeak ? (
+                                <div style={{ marginTop: 6, fontSize: 12, color: '#6b7280' }}>
+                                  Pico do período
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="value"
+                        fill="url(#fbReachGlow)"
+                        stroke="none"
+                        isAnimationActive={false}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="url(#fbReachGradient)"
+                        strokeWidth={7}
+                        strokeOpacity={0.2}
+                        dot={false}
+                        isAnimationActive={false}
+                        activeDot={false}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="url(#fbReachGradient)"
+                        strokeWidth={3}
+                        dot={false}
+                        activeDot={{ r: 6, fill: '#ffffff', stroke: '#1877F2', strokeWidth: 2 }}
+                      />
+                      {peakReachPoint ? (
+                        <>
+                          <ReferenceLine
+                            x={peakReachPoint.label}
+                            stroke="#111827"
+                            strokeDasharray="4 4"
+                            strokeOpacity={0.45}
+                          />
+                          <ReferenceLine
+                            y={peakReachPoint.value}
+                            stroke="#111827"
+                            strokeDasharray="4 4"
+                            strokeOpacity={0.45}
+                          />
+                          <ReferenceDot
+                            x={peakReachPoint.label}
+                            y={peakReachPoint.value}
+                            r={6}
+                            fill="#111827"
+                            stroke="#ffffff"
+                            strokeWidth={2}
+                          />
+                        </>
+                      ) : null}
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="ig-empty-state">Sem dados disponíveis</div>
+                )}
+              </div>
+            </section>
+
+            {/* Card de Crescimento de Seguidores */}
+            <section className="ig-growth-clean fb-growth-followers fb-follower-growth-card">
+              <header className="ig-card-header">
+                <div>
+                  <h3>Crescimento de Seguidores</h3>
+                  <p className="ig-card-subtitle">Evolução mensal</p>
+                </div>
+                <div className="ig-filter-pills">
+                  {FOLLOWER_GROWTH_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      className={`fb-filter-pill${preset.id === "1y" ? " fb-filter-pill--active" : ""}`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </header>
+
+              <div className="ig-chart-area">
+                {FOLLOWER_GROWTH_SERIES.length ? (
+                  <>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={FOLLOWER_GROWTH_SERIES} margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
+                        <defs>
+                          <linearGradient id="fbBarGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#1877F2" stopOpacity={1} />
+                            <stop offset="100%" stopColor="#0A66C2" stopOpacity={1} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                        <XAxis
+                          dataKey="label"
+                          tick={{ fill: '#111827' }}
+                          fontSize={11}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          tick={{ fill: '#111827' }}
+                          fontSize={11}
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={(value) => {
+                            if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                            return value;
+                          }}
+                        />
+                        <Tooltip
+                          cursor={{ fill: 'rgba(24, 119, 242, 0.1)' }}
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const data = payload[0];
+                            return (
+                              <div className="ig-follower-tooltip">
+                                <div className="ig-follower-tooltip__label">Total seguidores: {data.value?.toLocaleString('pt-BR')}</div>
+                                <div className="ig-follower-tooltip__date">{data.payload.label}</div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar
+                          dataKey="value"
+                          fill="url(#fbBarGradient)"
+                          radius={[8, 8, 0, 0]}
+                          maxBarSize={40}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                    <div className="ig-chart-slider">
+                      <div className="ig-chart-slider__track">
+                        <div className="ig-chart-slider__handle fb-chart-slider__handle--left" />
+                        <div className="ig-chart-slider__handle fb-chart-slider__handle--right" />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="ig-empty-state">Sem histórico recente.</div>
+                )}
+              </div>
+            </section>
+
+            <div className="ig-analytics-grid fb-analytics-grid--pair">
+              <section className="ig-card-white fb-analytics-card">
+                <div className="ig-analytics-card__header">
+                  <h4>Estatística por gênero</h4>
+                  <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
+                </div>
+                <div className="ig-analytics-card__body">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      {/* Blue circle (background) */}
+                      <Pie
+                        data={[{ value: 100 }]}
+                        dataKey="value"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={85}
+                        innerRadius={0}
+                        fill="#1877F2"
+                        stroke="none"
+                        isAnimationActive={false}
+                      />
+                      {/* Light blue circle (foreground - overlapping) */}
+                      <Pie
+                        data={genderStatsSeries}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={85}
+                        innerRadius={0}
+                        startAngle={90}
+                        endAngle={90 + (genderStatsSeries[0]?.value || 0) * 3.6}
+                        fill="#42A5F5"
+                        stroke="none"
+                        paddingAngle={0}
+                      />
+                      <Tooltip content={(props) => <BubbleTooltip {...props} suffix="%" />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="ig-analytics-legend">
+                    {genderStatsSeries.map((slice, index) => (
+                      <div key={slice.name || index} className="ig-analytics-legend__item">
+                        <span
+                          className="ig-analytics-legend__swatch"
+                          style={{ backgroundColor: index === 0 ? "#42A5F5" : "#1877F2" }}
+                        />
+                        <span className="ig-analytics-legend__label">{slice.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              <section className="ig-card-white fb-analytics-card">
+                <div className="ig-analytics-card__header">
+                  <h4>Quantidade de publicações por dia</h4>
+                  <select className="ig-card-filter" defaultValue="abril">
+                    <option value="janeiro">Janeiro 2024</option>
+                    <option value="fevereiro">Fevereiro 2024</option>
+                    <option value="marco">Março 2024</option>
+                    <option value="abril">Abril 2024</option>
+                    <option value="maio">Maio 2024</option>
+                    <option value="junho">Junho 2024</option>
+                    <option value="julho">Julho 2024</option>
+                    <option value="agosto">Agosto 2024</option>
+                    <option value="setembro">Setembro 2024</option>
+                    <option value="outubro">Outubro 2024</option>
+                  </select>
+                </div>
+                <div className="ig-analytics-card__body">
+                  <div className="ig-calendar">
+                    <div className="ig-calendar__weekdays">
+                      <span className="ig-calendar__weekday">Dom</span>
+                      <span className="ig-calendar__weekday">Seg</span>
+                      <span className="ig-calendar__weekday">Ter</span>
+                      <span className="ig-calendar__weekday">Qua</span>
+                      <span className="ig-calendar__weekday">Qui</span>
+                      <span className="ig-calendar__weekday">Sex</span>
+                      <span className="ig-calendar__weekday">Sáb</span>
+                    </div>
+                    <div className="ig-calendar__grid">
+                      <div className="ig-calendar__day fb-calendar__day--empty" />
+                      {Array.from({ length: 30 }, (_, i) => {
+                        const day = i + 1;
+                        const posts = Math.floor(Math.random() * 6);
+                        const level = posts === 0 ? 0 : Math.ceil((posts / 5) * 4);
+
+                        return (
+                          <div
+                            key={day}
+                            className={`fb-calendar__day fb-calendar__day--level-${level}`}
+                            data-tooltip={`${posts} publicaç${posts === 1 ? 'ão' : 'ões'}`}
+                          >
+                            <span className="ig-calendar__day-number">{day}</span>
+                          </div>
+                        );
+                      })}
+                      <div className="ig-calendar__day fb-calendar__day--empty" />
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div className="ig-analytics-grid fb-analytics-grid--pair">
+              <section className="ig-card-white fb-analytics-card">
+                <div className="ig-analytics-card__header">
+                  <h4>Idade</h4>
+                  <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
+                </div>
+                <div className="ig-analytics-card__body">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart
+                      data={[
+                        { age: "13-17", male: 20, female: 30 },
+                        { age: "18-24", male: 60, female: 80 },
+                        { age: "25-34", male: 70, female: 75 },
+                        { age: "35-44", male: 40, female: 35 },
+                        { age: "45++", male: 30, female: 25 },
+                      ]}
+                      layout="vertical"
+                      margin={{ left: 0, right: 0, top: 5, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                      <XAxis type="number" tick={{ fill: '#111827' }} fontSize={12} />
+                      <YAxis type="category" dataKey="age" tick={{ fill: '#111827' }} fontSize={12} width={60} />
+                      <Tooltip
+                        cursor={{ fill: 'rgba(24, 119, 242, 0.1)' }}
+                        formatter={(value) => Number(value).toLocaleString("pt-BR")}
+                      />
+                      <Bar dataKey="male" fill="#1877F2" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="female" fill="#42A5F5" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+
+              <section className="ig-card-white fb-analytics-card">
+                <div className="ig-analytics-card__header">
+                  <h4>Top Cidades</h4>
+                  <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
+                </div>
+                <div className="ig-analytics-card__body">
+                  <div className="ig-top-cities">
+                    <div className="ig-top-cities__header">
+                      <div className="ig-top-cities__total">
+                        <span className="ig-top-cities__total-number">1.500</span>
+                        <div className="ig-top-cities__trend">
+                          <svg width="80" height="30" viewBox="0 0 80 30">
+                            <path
+                              d="M 0 25 Q 20 20, 40 15 T 80 5"
+                              fill="none"
+                              stroke="#1877F2"
+                              strokeWidth="2"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="ig-top-cities__legend">
+                        <span className="ig-top-cities__legend-item">
+                          <span className="ig-top-cities__legend-dot" style={{ backgroundColor: "#1877F2" }} />
+                          Crato
+                        </span>
+                      </div>
+                    </div>
+                    <div className="ig-top-cities__list">
+                      <div className="ig-top-city-item">
+                        <span className="ig-top-city-item__icon" style={{ backgroundColor: "#1877F2" }}>📍</span>
+                        <span className="ig-top-city-item__name">Fortaleza</span>
+                        <span className="ig-top-city-item__value">350</span>
+                      </div>
+                      <div className="ig-top-city-item">
+                        <span className="ig-top-city-item__icon" style={{ backgroundColor: "#0A66C2" }}>📍</span>
+                        <span className="ig-top-city-item__name">Crato</span>
+                        <span className="ig-top-city-item__value">200</span>
+                      </div>
+                      <div className="ig-top-city-item">
+                        <span className="ig-top-city-item__icon" style={{ backgroundColor: "#42A5F5" }}>📍</span>
+                        <span className="ig-top-city-item__name">Massape</span>
+                        <span className="ig-top-city-item__value">500</span>
+                      </div>
+                      <div className="ig-top-city-item">
+                        <span className="ig-top-city-item__icon" style={{ backgroundColor: "#1976D2" }}>📍</span>
+                        <span className="ig-top-city-item__name">France</span>
+                        <span className="ig-top-city-item__value">700</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+
+        {/* Palavras-chave e Hashtags - Largura Total */}
+        <div className="ig-analytics-grid fb-analytics-grid--pair">
+          <section className="ig-card-white fb-analytics-card fb-analytics-card--large">
+            <div className="ig-analytics-card__header">
+              <h4>Palavras chaves mais comentadas</h4>
+              <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
+            </div>
+            <div className="ig-analytics-card__body">
+              <div className="ig-word-cloud fb-word-cloud--large">
+                <span className="ig-word-cloud__word fb-word-cloud__word--xl" style={{ color: '#1877F2' }}>eventos</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--lg" style={{ color: '#0A66C2' }}>negócios</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--lg" style={{ color: '#42A5F5' }}>comunidade</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--md" style={{ color: '#1976D2' }}>produtos</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--md" style={{ color: '#0A66C2' }}>ofertas</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--sm" style={{ color: '#42A5F5' }}>promoção</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--md" style={{ color: '#1877F2' }}>família</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--sm" style={{ color: '#42A5F5' }}>vida</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--xl" style={{ color: '#0A66C2' }}>amigos</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--sm" style={{ color: '#1976D2' }}>grupo</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--md" style={{ color: '#1877F2' }}>curtir</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--lg" style={{ color: '#42A5F5' }}>compartilhar</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--sm" style={{ color: '#0A66C2' }}>seguir</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--md" style={{ color: '#1976D2' }}>página</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--sm" style={{ color: '#1877F2' }}>post</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--md" style={{ color: '#0A66C2' }}>conteúdo</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--sm" style={{ color: '#42A5F5' }}>notícias</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--lg" style={{ color: '#1877F2' }}>atualização</span>
+                <span className="ig-word-cloud__word fb-word-cloud__word--sm" style={{ color: '#1976D2' }}>novidade</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="ig-card-white fb-analytics-card fb-analytics-card--large">
+            <div className="ig-analytics-card__header">
+              <h4>Hashtags mais usadas</h4>
+              <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
+            </div>
+            <div className="ig-analytics-card__body">
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart
+                  data={[
+                    { name: "#sucesso", value: 45 },
+                    { name: "#negócios", value: 38 },
+                    { name: "#família", value: 32 },
+                    { name: "#motivação", value: 28 },
+                    { name: "#empreender", value: 25 },
+                    { name: "#saúde", value: 22 },
+                    { name: "#bem-estar", value: 18 },
+                    { name: "#comunidade", value: 15 },
+                    { name: "#ofertas", value: 12 },
+                    { name: "#promoção", value: 10 },
+                  ].slice(0, 10)}
+                  layout="vertical"
+                  margin={{ left: 12, right: 12, top: 5, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
+                  <XAxis type="number" tick={{ fill: '#111827' }} fontSize={12} allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fill: '#111827' }} fontSize={12} width={100} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(24, 119, 242, 0.1)' }}
+                    formatter={(value) => [String(value), "Ocorrências"]}
+                  />
+                  <Bar dataKey="value" fill="#1877F2" radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}

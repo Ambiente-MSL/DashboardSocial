@@ -635,6 +635,16 @@ body.theme-light {
   margin-left: var(--sidebar-width-collapsed);
 }
 
+/* Layout sem sidebar */
+.app-layout--no-sidebar .app-main {
+  margin-left: 0;
+}
+
+.app-main--full-width {
+  margin-left: 0 !important;
+  width: 100%;
+}
+
 .app-main__backdrop {
   position: absolute;
   inset: 0;
@@ -7792,6 +7802,28 @@ body:has(.instagram-dashboard--clean) .app-main__content {
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.65) 70%, transparent 100%);
 }
 
+.facebook-dashboard--clean .ig-hero-gradient {
+  background: linear-gradient(115deg, #0b4cc6 0%, #0e6eea 40%, #2494ff 70%, #5bbcff 100%);
+  box-shadow: 0 40px 80px rgba(14, 110, 234, 0.28);
+}
+
+.facebook-dashboard--clean .ig-clean-container {
+  padding-top: 24px;
+}
+
+.facebook-dashboard--clean .fb-topbar .ig-clean-header__logo {
+  background: rgba(15, 49, 132, 0.35);
+  box-shadow: 0 10px 24px rgba(11, 76, 198, 0.35);
+}
+
+.facebook-dashboard--clean .fb-topbar .ig-clean-header__logo svg {
+  filter: drop-shadow(0 4px 10px rgba(11, 76, 198, 0.25));
+}
+
+.facebook-dashboard--clean .fb-topbar .ig-clean-header__brand h1 {
+  color: #1b1d29;
+}
+
 /* Header com Instagram + Tabs */
 .ig-clean-header {
   display: flex;
@@ -8786,11 +8818,12 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 
 .ig-top-post-compact {
   display: flex;
+  flex-direction: column;
   gap: 12px;
-  padding: 12px;
+  padding: 14px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: 10px;
   transition: all 0.2s ease;
 }
 
@@ -8800,18 +8833,17 @@ body:has(.instagram-dashboard--clean) .app-main__content {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.ig-top-post-compact__thumb-wrapper {
+.ig-top-post-compact__top {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex-shrink: 0;
+  gap: 14px;
+  align-items: flex-start;
 }
 
 .ig-top-post-compact__thumb {
   flex-shrink: 0;
-  width: 84px;
-  height: 84px;
-  border-radius: 6px;
+  width: 100px;
+  height: 100px;
+  border-radius: 8px;
   overflow: hidden;
   background: #f3f4f6;
   cursor: pointer;
@@ -8819,7 +8851,7 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 }
 
 .ig-top-post-compact__thumb:hover {
-  transform: scale(1.05);
+  transform: scale(1.03);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -8829,27 +8861,38 @@ body:has(.instagram-dashboard--clean) .app-main__content {
   object-fit: cover;
 }
 
-.ig-top-post-compact__datetime {
-  font-size: 10px;
-  color: #6b7280;
-  text-align: center;
-  line-height: 1.3;
+.ig-top-post-compact__metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 8px;
+  flex: 1;
+  padding: 8px;
+  background: #ffffff;
+  border-radius: 8px;
+}
+
+.ig-top-post-compact__bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ig-top-post-compact__caption {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   font-weight: 500;
 }
 
-.ig-top-post-compact__content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-}
-
-.ig-top-post-compact__metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(2, auto);
-  gap: 10px 16px;
-  width: fit-content;
+.ig-top-post-compact__datetime {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 500;
 }
 
 .ig-metric {
@@ -8896,23 +8939,6 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 
 .ig-metric--save .ig-metric__value {
   color: #3b82f6;
-}
-
-.ig-top-post-compact__datetime {
-  font-size: 11px;
-  color: #6b7280;
-  line-height: 1.3;
-}
-
-.ig-top-post-compact__caption {
-  font-size: 12px;
-  color: #4b5563;
-  line-height: 1.5;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
 }
 
 .ig-empty-state {
@@ -9329,3 +9355,5 @@ body:has(.instagram-dashboard--clean) .app-main__content {
     padding-bottom: 8px;
   }
 }
+
+/* FACEBOOK DASHBOARD STYLES - Based on Instagram layout with Facebook blue theme */

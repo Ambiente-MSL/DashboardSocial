@@ -2,6 +2,7 @@
 import os
 import time
 import logging
+import math
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Sequence
@@ -457,9 +458,51 @@ def fetch_instagram_metrics(
     if (cur.get("interactions") or 0) <= 0 and engagement_breakdown["total"] > 0:
         cur["interactions"] = engagement_breakdown["total"]
 
+    reach_series_raw = cur.get("reach_timeseries") or []
+    reach_timeseries: List[Dict[str, Any]] = []
+    for entry in reach_series_raw:
+        value = entry.get("value")
+        if value is None:
+            continue
+        try:
+            numeric_value = float(value)
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(numeric_value):
+            continue
+        end_time = entry.get("end_time")
+        start_time = entry.get("start_time")
+        raw_ts = end_time or start_time
+        normalized_date = None
+        if raw_ts:
+            normalized_input = raw_ts.replace("Z", "+00:00")
+            try:
+                normalized_date = datetime.fromisoformat(normalized_input).date().isoformat()
+            except ValueError:
+                try:
+                    normalized_date = datetime.strptime(raw_ts, "%Y-%m-%dT%H:%M:%S%z").date().isoformat()
+                except ValueError:
+                    normalized_date = raw_ts[:10]
+        if normalized_date is None and raw_ts is None:
+            continue
+        reach_timeseries.append(
+            {
+                "date": normalized_date or raw_ts,
+                "end_time": end_time,
+                "start_time": start_time,
+                "value": int(round(numeric_value)),
+            }
+        )
+
     metrics = [
         {"key": "followers_total", "label": "SEGUIDORES", "value": cur.get("follower_count_end"), "deltaPct": pct(cur.get("follower_count_end"), prev.get("follower_count_end"))},
-        {"key": "reach", "label": "ALCANCE", "value": cur["reach"], "deltaPct": pct(cur["reach"], prev["reach"])},
+        {
+            "key": "reach",
+            "label": "ALCANCE",
+            "value": cur["reach"],
+            "deltaPct": pct(cur["reach"], prev["reach"]),
+            "timeseries": reach_timeseries,
+        },
         {"key": "interactions", "label": "INTERACOES", "value": cur["interactions"], "deltaPct": pct(cur["interactions"], prev["interactions"])},
         {"key": "likes", "label": "CURTIDAS", "value": cur.get("likes"), "deltaPct": pct(cur.get("likes"), prev.get("likes")) if prev.get("likes") else None},
         {"key": "saves", "label": "SALVAMENTOS", "value": cur.get("saves"), "deltaPct": pct(cur.get("saves"), prev.get("saves")) if prev.get("saves") else None},
@@ -519,6 +562,7 @@ def fetch_instagram_metrics(
         "follower_counts": follower_counts,
         "follower_series": cur.get("follower_series") or [],
         "top_posts": top_posts,
+        "reach_timeseries": reach_timeseries,
     }
 
 
@@ -799,6 +843,15 @@ def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) ->
         if entry.get("value") is not None
     ]
 
+    reach_timeseries = [
+        {
+            "date": entry["metric_date"].isoformat(),
+            "value": _as_int(entry.get("value")),
+        }
+        for entry in current_data.get("reach", [])
+        if entry.get("value") is not None
+    ]
+
     metrics_payload = [
         {
             "key": "followers_total",
@@ -811,11 +864,7 @@ def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) ->
             "label": "ALCANCE",
             "value": _as_int(reach_total),
             "deltaPct": _percentage_delta(reach_total, reach_previous),
-            "timeseries": [
-                {"date": entry["metric_date"].isoformat(), "value": _as_int(entry.get("value"))}
-                for entry in current_data.get("reach", [])
-                if entry.get("value") is not None
-            ],
+            "timeseries": reach_timeseries,
         },
         {
             "key": "interactions",
@@ -869,6 +918,7 @@ def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) ->
         "follower_counts": follower_counts,
         "follower_series": follower_series,
         "top_posts": {"reach": [], "engagement": [], "saves": []},
+        "reach_timeseries": reach_timeseries,
     }
     response["cache"] = {
         "source": "metrics_daily",

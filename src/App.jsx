@@ -1,17 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 import { useAuth } from './context/AuthContext';
 
 export default function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user, loading } = useAuth();
   const location = useLocation();
-
-  const toggleSidebar = useCallback(() => {
-    setSidebarOpen((prev) => !prev);
-  }, []);
 
   const pageTitle = useMemo(() => {
     const path = location.pathname || '/';
@@ -58,12 +52,10 @@ export default function App() {
     const merged = {
       ...defaultTopbarConfig,
       ...topbarOverrides,
-      sidebarOpen,
-      onToggleSidebar: toggleSidebar,
       sticky: true,
     };
     return merged;
-  }, [defaultTopbarConfig, topbarOverrides, sidebarOpen, toggleSidebar]);
+  }, [defaultTopbarConfig, topbarOverrides]);
 
   if (loading) {
     return (
@@ -81,19 +73,15 @@ export default function App() {
   }
 
   return (
-    <div className="app-layout">
-      <div className={`sidebar-container${sidebarOpen ? '' : ' sidebar-container--collapsed'}`}>
-        <Sidebar open={sidebarOpen} onToggleSidebar={toggleSidebar} />
-      </div>
-      <main className="app-main">
-        <div className="app-main__backdrop" aria-hidden="true" />
+    <div className="app-layout app-layout--no-sidebar">
+      <main className="app-main app-main--full-width">
         <div className="app-main__content">
           {(() => {
             const { hidden, ...rest } = topbarProps;
             return hidden ? null : <Topbar {...rest} />;
           })()}
           <div className="app-main__body">
-            <Outlet context={{ sidebarOpen, toggleSidebar, setTopbarConfig, resetTopbarConfig }} />
+            <Outlet context={{ setTopbarConfig, resetTopbarConfig }} />
           </div>
         </div>
       </main>

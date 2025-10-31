@@ -53,9 +53,6 @@ const IG_TOPBAR_PRESETS = [
 ];
 
 const WEEKDAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"];
-const DEFAULT_WEEKLY_FOLLOWERS = [3, 4, 5, 6, 7, 5, 4];
-const DEFAULT_WEEKLY_POSTS = [2, 3, 4, 5, 6, 4, 3];
-
 const DEFAULT_GENDER_STATS = [
   { name: "Homens", value: 30 },
   { name: "Mulheres", value: 70 },
@@ -354,23 +351,6 @@ const normalizeSeriesEntry = (entry) => {
     return entry;
   }
   return null;
-};
-
-const DAY_SECONDS = 86400;
-
-const bucketUnixDay = (value) => {
-  if (value == null) return null;
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return null;
-  return numeric - (numeric % DAY_SECONDS);
-};
-
-const unixToIsoDate = (value) => {
-  const bucketed = bucketUnixDay(value);
-  if (bucketed == null) return null;
-  const date = new Date(bucketed * 1000);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 10);
 };
 
 const seriesFromMetric = (metric) => {
@@ -778,6 +758,7 @@ export default function InstagramDashboard() {
     if (!accountConfig?.instagramUserId) {
       setMetrics([]);
       setFollowerSeries([]);
+      setReachCacheSeries([]);
       setMetricsError("Conta do Instagram não configurada.");
       return;
     }
@@ -785,6 +766,7 @@ export default function InstagramDashboard() {
     const controller = new AbortController();
     (async () => {
       setMetricsError("");
+      setReachCacheSeries([]);
       try {
         const params = new URLSearchParams();
         if (sinceParam) params.set("since", sinceParam);
@@ -797,11 +779,28 @@ export default function InstagramDashboard() {
         setMetrics(json.metrics || []);
         setFollowerSeries(Array.isArray(json.follower_series) ? json.follower_series : []);
         setFollowerCounts(json.follower_counts || null);
+        const reachSeries = Array.isArray(json.reach_timeseries)
+          ? json.reach_timeseries
+            .map((entry) => {
+              if (!entry) return null;
+              const dateRaw = entry.date || entry.metric_date || entry.end_time || entry.start_time || entry.label;
+              if (!dateRaw) return null;
+              const numericValue = extractNumber(entry.value, null);
+              if (numericValue === null) return null;
+              return {
+                date: dateRaw,
+                value: numericValue,
+              };
+            })
+            .filter(Boolean)
+          : [];
+        setReachCacheSeries(reachSeries);
       } catch (err) {
         if (err.name !== "AbortError") {
           setMetrics([]);
           setFollowerSeries([]);
           setFollowerCounts(null);
+          setReachCacheSeries([]);
           setMetricsError(err.message || "Não foi possível atualizar.");
         }
       }
@@ -873,72 +872,7 @@ export default function InstagramDashboard() {
     });
   }, [posts, sinceDate, untilDate]);
 
-  useEffect(() => {
-    let cancelled = false;
 
-    if (!accountConfig?.instagramUserId) {
-      setReachCacheSeries([]);
-      return;
-    }
-
-    const resolveUnix = (rawValue, fallbackDate) => {
-      if (rawValue != null) {
-        const numeric = Number(rawValue);
-        if (Number.isFinite(numeric)) return numeric;
-      }
-      if (!fallbackDate) return null;
-      const numeric = Math.floor(fallbackDate.getTime() / 1000);
-      return Number.isFinite(numeric) ? numeric : null;
-    };
-
-    const sinceUnix = resolveUnix(sinceParam, sinceDate);
-    const untilUnix = resolveUnix(untilParam, untilDate);
-    const sinceIso = unixToIsoDate(sinceUnix);
-    const untilIso = unixToIsoDate(untilUnix);
-
-    if (!sinceIso || !untilIso) {
-      setReachCacheSeries([]);
-      return undefined;
-    }
-
-    setReachCacheSeries([]);
-
-    const loadFromCache = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("metrics_daily")
-          .select("metric_date,value")
-          .eq("account_id", accountConfig.instagramUserId)
-          .eq("platform", "instagram")
-          .eq("metric_key", "reach")
-          .gte("metric_date", sinceIso)
-          .lte("metric_date", untilIso)
-          .order("metric_date", { ascending: true });
-
-        if (error) throw error;
-
-        const timeline = (data || []).map((row) => ({
-          date: row.metric_date,
-          value: extractNumber(row.value, 0),
-        }));
-
-        if (!cancelled) {
-          setReachCacheSeries(Array.isArray(timeline) ? timeline : []);
-        }
-      } catch (err) {
-        console.warn("Falha ao carregar alcance em cache", err);
-        if (!cancelled) {
-          setReachCacheSeries([]);
-        }
-      }
-    };
-
-    loadFromCache();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [accountConfig?.instagramUserId, sinceParam, untilParam, sinceDate, untilDate]);
 
   const reachTimelineFromCache = useMemo(() => {
     if (!reachCacheSeries.length) return [];
@@ -1058,22 +992,53 @@ export default function InstagramDashboard() {
 
   const engagementRateValue = tryParseNumber(engagementRateMetric?.value);
 
-  const avgFollowersPerDay = useMemo(() => {
+  const followerGrowthStats = useMemo(() => {
+    const totalsByWeekday = Array.from({ length: 7 }, () => 0);
     if (followerSeriesNormalized.length >= 2) {
-      const first = followerSeriesNormalized[0];
-      const last = followerSeriesNormalized[followerSeriesNormalized.length - 1];
-      const diff = extractNumber(last.value) - extractNumber(first.value);
-      const days = Math.max(1, followerSeriesNormalized.length - 1);
-      return Math.round(diff / days);
+      let accumulatedGrowth = 0;
+      for (let index = 1; index < followerSeriesNormalized.length; index += 1) {
+        const previous = followerSeriesNormalized[index - 1];
+        const current = followerSeriesNormalized[index];
+        const diff = extractNumber(current.value, 0) - extractNumber(previous.value, 0);
+        const positiveGrowth = diff > 0 ? diff : 0;
+        accumulatedGrowth += positiveGrowth;
+        if (positiveGrowth <= 0) continue;
+        const dayRef = new Date(`${current.date}T00:00:00`);
+        if (Number.isNaN(dayRef.getTime())) continue;
+        const weekday = dayRef.getDay();
+        totalsByWeekday[weekday] += positiveGrowth;
+      }
+      const samples = Math.max(1, followerSeriesNormalized.length - 1);
+      return {
+        average: Math.round(accumulatedGrowth / samples),
+        weeklyPattern: buildWeeklyPattern(totalsByWeekday),
+      };
     }
-    const fallback = extractNumber(followerGrowthMetric?.value, 0);
-    return fallback ? Math.round(fallback / 30) : 0;
+    const fallbackGrowth = Math.max(0, extractNumber(followerGrowthMetric?.value, 0));
+    return {
+      average: fallbackGrowth ? Math.round(fallbackGrowth / 30) : 0,
+      weeklyPattern: buildWeeklyPattern(totalsByWeekday),
+    };
   }, [followerSeriesNormalized, followerGrowthMetric?.value]);
 
-  const postsCount = posts.length;
+  const avgFollowersPerDay = followerGrowthStats.average;
+  const weeklyFollowersPattern = followerGrowthStats.weeklyPattern;
 
-  const weeklyFollowersPattern = useMemo(() => buildWeeklyPattern(DEFAULT_WEEKLY_FOLLOWERS), []);
-  const weeklyPostsPattern = useMemo(() => buildWeeklyPattern(DEFAULT_WEEKLY_POSTS), []);
+  const weeklyPostsPattern = useMemo(() => {
+    if (!filteredPosts.length) {
+      return buildWeeklyPattern(Array.from({ length: 7 }, () => 0));
+    }
+    const totalsByWeekday = Array.from({ length: 7 }, () => 0);
+    filteredPosts.forEach((post) => {
+      if (!post.timestamp) return;
+      const dateObj = new Date(post.timestamp);
+      if (Number.isNaN(dateObj.getTime())) return;
+      totalsByWeekday[dateObj.getDay()] += 1;
+    });
+    return buildWeeklyPattern(totalsByWeekday);
+  }, [filteredPosts]);
+
+  const postsCount = filteredPosts.length;
 
   useEffect(() => {
     if (!accountSnapshotKey) return;
@@ -1436,7 +1401,7 @@ export default function InstagramDashboard() {
 
                         return (
                           <div key={post.id || post.timestamp} className="ig-top-post-compact">
-                            <div className="ig-top-post-compact__thumb-wrapper">
+                            <div className="ig-top-post-compact__top">
                               <div
                                 className="ig-top-post-compact__thumb"
                                 onClick={handleThumbClick}
@@ -1455,13 +1420,6 @@ export default function InstagramDashboard() {
                                   <div className="ig-empty-thumb">Sem imagem</div>
                                 )}
                               </div>
-                              <div className="ig-top-post-compact__datetime">
-                                {dateStr}
-                                <br />
-                                {timeStr}
-                              </div>
-                            </div>
-                            <div className="ig-top-post-compact__content">
                               <div className="ig-top-post-compact__metrics-grid">
                                 <span className="ig-metric ig-metric--like">
                                   <Heart size={20} fill="#ef4444" color="#ef4444" />
@@ -1480,8 +1438,13 @@ export default function InstagramDashboard() {
                                   <span className="ig-metric__value">{formatNumber(saves)}</span>
                                 </span>
                               </div>
+                            </div>
+                            <div className="ig-top-post-compact__bottom">
                               <div className="ig-top-post-compact__caption">
-                                {truncate(post.caption || "Aqui vai o texto da legenda que post está sendo apresentado se não tiver espaço...", 100)}
+                                {truncate(post.caption || "Aqui vai o texto da legenda que post está sendo apresentado se não tiver espaço...", 120)}
+                              </div>
+                              <div className="ig-top-post-compact__datetime">
+                                {dateStr} • {timeStr}
                               </div>
                             </div>
                           </div>
