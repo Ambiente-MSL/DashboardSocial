@@ -640,6 +640,7 @@ export default function InstagramDashboard() {
   const [coverImageUrl, setCoverImageUrl] = useState("");
   const [coverError, setCoverError] = useState("");
   const [coverUploading, setCoverUploading] = useState(false);
+  const [latestFollowers, setLatestFollowers] = useState(null);
 
   const activeSnapshot = useMemo(
     () => (overviewSnapshot?.accountId === accountSnapshotKey && accountSnapshotKey ? overviewSnapshot : null),
@@ -656,6 +657,7 @@ export default function InstagramDashboard() {
     setCoverImageUrl("");
     setCoverError("");
     setOverviewSnapshot(null);
+    setLatestFollowers(null);
   }, [accountSnapshotKey]);
 
   useEffect(() => {
@@ -743,6 +745,34 @@ export default function InstagramDashboard() {
       backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.25) 0%, rgba(15, 23, 42, 0.55) 100%), url(${coverImageUrl})`,
     };
   }, [coverImageUrl]);
+
+  const loadLatestFollowers = useCallback(async () => {
+    if (!accountConfig?.instagramUserId) {
+      setLatestFollowers(null);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from("metrics_daily")
+        .select("value")
+        .eq("account_id", accountConfig.instagramUserId)
+        .eq("platform", "instagram")
+        .eq("metric_key", "followers_total")
+        .order("metric_date", { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      const record = (data || [])[0];
+      const numeric = tryParseNumber(record?.value);
+      setLatestFollowers(numeric != null ? numeric : null);
+    } catch (err) {
+      console.warn("Falha ao carregar seguidores do Supabase", err);
+      setLatestFollowers(null);
+    }
+  }, [accountConfig?.instagramUserId]);
+
+  useEffect(() => {
+    loadLatestFollowers();
+  }, [loadLatestFollowers]);
 
   useEffect(() => {
     if (!accountConfig?.instagramUserId) {
@@ -990,9 +1020,12 @@ export default function InstagramDashboard() {
 
   useEffect(() => {
     setOverviewSnapshot(null);
+    setLatestFollowers(null);
   }, [accountSnapshotKey]);
 
   const totalFollowers = useMemo(() => {
+    if (latestFollowers != null) return latestFollowers;
+
     const snapshotFollowers = tryParseNumber(activeSnapshot?.followers);
     if (snapshotFollowers !== null) return snapshotFollowers;
 
@@ -1021,7 +1054,7 @@ export default function InstagramDashboard() {
     }
 
     return 0;
-  }, [accountInfo, activeSnapshot?.followers, followerCounts, followersMetric?.value, followerSeriesNormalized]);
+  }, [accountInfo, activeSnapshot?.followers, followerCounts, followersMetric?.value, followerSeriesNormalized, latestFollowers]);
 
   const engagementRateValue = tryParseNumber(engagementRateMetric?.value);
 
@@ -1044,12 +1077,6 @@ export default function InstagramDashboard() {
 
   useEffect(() => {
     if (!accountSnapshotKey) return;
-    if (activeSnapshot) return;
-    const hasValues = Number.isFinite(totalFollowers)
-      || Number.isFinite(reachValue)
-      || Number.isFinite(avgFollowersPerDay)
-      || postsCount > 0;
-    if (!hasValues) return;
     setOverviewSnapshot({
       accountId: accountSnapshotKey,
       followers: Number.isFinite(totalFollowers) ? totalFollowers : 0,
@@ -1059,7 +1086,6 @@ export default function InstagramDashboard() {
     });
   }, [
     accountSnapshotKey,
-    activeSnapshot,
     avgFollowersPerDay,
     postsCount,
     reachValue,
@@ -1254,7 +1280,7 @@ export default function InstagramDashboard() {
                 <div className="ig-profile-vertical__stats-grid">
                   <div className="ig-overview-stat">
                     <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.followers)}</div>
-                  <div className="ig-overview-stat__label">Total de seguidores</div>
+                    <div className="ig-overview-stat__label">Total de seguidores</div>
                   </div>
                   <div className="ig-overview-stat">
                     <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.reach)}</div>
