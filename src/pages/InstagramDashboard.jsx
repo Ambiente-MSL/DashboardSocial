@@ -1279,14 +1279,16 @@ export default function InstagramDashboard() {
                         <div className="ig-overview-metric__label">Seguidores diários</div>
                       </div>
                       <div className="ig-weekly-chart">
-                        {weeklyFollowersPattern.map((day) => (
+                        {weeklyFollowersPattern.map((day, index) => (
                           <div
-                            key={`followers-${day.label}`}
-                            className={`ig-weekly-chart__item${day.active ? " ig-weekly-chart__item--active" : ""}`}
+                            key={`followers-${day.label}-${index}`}
+                            className={`ig-weekly-chart__item${day.active ? " ig-weekly-chart__item--active" : ""}${
+                              index === 0 ? " ig-weekly-chart__item--sunday" : ""
+                            }`}
                           >
                             <div
                               className="ig-weekly-chart__bar"
-                              style={{ height: `${Math.max(day.percentage, 12)}%` }}
+                              style={{ height: `${Math.max(day.percentage, 16)}%` }}
                             />
                             <span className="ig-weekly-chart__label">{day.label}</span>
                           </div>
@@ -1307,14 +1309,16 @@ export default function InstagramDashboard() {
                         </select>
                       </div>
                       <div className="ig-weekly-chart ig-weekly-chart--compact">
-                        {weeklyPostsPattern.map((day) => (
+                        {weeklyPostsPattern.map((day, index) => (
                           <div
-                            key={`posts-${day.label}`}
-                            className={`ig-weekly-chart__item${day.active ? " ig-weekly-chart__item--active" : ""}`}
+                            key={`posts-${day.label}-${index}`}
+                            className={`ig-weekly-chart__item${day.active ? " ig-weekly-chart__item--active" : ""}${
+                              index === 0 ? " ig-weekly-chart__item--sunday" : ""
+                            }`}
                           >
                             <div
                               className="ig-weekly-chart__bar"
-                              style={{ height: `${Math.max(day.percentage, 12)}%` }}
+                              style={{ height: `${Math.max(day.percentage, 16)}%` }}
                             />
                             <span className="ig-weekly-chart__label">{day.label}</span>
                           </div>

@@ -8176,14 +8176,16 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 .ig-weekly-chart {
   display: flex;
   align-items: flex-end;
-  gap: 6px;
-  min-width: 140px;
-  min-height: 72px;
-  padding: 4px 0;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 150px;
+  min-height: 92px;
+  padding: 8px 6px 4px;
 }
 
 .ig-weekly-chart--compact {
-  min-height: 64px;
+  min-height: 82px;
+  gap: 8px;
 }
 
 .ig-weekly-chart__item {
@@ -8191,30 +8193,45 @@ body:has(.instagram-dashboard--clean) .app-main__content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .ig-weekly-chart__bar {
-  width: 12px;
+  width: 14px;
+  min-height: 12px;
   background: #e5e7eb;
-  border-radius: 8px 8px 0 0;
-  transition: all 0.2s ease;
+  border-radius: 12px 12px 6px 6px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.ig-weekly-chart--compact .ig-weekly-chart__bar {
+  width: 12px;
 }
 
 .ig-weekly-chart__item--active .ig-weekly-chart__bar {
-  background: linear-gradient(180deg, #8b5cf6 0%, #f472b6 100%);
-  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.25);
+  background: linear-gradient(180deg, #9333ea 0%, #ec4899 100%);
+  box-shadow: 0 8px 20px rgba(147, 51, 234, 0.26);
+  transform: translateY(-2px);
 }
 
 .ig-weekly-chart__label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: #9ca3af;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.24px;
+  text-transform: uppercase;
 }
 
 .ig-weekly-chart__item--active .ig-weekly-chart__label {
-  color: #ec4899;
+  color: #9333ea;
+}
+
+.ig-weekly-chart__item--sunday .ig-weekly-chart__label {
+  color: #f97316;
+}
+
+.ig-weekly-chart__item--active.ig-weekly-chart__item--sunday .ig-weekly-chart__label {
+  color: #9333ea;
 }
 
 .ig-profile-vertical__divider {
