@@ -13,8 +13,8 @@ export default function App() {
       '/': 'Visao Geral',
       '/facebook': 'Facebook',
       '/instagram': 'Instagram',
-      '/relatorios': 'Relatorios',
-      '/configuracoes': 'Configuracoes',
+      '/relatorios': 'Relatórios',
+      '/configuracoes': 'Configurações',
       '/admin': 'Admin',
     };
     return map[path] ?? 'Dashboard';

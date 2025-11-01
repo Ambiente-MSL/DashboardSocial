@@ -610,27 +610,19 @@ export default function FacebookDashboard() {
                 <Link
                   key={tab.id}
                   to={tab.href}
-                  className={`fb-clean-tab${isActive ? " fb-clean-tab--active" : ""}`}
+                  className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
                 >
-                  <Icon
-                    size={18}
-                    color={tab.id === "facebook" ? "#1877F2" : undefined}
-                    fill={tab.id === "facebook" ? "#1877F2" : undefined}
-                  />
+                  <Icon size={18} />
                   <span>{tab.label}</span>
                 </Link>
               ) : (
                 <button
                   key={tab.id}
                   type="button"
-                  className={`fb-clean-tab${isActive ? " fb-clean-tab--active" : ""}`}
+                  className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
                   disabled={!tab.href}
                 >
-                  <Icon
-                    size={18}
-                    color={tab.id === "facebook" ? "#1877F2" : undefined}
-                    fill={tab.id === "facebook" ? "#1877F2" : undefined}
-                  />
+                  <Icon size={18} />
                   <span>{tab.label}</span>
                 </button>
               );

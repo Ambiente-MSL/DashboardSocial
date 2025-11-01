@@ -157,7 +157,7 @@ def fetch_facebook_metrics(
     _extra: Optional[Dict[str, Any]],
 ) -> Dict[str, Any]:
     if since_ts is None or until_ts is None:
-        raise ValueError("since_ts e until_ts sǭo obrigatórios para facebook_metrics")
+        raise ValueError("since_ts e until_ts são obrigatórios para facebook_metrics")
 
     cur = fb_page_window(page_id, since_ts, until_ts)
     prev = fb_page_window(page_id, since_ts - _duration(since_ts, until_ts), since_ts)
