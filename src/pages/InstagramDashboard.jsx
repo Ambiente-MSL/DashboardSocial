@@ -621,6 +621,7 @@ export default function InstagramDashboard() {
   const [coverError, setCoverError] = useState("");
   const [coverUploading, setCoverUploading] = useState(false);
   const [latestFollowers, setLatestFollowers] = useState(null);
+  const latestFollowersRequestRef = useRef(0);
 
   const activeSnapshot = useMemo(
     () => (overviewSnapshot?.accountId === accountSnapshotKey && accountSnapshotKey ? overviewSnapshot : null),
@@ -727,24 +728,33 @@ export default function InstagramDashboard() {
   }, [coverImageUrl]);
 
   const loadLatestFollowers = useCallback(async () => {
-    if (!accountConfig?.instagramUserId) {
-      setLatestFollowers(null);
+    latestFollowersRequestRef.current += 1;
+    const requestToken = latestFollowersRequestRef.current;
+    const igUserId = accountConfig?.instagramUserId;
+
+    if (!igUserId) {
+      if (requestToken === latestFollowersRequestRef.current) {
+        setLatestFollowers(null);
+      }
       return;
     }
+
     try {
       const { data, error } = await supabase
         .from("metrics_daily")
         .select("value")
-        .eq("account_id", accountConfig.instagramUserId)
+        .eq("account_id", igUserId)
         .eq("platform", "instagram")
         .eq("metric_key", "followers_total")
         .order("metric_date", { ascending: false })
         .limit(1);
       if (error) throw error;
+      if (requestToken !== latestFollowersRequestRef.current) return;
       const record = (data || [])[0];
       const numeric = tryParseNumber(record?.value);
       setLatestFollowers(numeric != null ? numeric : null);
     } catch (err) {
+      if (requestToken !== latestFollowersRequestRef.current) return;
       console.warn("Falha ao carregar seguidores do Supabase", err);
       setLatestFollowers(null);
     }
@@ -958,37 +968,42 @@ export default function InstagramDashboard() {
   }, [accountSnapshotKey]);
 
   const totalFollowers = useMemo(() => {
-    if (latestFollowers != null) return latestFollowers;
-
-    const snapshotFollowers = tryParseNumber(activeSnapshot?.followers);
-    if (snapshotFollowers !== null) return snapshotFollowers;
-
-    const accountFollowers = pickFirstNumber(
-      [
-        accountInfo?.followers_count,
-        accountInfo?.followers,
-        getNestedValue(accountInfo, ["followers", "count"]),
-        getNestedValue(accountInfo, ["insights", "followers"]),
-        getNestedValue(accountInfo, ["insights", "followers", "value"]),
-      ],
-      null,
-    );
-    if (accountFollowers !== null) return accountFollowers;
-
-    const countsFollowers = tryParseNumber(followerCounts?.end ?? followerCounts?.total);
-    if (countsFollowers !== null) return countsFollowers;
-
-    const metricValue = tryParseNumber(followersMetric?.value);
-    if (metricValue !== null) return metricValue;
+    const candidateValues = [
+      latestFollowers,
+      activeSnapshot?.followers,
+      accountInfo?.followers_count,
+      accountInfo?.followers,
+      getNestedValue(accountInfo, ["followers", "count"]),
+      getNestedValue(accountInfo, ["insights", "followers"]),
+      getNestedValue(accountInfo, ["insights", "followers", "value"]),
+      followerCounts?.end ?? followerCounts?.total,
+      followersMetric?.value,
+    ];
 
     if (followerSeriesNormalized.length) {
-      const latestPoint = followerSeriesNormalized[followerSeriesNormalized.length - 1];
-      const latestValue = tryParseNumber(latestPoint?.value);
-      if (latestValue !== null) return latestValue;
+      const lastPoint = followerSeriesNormalized[followerSeriesNormalized.length - 1];
+      candidateValues.push(lastPoint?.value);
     }
 
-    return 0;
-  }, [accountInfo, activeSnapshot?.followers, followerCounts, followersMetric?.value, followerSeriesNormalized, latestFollowers]);
+    let zeroFallback = null;
+    for (const rawValue of candidateValues) {
+      const parsed = tryParseNumber(rawValue);
+      if (parsed === null) continue;
+      if (parsed > 0) return parsed;
+      if (parsed === 0 && zeroFallback === null) {
+        zeroFallback = 0;
+      }
+    }
+
+    return zeroFallback ?? 0;
+  }, [
+    accountInfo,
+    activeSnapshot,
+    followerCounts,
+    followerSeriesNormalized,
+    followersMetric,
+    latestFollowers,
+  ]);
 
   const engagementRateValue = tryParseNumber(engagementRateMetric?.value);
 
@@ -1174,10 +1189,13 @@ export default function InstagramDashboard() {
             {HERO_TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = tab.href ? location.pathname === tab.href : tab.id === "instagram";
+              const linkTarget = tab.href
+                ? (location.search ? { pathname: tab.href, search: location.search } : tab.href)
+                : null;
               return tab.href ? (
                 <Link
                   key={tab.id}
-                  to={tab.href}
+                  to={linkTarget}
                   className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
                 >
                   <Icon size={18} />

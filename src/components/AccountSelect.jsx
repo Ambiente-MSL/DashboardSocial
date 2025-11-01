@@ -81,6 +81,9 @@ export default function AccountSelect() {
   const handleSelect = (accountId) => {
     set({ account: accountId });
     setIsOpen(false);
+    requestAnimationFrame(() => {
+      window.location.reload();
+    });
   };
 
   const isDisabled = availableAccounts.length === 0;

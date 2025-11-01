@@ -606,10 +606,13 @@ export default function FacebookDashboard() {
             {HERO_TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = tab.href ? location.pathname === tab.href : tab.id === "facebook";
+              const linkTarget = tab.href
+                ? (location.search ? { pathname: tab.href, search: location.search } : tab.href)
+                : null;
               return tab.href ? (
                 <Link
                   key={tab.id}
-                  to={tab.href}
+                  to={linkTarget}
                   className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
                 >
                   <Icon size={18} />

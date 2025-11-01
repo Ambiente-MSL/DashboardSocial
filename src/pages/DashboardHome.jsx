@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 
 import { Facebook, Instagram } from 'lucide-react';
 import { useOutletContext, Link, useLocation } from 'react-router-dom';
@@ -168,6 +168,30 @@ const { setTopbarConfig, resetTopbarConfig } = outletContext;
   const since = get('since');
 
   const until = get('until');
+  const fetchJson = useCallback(async (url) => {
+    const response = await fetch(url);
+    const raw = await response.text();
+    let json = null;
+    if (raw) {
+      try {
+        json = JSON.parse(raw);
+      } catch (err) {
+        json = null;
+      }
+    }
+    if (!response.ok) {
+      const message =
+        json?.error ||
+        json?.message ||
+        (json && typeof json === 'object' && json.error?.message) ||
+        `HTTP ${response.status}`;
+      throw new Error(message);
+    }
+    return json || {};
+  }, []);
+
+  const [instagramReach30d, setInstagramReach30d] = useState({ value: null, cacheAt: null });
+
 
 
 
@@ -213,50 +237,6 @@ const { setTopbarConfig, resetTopbarConfig } = outletContext;
     let active = true;
 
     const accountKey = accountConfig?.id || null;
-
-
-
-    const fetchJson = async (url) => {
-
-      const response = await fetch(url);
-
-      const raw = await response.text();
-
-      let json = null;
-
-      if (raw) {
-
-        try {
-
-          json = JSON.parse(raw);
-
-        } catch (err) {
-
-          json = null;
-
-        }
-
-      }
-
-      if (!response.ok) {
-
-        const message =
-
-          json?.error ||
-
-          json?.message ||
-
-          (json && typeof json === 'object' && json.error?.message) ||
-
-          `HTTP ${response.status}`;
-
-        throw new Error(message);
-
-      }
-
-      return json || {};
-
-    };
 
 
 
@@ -533,9 +513,85 @@ const { setTopbarConfig, resetTopbarConfig } = outletContext;
 
     until,
 
+    fetchJson,
   ]);
 
 
+
+
+  useEffect(() => {
+
+    let active = true;
+
+    const igUserId = accountConfig?.instagramUserId;
+
+    if (!igUserId) {
+
+      setInstagramReach30d({ value: null, cacheAt: null });
+
+      return () => {
+
+        active = false;
+
+      };
+
+    }
+
+    const loadReach30Days = async () => {
+
+      try {
+
+        const nowSec = Math.floor(Date.now() / 1000);
+
+        const thirtyDaysSec = 30 * 86400;
+
+        const untilTs = nowSec;
+
+        const sinceTs = Math.max(0, untilTs - thirtyDaysSec);
+
+        const params = new URLSearchParams();
+
+        params.set('igUserId', igUserId);
+
+        params.set('since', String(sinceTs));
+
+        params.set('until', String(untilTs));
+
+        const data = await fetchJson(`${API_BASE_URL}/api/instagram/metrics?${params.toString()}`);
+
+        if (!active) return;
+
+        const reachMetric = getMetric(data, 'reach');
+
+        setInstagramReach30d({
+
+          value: safeNumber(reachMetric?.value),
+
+          cacheAt: data.cache?.fetched_at || null,
+
+        });
+
+      } catch (err) {
+
+        if (!active) return;
+
+        console.warn(`Instagram 30 dias: ${err.message}`);
+
+        setInstagramReach30d({ value: null, cacheAt: null });
+
+      }
+
+    };
+
+    loadReach30Days();
+
+    return () => {
+
+      active = false;
+
+    };
+
+  }, [accountConfig?.instagramUserId, fetchJson]);
 
   const currentAccountId = accountConfig?.id;
 
@@ -543,9 +599,18 @@ const { setTopbarConfig, resetTopbarConfig } = outletContext;
 
     facebookSummary?.accountId === currentAccountId ? facebookSummary : null;
 
-  const currentInstagramSummary =
+  const currentInstagramSummary = useMemo(
+    () => {
+      if (instagramSummary?.accountId !== currentAccountId) return null;
+      return {
+        ...instagramSummary,
+        reach30Days: instagramReach30d?.value ?? null,
+        reach30DaysCacheAt: instagramReach30d?.cacheAt ?? null,
+      };
+    },
+    [instagramSummary, currentAccountId, instagramReach30d],
+  );
 
-    instagramSummary?.accountId === currentAccountId ? instagramSummary : null;
 
   const currentAdsSummary = adsSummary?.accountId === currentAccountId ? adsSummary : null;
 
@@ -687,9 +752,15 @@ const { setTopbarConfig, resetTopbarConfig } = outletContext;
 
                 </span>
 
+                <span className="overview-highlight-extra">
+
+                  Alcance (30 dias): {formatNumber(currentInstagramSummary?.reach30Days)}
+
+                </span>
+
                 <span className="overview-highlight-foot">
 
-                  Atualizado em {formatDateTime(currentInstagramSummary?.cacheAt)}
+                  Atualizado em {formatDateTime(currentInstagramSummary?.reach30DaysCacheAt || currentInstagramSummary?.cacheAt)}
 
                 </span>
 
