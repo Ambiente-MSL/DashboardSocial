@@ -1609,50 +1609,52 @@ export default function InstagramDashboard() {
 
                         return (
                           <div key={post.id || post.timestamp} className="ig-top-post-compact">
-                            <div className="ig-top-post-compact__top">
-                              <div
-                                className="ig-top-post-compact__thumb"
-                                onClick={handleThumbClick}
-                                role="button"
-                                tabIndex={0}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    handleThumbClick();
-                                  }
-                                }}
-                              >
-                                {previewUrl ? (
-                                  <img src={previewUrl} alt="Post" />
-                                ) : (
-                                  <div className="ig-empty-thumb">Sem imagem</div>
-                                )}
+                            <div className="ig-top-post-compact__main">
+                              <div className="ig-top-post-compact__left">
+                                <div
+                                  className="ig-top-post-compact__thumb"
+                                  onClick={handleThumbClick}
+                                  role="button"
+                                  tabIndex={0}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault();
+                                      handleThumbClick();
+                                    }
+                                  }}
+                                >
+                                  {previewUrl ? (
+                                    <img src={previewUrl} alt="Post" />
+                                  ) : (
+                                    <div className="ig-empty-thumb">Sem imagem</div>
+                                  )}
+                                </div>
+                                <div className="ig-top-post-compact__datetime">
+                                  {dateStr} {timeStr}
+                                </div>
                               </div>
-                              <div className="ig-top-post-compact__metrics-grid">
-                                <span className="ig-metric ig-metric--like">
-                                  <Heart size={20} fill="#ef4444" color="#ef4444" />
-                                  <span className="ig-metric__value">{formatNumber(likes)}</span>
-                                </span>
-                                <span className="ig-metric ig-metric--comment">
-                                  <MessageCircle size={20} fill="#a855f7" color="#a855f7" />
-                                  <span className="ig-metric__value">{formatNumber(comments)}</span>
-                                </span>
-                                <span className="ig-metric ig-metric--share">
-                                  <Share2 size={20} color="#f97316" />
-                                  <span className="ig-metric__value">{formatNumber(shares)}</span>
-                                </span>
-                                <span className="ig-metric ig-metric--save">
-                                  <Bookmark size={20} fill="#3b82f6" color="#3b82f6" />
-                                  <span className="ig-metric__value">{formatNumber(saves)}</span>
-                                </span>
-                              </div>
-                            </div>
-                            <div className="ig-top-post-compact__bottom">
-                              <div className="ig-top-post-compact__caption">
-                                {truncate(post.caption || "Aqui vai o texto da legenda que post está sendo apresentado se não tiver espaço...", 120)}
-                              </div>
-                              <div className="ig-top-post-compact__datetime">
-                                {dateStr} • {timeStr}
+                              <div className="ig-top-post-compact__right">
+                                <div className="ig-top-post-compact__metrics-column">
+                                  <span className="ig-metric ig-metric--like">
+                                    <Heart size={20} fill="#ef4444" color="#ef4444" />
+                                    <span className="ig-metric__value">{formatNumber(likes)}</span>
+                                  </span>
+                                  <span className="ig-metric ig-metric--share">
+                                    <Share2 size={20} color="#f97316" />
+                                    <span className="ig-metric__value">{formatNumber(shares)}</span>
+                                  </span>
+                                  <span className="ig-metric ig-metric--comment">
+                                    <MessageCircle size={20} fill="#a855f7" color="#a855f7" />
+                                    <span className="ig-metric__value">{formatNumber(comments)}</span>
+                                  </span>
+                                  <span className="ig-metric ig-metric--save">
+                                    <Bookmark size={20} fill="#3b82f6" color="#3b82f6" />
+                                    <span className="ig-metric__value">{formatNumber(saves)}</span>
+                                  </span>
+                                </div>
+                                <div className="ig-top-post-compact__caption">
+                                  {truncate(post.caption || "Aqui vai o texto da legenda que post está sendo apresentado se não tiver espaço...", 120)}
+                                </div>
                               </div>
                             </div>
                           </div>

@@ -8864,7 +8864,6 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 .ig-top-post-compact {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   padding: 14px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
@@ -8878,16 +8877,22 @@ body:has(.instagram-dashboard--clean) .app-main__content {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.ig-top-post-compact__top {
+.ig-top-post-compact__main {
   display: flex;
   gap: 14px;
   align-items: flex-start;
 }
 
-.ig-top-post-compact__thumb {
+.ig-top-post-compact__left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   flex-shrink: 0;
-  width: 100px;
-  height: 100px;
+}
+
+.ig-top-post-compact__thumb {
+  width: 90px;
+  height: 90px;
   border-radius: 8px;
   overflow: hidden;
   background: #f3f4f6;
@@ -8906,24 +8911,46 @@ body:has(.instagram-dashboard--clean) .app-main__content {
   object-fit: cover;
 }
 
-.ig-top-post-compact__metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px 8px;
-  flex: 1;
-  padding: 8px;
-  background: #ffffff;
-  border-radius: 8px;
+.ig-top-post-compact__datetime {
+  font-size: 10px;
+  color: #9ca3af;
+  font-weight: 500;
+  text-align: left;
 }
 
-.ig-top-post-compact__bottom {
+.ig-top-post-compact__right {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
+  flex: 1;
+}
+
+.ig-top-post-compact__metrics-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 10px 12px;
+  height: 90px;
+  align-items: center;
+  padding: 10px 12px;
+  background: #fafafa;
+  border-radius: 8px;
+  position: relative;
+}
+
+.ig-top-post-compact__metrics-column::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: linear-gradient(180deg, transparent 0%, #d1d5db 10%, #d1d5db 90%, transparent 100%);
+  transform: translateX(-50%);
 }
 
 .ig-top-post-compact__caption {
-  font-size: 13px;
+  font-size: 12px;
   color: #374151;
   line-height: 1.5;
   overflow: hidden;
@@ -8931,13 +8958,8 @@ body:has(.instagram-dashboard--clean) .app-main__content {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  font-weight: 500;
-}
-
-.ig-top-post-compact__datetime {
-  font-size: 11px;
-  color: #9ca3af;
-  font-weight: 500;
+  font-weight: 400;
+  margin-top: 4px;
 }
 
 .ig-metric {
