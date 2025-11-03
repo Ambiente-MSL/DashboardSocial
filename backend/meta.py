@@ -640,13 +640,39 @@ def ig_window(ig_user_id: str, since: int, until: int):
             "until": until,
         },
     )
-    reach_timeseries = extract_time_series(ins, "reach")
+    try:
+        reach_payload = gget(
+            f"/{ig_user_id}/insights",
+            {
+                "metric": "reach",
+                "period": "day",
+                "since": since,
+                "until": until,
+            },
+        )
+    except MetaAPIError:
+        reach_payload = {}
+
+    reach_timeseries = extract_time_series(reach_payload, "reach")
+    if not reach_timeseries:
+        reach_timeseries = extract_time_series(ins, "reach")
 
     def by(name):
         m = next((m for m in ins.get("data", []) if m.get("name") == name), {})
-        return m.get("values", [])
+        values = m.get("values") or []
+        if values:
+            return values
+        total_value = m.get("total_value")
+        if isinstance(total_value, dict):
+            scalar = _coerce_number(total_value.get("value"))
+            if scalar is not None:
+                return [{"value": scalar}]
+        return []
 
-    reach = sum_values(by("reach"))
+    if reach_timeseries:
+        reach = sum((_coerce_number(entry.get("value")) or 0) for entry in reach_timeseries)
+    else:
+        reach = sum_values(by("reach"))
     profile_views = sum_values(by("profile_views"))
     website = sum_values(by("website_clicks"))
     accounts_engaged = sum_values(by("accounts_engaged"))

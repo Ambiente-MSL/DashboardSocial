@@ -592,6 +592,18 @@ export default function InstagramDashboard() {
   const now = useMemo(() => new Date(), []);
   const defaultEnd = useMemo(() => endOfDay(subDays(startOfDay(now), 1)), [now]);
 
+  useEffect(() => {
+    if (sinceDate && untilDate) return;
+    const defaultPreset = IG_TOPBAR_PRESETS.find((item) => item.id === "1m") || IG_TOPBAR_PRESETS[0];
+    if (!defaultPreset?.days || defaultPreset.days <= 0) return;
+    const endDate = defaultEnd;
+    const startDate = startOfDay(subDays(endDate, defaultPreset.days - 1));
+    setQuery({
+      since: toUnixSeconds(startDate),
+      until: toUnixSeconds(endDate),
+    });
+  }, [defaultEnd, setQuery, sinceDate, untilDate]);
+
   const activePreset = useMemo(() => {
     if (!sinceDate || !untilDate) return "custom";
     const diff = differenceInCalendarDays(endOfDay(untilDate), startOfDay(sinceDate)) + 1;
@@ -817,6 +829,14 @@ export default function InstagramDashboard() {
       return;
     }
 
+    if (!sinceParam || !untilParam) {
+      setMetrics([]);
+      setFollowerSeries([]);
+      setReachCacheSeries([]);
+      setMetricsError("");
+      return;
+    }
+
     const controller = new AbortController();
     (async () => {
       setMetricsError("");
@@ -903,7 +923,7 @@ export default function InstagramDashboard() {
   const followerGrowthMetric = metricsByKey.follower_growth;
   const engagementRateMetric = metricsByKey.engagement_rate;
 
-  const reachValue = extractNumber(reachMetric?.value, 0);
+  const reachMetricValue = useMemo(() => extractNumber(reachMetric?.value, null), [reachMetric?.value]);
   const timelineReachSeries = useMemo(() => seriesFromMetric(reachMetric), [reachMetric]);
   const followerSeriesNormalized = useMemo(() => (followerSeries || [])
     .map((entry) => {
@@ -982,21 +1002,62 @@ export default function InstagramDashboard() {
       }));
   }, [filteredPosts]);
 
-  const profileReachData = useMemo(() => {
-    const baseSeries = reachTimelineFromCache.length
-      ? reachTimelineFromCache
-      : reachTimelineFromMetric.length
-        ? reachTimelineFromMetric
-        : reachTimelineFromPosts;
-    if (baseSeries.length) {
-      return baseSeries.map((entry) => ({
+  const reachSeriesBase = useMemo(() => {
+    if (reachTimelineFromCache.length) return reachTimelineFromCache;
+    if (reachTimelineFromMetric.length) return reachTimelineFromMetric;
+    if (reachTimelineFromPosts.length) return reachTimelineFromPosts;
+    return [];
+  }, [reachTimelineFromCache, reachTimelineFromMetric, reachTimelineFromPosts]);
+
+  const normalizedReachSeries = useMemo(() => {
+    if (!reachSeriesBase.length) return [];
+    const sinceKey = sinceDate ? normalizeDateKey(sinceDate) : null;
+    const untilKey = untilDate ? normalizeDateKey(untilDate) : null;
+
+    const resolveEntryDateKey = (entry) => {
+      if (entry?.dateKey) return entry.dateKey;
+      if (entry?.date) return normalizeDateKey(entry.date);
+      if (entry?.end_time) return normalizeDateKey(entry.end_time);
+      if (entry?.start_time) return normalizeDateKey(entry.start_time);
+      if (entry?.label) {
+        const parsed = normalizeDateKey(entry.label);
+        if (parsed) return parsed;
+      }
+      return null;
+    };
+
+    return reachSeriesBase
+      .map((entry) => ({
         ...entry,
         value: extractNumber(entry.value, 0),
-      }));
-    }
+      }))
+      .filter((entry) => {
+        const entryKey = resolveEntryDateKey(entry);
+        if (!entryKey) return true;
+        if (sinceKey && entryKey < sinceKey) return false;
+        if (untilKey && entryKey > untilKey) return false;
+        return true;
+      });
+  }, [reachSeriesBase, sinceDate, untilDate]);
 
-    return DEFAULT_PROFILE_REACH_SERIES;
-  }, [reachTimelineFromCache, reachTimelineFromMetric, reachTimelineFromPosts]);
+  const profileReachData = useMemo(() => (
+    normalizedReachSeries.length ? normalizedReachSeries : DEFAULT_PROFILE_REACH_SERIES
+  ), [normalizedReachSeries]);
+
+  const profileReachTotal = useMemo(() => normalizedReachSeries.reduce(
+    (acc, entry) => acc + (Number.isFinite(entry.value) ? entry.value : 0),
+    0,
+  ), [normalizedReachSeries]);
+
+  const reachValue = useMemo(() => {
+    if (reachMetricValue != null && reachMetricValue > 0) return reachMetricValue;
+    if (normalizedReachSeries.length) {
+      if (profileReachTotal > 0) return profileReachTotal;
+      if (reachMetricValue != null) return reachMetricValue;
+      return 0;
+    }
+    return reachMetricValue ?? 0;
+  }, [normalizedReachSeries, profileReachTotal, reachMetricValue]);
 
   const peakReachPoint = useMemo(() => {
     if (!profileReachData.length) return null;
