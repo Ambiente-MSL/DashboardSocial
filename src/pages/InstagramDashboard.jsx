@@ -48,11 +48,12 @@ const STOP_WORDS = new Set([
 
 const IG_TOPBAR_PRESETS = [
   { id: "7d", label: "7 dias", days: 7 },
-  { id: "1m", label: "1 mês", days: 30 },
+  { id: "1m", label: "1 mes", days: 30 },
   { id: "3m", label: "3 meses", days: 90 },
 ];
 
 const WEEKDAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"];
+const MONTH_SHORT_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const DEFAULT_GENDER_STATS = [
   { name: "Homens", value: 30 },
   { name: "Mulheres", value: 70 },
@@ -88,13 +89,14 @@ const buildWeeklyPattern = (values) => {
 };
 
 const FOLLOWER_GROWTH_PRESETS = [
-  { id: "7d", label: "7 dias" },
-  { id: "1m", label: "1 mês" },
-  { id: "3m", label: "3 meses" },
-  { id: "6m", label: "6 meses" },
-  { id: "1y", label: "1 ano" },
-  { id: "max", label: "Máximo" },
+  { id: "7d", label: "7 dias", days: 7 },
+  { id: "1m", label: "1 mes", days: 30 },
+  { id: "3m", label: "3 meses", days: 90 },
+  { id: "6m", label: "6 meses", days: 180 },
+  { id: "1y", label: "1 ano", days: 365 },
+  { id: "max", label: "Maximo" },
 ];
+const DEFAULT_FOLLOWER_GROWTH_PRESET = "1m";
 
 const FOLLOWER_GROWTH_SERIES = [
   { label: "Jan", value: 28000 },
@@ -621,6 +623,8 @@ export default function InstagramDashboard() {
   const [coverError, setCoverError] = useState("");
   const [coverUploading, setCoverUploading] = useState(false);
   const [latestFollowers, setLatestFollowers] = useState(null);
+  const [followerGrowthPreset, setFollowerGrowthPreset] = useState(DEFAULT_FOLLOWER_GROWTH_PRESET);
+  const [activeFollowerGrowthBar, setActiveFollowerGrowthBar] = useState(-1);
   const latestFollowersRequestRef = useRef(0);
 
   const activeSnapshot = useMemo(
@@ -639,6 +643,7 @@ export default function InstagramDashboard() {
     setCoverError("");
     setOverviewSnapshot(null);
     setLatestFollowers(null);
+    setFollowerGrowthPreset(DEFAULT_FOLLOWER_GROWTH_PRESET);
   }, [accountSnapshotKey]);
 
   useEffect(() => {
@@ -1119,10 +1124,148 @@ export default function InstagramDashboard() {
     ? [...filteredPosts].sort((a, b) => sumInteractions(b) - sumInteractions(a)).slice(0, 6)
     : []), [filteredPosts]);
 
-  // const followerGrowthData = useMemo(() => followerSeriesNormalized.map((item) => ({
-  //   label: SHORT_DATE_FORMATTER.format(new Date(`${item.date}T00:00:00`)),
-  //   followers: item.value,
-  // })), [followerSeriesNormalized]);
+  const followerGrowthPresetConfig = useMemo(
+    () => FOLLOWER_GROWTH_PRESETS.find((preset) => preset.id === followerGrowthPreset)
+      || FOLLOWER_GROWTH_PRESETS.find((preset) => preset.id === DEFAULT_FOLLOWER_GROWTH_PRESET)
+      || FOLLOWER_GROWTH_PRESETS[0],
+    [followerGrowthPreset],
+  );
+
+  const followerGrowthSeriesSorted = useMemo(() => {
+    if (!followerSeriesNormalized.length) return [];
+    return followerSeriesNormalized
+      .filter((entry) => entry?.date && Number.isFinite(entry.value))
+      .sort((a, b) => (a.date > b.date ? 1 : -1));
+  }, [followerSeriesNormalized]);
+
+  const followerGrowthSeriesForPreset = useMemo(() => {
+    if (!followerGrowthSeriesSorted.length) return [];
+    const preset = followerGrowthPresetConfig;
+    if (!preset?.days || preset.id === "max") {
+      return followerGrowthSeriesSorted;
+    }
+    const latestEntry = followerGrowthSeriesSorted[followerGrowthSeriesSorted.length - 1];
+    const latestDate = latestEntry?.date ? new Date(`${latestEntry.date}T00:00:00`) : null;
+    if (!latestDate || Number.isNaN(latestDate.getTime())) {
+      const sliceCount = Math.min(preset.days, followerGrowthSeriesSorted.length);
+      return followerGrowthSeriesSorted.slice(-sliceCount);
+    }
+    const cutoff = new Date(latestDate);
+    cutoff.setDate(cutoff.getDate() - (preset.days - 1));
+    const filtered = followerGrowthSeriesSorted.filter((entry) => {
+      const entryDate = entry?.date ? new Date(`${entry.date}T00:00:00`) : null;
+      if (!entryDate || Number.isNaN(entryDate.getTime())) return true;
+      return entryDate >= cutoff;
+    });
+    const MAX_POINTS = 64;
+    if (filtered.length > MAX_POINTS) {
+      return filtered.slice(filtered.length - MAX_POINTS);
+    }
+    return filtered;
+  }, [followerGrowthPresetConfig, followerGrowthSeriesSorted]);
+
+  const followerGrowthChartData = useMemo(() => {
+    if (followerGrowthSeriesForPreset.length) {
+      return followerGrowthSeriesForPreset.map((entry, index) => {
+        const dateKey = entry.date || null;
+        const parsedDate = dateKey ? new Date(`${dateKey}T00:00:00`) : null;
+        const validDate = parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate : null;
+        const monthLabel = validDate ? MONTH_SHORT_PT[validDate.getMonth()] || "" : "";
+        const dayLabel = validDate ? String(validDate.getDate()) : "";
+        const label = validDate && monthLabel ? `${dayLabel}/${monthLabel}` : entry.label || `${index + 1}`;
+        const tooltipDate = validDate && monthLabel
+          ? `${String(validDate.getDate()).padStart(2, "0")} - ${monthLabel} - ${validDate.getFullYear()}`
+          : dateKey || label;
+        return {
+          label,
+          value: extractNumber(entry.value, 0),
+          tooltipDate,
+        };
+      });
+    }
+
+    const preset = followerGrowthPresetConfig;
+    const fallbackSeries = (() => {
+      if (!preset?.days || preset.id === "max") {
+        return FOLLOWER_GROWTH_SERIES;
+      }
+      const approxCount = Math.min(
+        FOLLOWER_GROWTH_SERIES.length,
+        Math.max(4, Math.round(preset.days / 7)),
+      );
+      return FOLLOWER_GROWTH_SERIES.slice(-approxCount);
+    })();
+
+    return fallbackSeries.map((entry, index) => ({
+      label: entry.label || `${index + 1}`,
+      value: extractNumber(entry.value, 0),
+      tooltipDate: entry.label || `#${index + 1}`,
+    }));
+  }, [followerGrowthSeriesForPreset, followerGrowthPresetConfig]);
+
+  const followerGrowthDomain = useMemo(() => {
+    if (!followerGrowthChartData.length) return [0, "auto"];
+    const maxValue = followerGrowthChartData.reduce(
+      (max, point) => Math.max(max, extractNumber(point.value, 0)),
+      0,
+    );
+    if (maxValue <= 0) return [0, "auto"];
+    const magnitude = 10 ** Math.floor(Math.log10(maxValue || 1));
+    const rawStep = magnitude / 2;
+    const step = Math.max(1, Math.round(rawStep));
+    const adjustedMax = Math.ceil(maxValue / step) * step;
+    return [0, adjustedMax];
+  }, [followerGrowthChartData]);
+
+  const followerGrowthTicks = useMemo(() => {
+    if (!Array.isArray(followerGrowthDomain)) {
+      return undefined;
+    }
+    const [, max] = followerGrowthDomain;
+    if (typeof max !== "number" || max <= 0) return undefined;
+    const magnitude = 10 ** Math.floor(Math.log10(max || 1));
+    const rawStep = magnitude / 2;
+    const step = Math.max(1, Math.round(rawStep));
+    const ticks = [];
+    for (let value = 0; value <= max; value += step) {
+      ticks.push(value);
+    }
+    if (ticks[ticks.length - 1] !== max) {
+      ticks.push(max);
+    }
+    return ticks;
+  }, [followerGrowthDomain]);
+
+  const followerGrowthPeakPoint = useMemo(() => {
+    if (!followerGrowthChartData.length) return null;
+    return followerGrowthChartData.reduce(
+      (acc, point, index) => {
+        const numeric = extractNumber(point.value, 0);
+        if (numeric > acc.value) {
+          return { value: numeric, index, label: point.label, tooltipDate: point.tooltipDate };
+        }
+        return acc;
+      },
+      {
+        value: extractNumber(followerGrowthChartData[0].value, 0),
+        index: 0,
+        label: followerGrowthChartData[0].label,
+        tooltipDate: followerGrowthChartData[0].tooltipDate,
+      },
+    );
+  }, [followerGrowthChartData]);
+
+  const highlightedFollowerGrowthIndex = activeFollowerGrowthBar >= 0
+    ? activeFollowerGrowthBar
+    : followerGrowthPeakPoint?.index ?? -1;
+
+  const highlightedFollowerGrowthPoint = highlightedFollowerGrowthIndex >= 0
+    ? followerGrowthChartData[highlightedFollowerGrowthIndex] ?? null
+    : null;
+
+  useEffect(() => {
+    setActiveFollowerGrowthBar(-1);
+  }, [accountSnapshotKey, followerGrowthChartData, followerGrowthPreset]);
 
   const genderDistribution = useMemo(() => {
     const breakdown =
@@ -1634,7 +1777,9 @@ export default function InstagramDashboard() {
                     <button
                       key={preset.id}
                       type="button"
-                      className={`ig-filter-pill${preset.id === "1y" ? " ig-filter-pill--active" : ""}`}
+                      className={`ig-filter-pill${preset.id === followerGrowthPreset ? " ig-filter-pill--active" : ""}`}
+                      onClick={() => setFollowerGrowthPreset(preset.id)}
+                      aria-pressed={preset.id === followerGrowthPreset}
                     >
                       {preset.label}
                     </button>
@@ -1643,64 +1788,110 @@ export default function InstagramDashboard() {
               </header>
 
               <div className="ig-chart-area">
-                {FOLLOWER_GROWTH_SERIES.length ? (
-                  <>
-                    <ResponsiveContainer width="100%" height={280}>
-                      <BarChart data={FOLLOWER_GROWTH_SERIES} margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
+                {followerGrowthChartData.length ? (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart
+                      data={followerGrowthChartData}
+                      margin={{ top: 16, right: 16, bottom: 32, left: 0 }}
+                      barCategoryGap="35%"
+                    >
                         <defs>
-                          <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#a855f7" stopOpacity={1} />
-                            <stop offset="100%" stopColor="#ec4899" stopOpacity={1} />
+                          <linearGradient id="igFollowerGrowthBar" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#d8b4fe" />
+                            <stop offset="100%" stopColor="#c084fc" />
+                          </linearGradient>
+                          <linearGradient id="igFollowerGrowthBarActive" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#f472b6" />
+                            <stop offset="45%" stopColor="#d946ef" />
+                            <stop offset="100%" stopColor="#6366f1" />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                        <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
                         <XAxis
                           dataKey="label"
-                          tick={{ fill: '#111827' }}
-                          fontSize={11}
+                          tick={{ fill: "#9ca3af", fontSize: 12 }}
                           axisLine={false}
                           tickLine={false}
+                          interval={0}
+                          height={32}
                         />
                         <YAxis
-                          tick={{ fill: '#111827' }}
-                          fontSize={11}
+                          tick={{ fill: "#9ca3af", fontSize: 12 }}
                           axisLine={false}
                           tickLine={false}
                           tickFormatter={(value) => {
-                            if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                            if (value >= 1000000) {
+                              const millions = (value / 1000000).toFixed(1);
+                              return `${millions.endsWith(".0") ? millions.slice(0, -2) : millions}M`;
+                            }
+                            if (value >= 1000) return `${Math.round(value / 1000)}k`;
                             return value;
                           }}
+                          ticks={followerGrowthTicks}
+                          domain={followerGrowthDomain}
                         />
                         <Tooltip
-                          cursor={{ fill: 'rgba(168, 85, 247, 0.1)' }}
+                          cursor={{ fill: "rgba(216, 180, 254, 0.25)" }}
                           content={({ active, payload }) => {
                             if (!active || !payload?.length) return null;
-                            const data = payload[0];
+                            const dataPoint = payload[0];
+                            const tooltipValue = formatNumber(extractNumber(dataPoint.value, 0));
+                            const tooltipDate = dataPoint.payload?.tooltipDate || dataPoint.payload?.label;
                             return (
                               <div className="ig-follower-tooltip">
-                                <div className="ig-follower-tooltip__label">Total seguidores: {data.value?.toLocaleString('pt-BR')}</div>
-                                <div className="ig-follower-tooltip__date">{data.payload.label}</div>
+                                <div className="ig-follower-tooltip__label">
+                                  Total seguidores: {tooltipValue}
+                                </div>
+                                <div className="ig-follower-tooltip__date">{tooltipDate}</div>
                               </div>
                             );
                           }}
                         />
+                        {highlightedFollowerGrowthPoint ? (
+                          <>
+                            <ReferenceLine
+                              x={highlightedFollowerGrowthPoint.label}
+                              stroke="#111827"
+                              strokeDasharray="4 4"
+                              strokeOpacity={0.3}
+                            />
+                            <ReferenceLine
+                              y={extractNumber(highlightedFollowerGrowthPoint.value, 0)}
+                              stroke="#111827"
+                              strokeDasharray="4 4"
+                              strokeOpacity={0.35}
+                            />
+                            <ReferenceDot
+                              x={highlightedFollowerGrowthPoint.label}
+                              y={extractNumber(highlightedFollowerGrowthPoint.value, 0)}
+                              r={6}
+                              fill="#111827"
+                              stroke="#ffffff"
+                              strokeWidth={2}
+                            />
+                          </>
+                        ) : null}
                         <Bar
                           dataKey="value"
-                          fill="url(#barGradient)"
-                          radius={[8, 8, 0, 0]}
-                          maxBarSize={40}
-                        />
+                          radius={[12, 12, 0, 0]}
+                          barSize={36}
+                          minPointSize={6}
+                          onMouseEnter={(_, index) => setActiveFollowerGrowthBar(index)}
+                          onMouseLeave={() => setActiveFollowerGrowthBar(-1)}
+                        >
+                          {followerGrowthChartData.map((entry, index) => (
+                            <Cell
+                              key={`${entry.label || "point"}-${index}`}
+                              fill={index === highlightedFollowerGrowthIndex
+                                ? "url(#igFollowerGrowthBarActive)"
+                                : "url(#igFollowerGrowthBar)"}
+                            />
+                          ))}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
-                    <div className="ig-chart-slider">
-                      <div className="ig-chart-slider__track">
-                        <div className="ig-chart-slider__handle ig-chart-slider__handle--left" />
-                        <div className="ig-chart-slider__handle ig-chart-slider__handle--right" />
-                      </div>
-                    </div>
-                  </>
                 ) : (
-                  <div className="ig-empty-state">Sem histórico recente.</div>
+                  <div className="ig-empty-state">Sem dados disponiveis.</div>
                 )}
               </div>
         </section>
