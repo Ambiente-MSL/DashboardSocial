@@ -60,6 +60,10 @@ DEFAULT_REFRESH_RESOURCES = [
     "ads_highlights",
 ]
 
+IG_METRICS_TABLE = "ig_metrics_daily"
+IG_ROLLUP_TABLE = "ig_metrics_rollup"
+DEFAULT_CACHE_PLATFORM = "instagram"
+
 
 def validate_timestamp(ts: int, param_name: str = "timestamp") -> int:
     """
@@ -645,16 +649,15 @@ def _ensure_instagram_daily_metrics(ig_id: str, start_date: date, end_date: date
         return
 
     response = (
-        client.table("metrics_daily")
+        client.table(IG_METRICS_TABLE)
         .select("metric_date")
         .eq("account_id", ig_id)
-        .eq("platform", "instagram")
         .gte("metric_date", start_date.isoformat())
         .lte("metric_date", end_date.isoformat())
         .execute()
     )
     if getattr(response, "error", None):
-        logger.warning("Falha ao consultar metrics_daily: %s", response.error)
+        logger.warning("Falha ao consultar %s: %s", IG_METRICS_TABLE, response.error)
         return
 
     existing_dates = {row["metric_date"] for row in (response.data or [])}
@@ -683,16 +686,15 @@ def _load_metrics_map(ig_id: str, start_date: date, end_date: date) -> Dict[str,
         return {}
 
     response = (
-        client.table("metrics_daily")
+        client.table(IG_METRICS_TABLE)
         .select("metric_key,metric_date,value,metadata")
         .eq("account_id", ig_id)
-        .eq("platform", "instagram")
         .gte("metric_date", start_date.isoformat())
         .lte("metric_date", end_date.isoformat())
         .execute()
     )
     if getattr(response, "error", None):
-        logger.warning("Falha ao carregar metrics_daily: %s", response.error)
+        logger.warning("Falha ao carregar %s: %s", IG_METRICS_TABLE, response.error)
         return {}
 
     grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
@@ -825,7 +827,7 @@ def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) ->
     visitor_rows = current_data.get("profile_visitors_total", [])
     profile_visitors_breakdown = _combine_visitors(visitor_rows) if visitor_rows else None
     if profile_visitors_breakdown:
-        profile_visitors_breakdown["source"] = "metrics_daily"
+        profile_visitors_breakdown["source"] = IG_METRICS_TABLE
 
     follower_counts = {
         "start": _as_int(followers_start),
@@ -921,7 +923,7 @@ def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) ->
         "reach_timeseries": reach_timeseries,
     }
     response["cache"] = {
-        "source": "metrics_daily",
+        "source": IG_METRICS_TABLE,
         "fetched_at": datetime.now(timezone.utc).isoformat(),
         "stale": False,
         "reason": "precomputed",
@@ -975,9 +977,10 @@ def facebook_metrics():
             since,
             until,
             fetcher=fetch_facebook_metrics,
+            platform="facebook",
         )
     except MetaAPIError as err:
-        mark_cache_error("facebook_metrics", page_id, since, until, None, err.args[0])
+        mark_cache_error("facebook_metrics", page_id, since, until, None, err.args[0], platform="facebook")
         return meta_error_response(err)
     except ValueError as err:
         return jsonify({"error": str(err)}), 400
@@ -1007,9 +1010,10 @@ def facebook_posts():
             None,
             extra={"limit": limit},
             fetcher=fetch_facebook_posts,
+            platform="facebook",
         )
     except MetaAPIError as err:
-        mark_cache_error("facebook_posts", page_id, None, None, {"limit": limit}, err.args[0])
+        mark_cache_error("facebook_posts", page_id, None, None, {"limit": limit}, err.args[0], platform="facebook")
         return meta_error_response(err)
     response = dict(payload)
     response["cache"] = meta
@@ -1033,11 +1037,12 @@ def facebook_audience():
             None,
             None,
             fetcher=fetch_facebook_audience,
+            platform="facebook",
         )
     except MetaAPIError as err:
-        mark_cache_error("facebook_audience", page_id, None, None, None, err.args[0])
+        mark_cache_error("facebook_audience", page_id, None, None, None, err.args[0], platform="facebook")
         # Tentar fallback com último cache disponível
-        fallback = get_latest_cached_payload("facebook_audience", page_id)
+        fallback = get_latest_cached_payload("facebook_audience", page_id, platform="facebook")
         if fallback:
             payload, meta = fallback
             meta = dict(meta or {})
@@ -1049,7 +1054,7 @@ def facebook_audience():
         return meta_error_response(err)
     except Exception as err:  # noqa: BLE001
         logger.exception("Falha inesperada em facebook_audience")
-        fallback = get_latest_cached_payload("facebook_audience", page_id)
+        fallback = get_latest_cached_payload("facebook_audience", page_id, platform="facebook")
         if fallback:
             payload, meta = fallback
             meta = dict(meta or {})
@@ -1080,7 +1085,7 @@ def instagram_metrics():
     try:
         db_payload = build_instagram_metrics_from_db(ig, since, until)
     except Exception as err:  # noqa: BLE001
-        logger.exception("Falha ao montar métricas via metrics_daily", exc_info=err)
+        logger.exception("Falha ao montar métricas via %s", IG_METRICS_TABLE, exc_info=err)
         db_payload = None
     if db_payload:
         return jsonify(db_payload)
@@ -1092,10 +1097,11 @@ def instagram_metrics():
             since,
             until,
             fetcher=fetch_instagram_metrics,
+            platform=DEFAULT_CACHE_PLATFORM,
         )
     except MetaAPIError as err:
-        mark_cache_error("instagram_metrics", ig, since, until, None, err.args[0])
-        fallback = get_latest_cached_payload("instagram_metrics", ig)
+        mark_cache_error("instagram_metrics", ig, since, until, None, err.args[0], platform=DEFAULT_CACHE_PLATFORM)
+        fallback = get_latest_cached_payload("instagram_metrics", ig, platform=DEFAULT_CACHE_PLATFORM)
         if fallback:
             payload, meta = fallback
             meta = dict(meta or {})
@@ -1108,7 +1114,7 @@ def instagram_metrics():
             return jsonify(response)
         return meta_error_response(err)
     except ValueError as err:
-        fallback = get_latest_cached_payload("instagram_metrics", ig)
+        fallback = get_latest_cached_payload("instagram_metrics", ig, platform=DEFAULT_CACHE_PLATFORM)
         if fallback:
             payload, meta = fallback
             meta = dict(meta or {})
@@ -1122,7 +1128,7 @@ def instagram_metrics():
         return jsonify({"error": str(err)}), 400
     except Exception as err:  # noqa: BLE001
         logger.exception("Falha inesperada em instagram_metrics")
-        fallback = get_latest_cached_payload("instagram_metrics", ig)
+        fallback = get_latest_cached_payload("instagram_metrics", ig, platform=DEFAULT_CACHE_PLATFORM)
         if fallback:
             payload, meta = fallback
             meta = dict(meta or {})
@@ -1155,10 +1161,11 @@ def instagram_organic():
             since,
             until,
             fetcher=fetch_instagram_organic,
+            platform=DEFAULT_CACHE_PLATFORM,
         )
     except MetaAPIError as err:
-        mark_cache_error("instagram_organic", ig, since, until, None, err.args[0])
-        fallback = get_latest_cached_payload("instagram_organic", ig)
+        mark_cache_error("instagram_organic", ig, since, until, None, err.args[0], platform=DEFAULT_CACHE_PLATFORM)
+        fallback = get_latest_cached_payload("instagram_organic", ig, platform=DEFAULT_CACHE_PLATFORM)
         if fallback:
             payload, meta = fallback
             meta = dict(meta or {})
@@ -1171,7 +1178,7 @@ def instagram_organic():
             return jsonify(response)
         return meta_error_response(err)
     except ValueError as err:
-        fallback = get_latest_cached_payload("instagram_organic", ig)
+        fallback = get_latest_cached_payload("instagram_organic", ig, platform=DEFAULT_CACHE_PLATFORM)
         if fallback:
             payload, meta = fallback
             meta = dict(meta or {})
@@ -1185,7 +1192,7 @@ def instagram_organic():
         return jsonify({"error": str(err)}), 400
     except Exception as err:  # noqa: BLE001
         logger.exception("Falha inesperada em instagram_organic")
-        fallback = get_latest_cached_payload("instagram_organic", ig)
+        fallback = get_latest_cached_payload("instagram_organic", ig, platform=DEFAULT_CACHE_PLATFORM)
         if fallback:
             payload, meta = fallback
             meta = dict(meta or {})
@@ -1214,10 +1221,11 @@ def instagram_audience():
             None,
             None,
             fetcher=fetch_instagram_audience,
+            platform=DEFAULT_CACHE_PLATFORM,
         )
     except MetaAPIError as err:
-        mark_cache_error("instagram_audience", ig, None, None, None, err.args[0])
-        fallback = get_latest_cached_payload("instagram_audience", ig)
+        mark_cache_error("instagram_audience", ig, None, None, None, err.args[0], platform=DEFAULT_CACHE_PLATFORM)
+        fallback = get_latest_cached_payload("instagram_audience", ig, platform=DEFAULT_CACHE_PLATFORM)
         if fallback:
             payload, meta = fallback
             meta = dict(meta or {})
@@ -1229,7 +1237,7 @@ def instagram_audience():
         return meta_error_response(err)
     except Exception as err:  # noqa: BLE001
         logger.exception("Falha inesperada em instagram_audience")
-        fallback = get_latest_cached_payload("instagram_audience", ig)
+        fallback = get_latest_cached_payload("instagram_audience", ig, platform=DEFAULT_CACHE_PLATFORM)
         if fallback:
             payload, meta = fallback
             meta = dict(meta or {})
@@ -1261,9 +1269,10 @@ def instagram_posts():
             None,
             extra={"limit": limit},
             fetcher=fetch_instagram_posts,
+            platform=DEFAULT_CACHE_PLATFORM,
         )
     except MetaAPIError as err:
-        mark_cache_error("instagram_posts", ig, None, None, {"limit": limit}, err.args[0])
+        mark_cache_error("instagram_posts", ig, None, None, {"limit": limit}, err.args[0], platform=DEFAULT_CACHE_PLATFORM)
         return meta_error_response(err)
     response = dict(payload)
     response["cache"] = meta
@@ -1293,9 +1302,10 @@ def ads_high():
             since_ts,
             until_ts,
             fetcher=fetch_ads_highlights,
+            platform="ads",
         )
     except MetaAPIError as err:
-        mark_cache_error("ads_highlights", act, since_ts, until_ts, None, err.args[0])
+        mark_cache_error("ads_highlights", act, since_ts, until_ts, None, err.args[0], platform="ads")
         return meta_error_response(err)
     except ValueError as err:
         return jsonify({"error": str(err)}), 400
@@ -1513,10 +1523,11 @@ def manual_refresh():
                 fetcher=fetcher,
                 force=True,
                 refresh_reason="manual",
+                platform=platform,
             )
             results[resource] = {"cache": meta}
         except MetaAPIError as err:
-            mark_cache_error(resource, owner_id, since_arg, until_arg, extra, err.args[0])
+            mark_cache_error(resource, owner_id, since_arg, until_arg, extra, err.args[0], platform=platform)
             add_error(
                 resource,
                 err.args[0],

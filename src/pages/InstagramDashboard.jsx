@@ -797,7 +797,7 @@ export default function InstagramDashboard() {
 
     try {
       const { data, error } = await supabase
-        .from("metrics_daily")
+        .from("ig_metrics_daily")
         .select("value")
         .eq("account_id", igUserId)
         .eq("platform", "instagram")

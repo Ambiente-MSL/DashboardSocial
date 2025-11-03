@@ -3,7 +3,7 @@ import logging
 import os
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
-from typing import Dict, Iterable, List, Optional, Sequence
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from cache import get_cached_payload
 from meta import MetaAPIError, ig_window, gget
@@ -14,6 +14,60 @@ logger = logging.getLogger(__name__)
 PLATFORM = "instagram"
 DEFAULT_BUCKETS = (7, 30, 90)
 DEFAULT_POSTS_LIMIT = int(os.getenv("INSTAGRAM_POSTS_LIMIT", "20") or "20")
+METRICS_TABLE = "ig_metrics_daily"
+ROLLUP_TABLE = "ig_metrics_rollup"
+INGEST_LOGS_TABLE = "ingest_logs"
+JOB_TYPE = "instagram_ingest"
+
+
+def _now_utc_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _insert_ingest_log(client, account_id: str, started_at: str) -> Optional[str]:
+    record = {
+        "platform": PLATFORM,
+        "job_type": JOB_TYPE,
+        "account_id": account_id,
+        "status": "running",
+        "started_at": started_at,
+        "finished_at": None,
+        "records_inserted": 0,
+        "records_updated": 0,
+        "error_message": None,
+    }
+    try:
+        response = client.table(INGEST_LOGS_TABLE).insert(record).execute()
+    except Exception as err:  # noqa: BLE001
+        print(f"[ingest-log] Falha ao registrar início para {account_id}: {err}")
+        return None
+    data = getattr(response, "data", None) or []
+    log_id = data[0].get("id") if data else None
+    return log_id
+
+
+def _update_ingest_log(
+    client,
+    log_id: Optional[str],
+    status: str,
+    finished_at: Optional[str],
+    records_inserted: int,
+    records_updated: int,
+    error_message: Optional[str] = None,
+) -> None:
+    if not log_id:
+        return
+    payload = {
+        "status": status,
+        "finished_at": finished_at,
+        "records_inserted": records_inserted,
+        "records_updated": records_updated,
+        "error_message": error_message,
+    }
+    try:
+        client.table(INGEST_LOGS_TABLE).update(payload).eq("id", log_id).execute()
+    except Exception as err:  # noqa: BLE001
+        print(f"[ingest-log] Falha ao atualizar registro {log_id}: {err}")
 
 
 def discover_instagram_account_ids() -> List[str]:
@@ -121,7 +175,6 @@ def snapshot_to_rows(
         rows.append(
             {
                 "account_id": ig_id,
-                "platform": PLATFORM,
                 "metric_key": metric_key,
                 "metric_date": metric_date.isoformat(),
                 "value": float(numeric_value),
@@ -156,23 +209,68 @@ def snapshot_to_rows(
     return rows
 
 
-def upsert_metrics(rows: Sequence[Dict[str, object]]) -> None:
+def upsert_metrics(rows: Sequence[Dict[str, object]]) -> Tuple[int, int]:
     if not rows:
-        return
+        return 0, 0
     client = get_supabase_client()
     if client is None:
         raise RuntimeError("Supabase n\u00e3o configurado para ingest\u00e3o.")
-    # Supabase upsert aceita lista grande; dividimos para evitar payload excessivo
+
+    account_ids = {str(row.get("account_id")) for row in rows if row.get("account_id")}
+    metric_keys = {str(row.get("metric_key")) for row in rows if row.get("metric_key")}
+    metric_dates = {str(row.get("metric_date")) for row in rows if row.get("metric_date")}
+
+    existing_keys: set[Tuple[str, str, str]] = set()
+    try:
+        query = client.table(METRICS_TABLE).select("account_id,metric_key,metric_date")
+        account_list = list(account_ids)
+        if account_list:
+            if len(account_list) == 1:
+                query = query.eq("account_id", account_list[0])
+            else:
+                query = query.in_("account_id", account_list)
+        if metric_keys:
+            query = query.in_("metric_key", list(metric_keys))
+        if metric_dates:
+            query = query.in_("metric_date", list(metric_dates))
+        response = query.execute()
+        for item in getattr(response, "data", None) or []:
+            existing_keys.add(
+                (
+                    str(item.get("account_id")),
+                    str(item.get("metric_key")),
+                    str(item.get("metric_date")),
+                )
+            )
+    except Exception as err:  # noqa: BLE001
+        logger.warning("Falha ao consultar registros existentes em %s: %s", METRICS_TABLE, err)
+
+    inserted = 0
+    updated = 0
+    normalized_rows: List[Dict[str, object]] = []
+    for row in rows:
+        account_id = str(row.get("account_id"))
+        metric_key = str(row.get("metric_key"))
+        metric_date = str(row.get("metric_date"))
+        key = (account_id, metric_key, metric_date)
+        if key in existing_keys:
+            updated += 1
+        else:
+            inserted += 1
+        normalized_rows.append(dict(row))
+
     chunk_size = 500
-    for index in range(0, len(rows), chunk_size):
-        chunk = rows[index:index + chunk_size]
+    for index in range(0, len(normalized_rows), chunk_size):
+        chunk = normalized_rows[index:index + chunk_size]
         response = (
-            client.table("metrics_daily")
-            .upsert(chunk, on_conflict="account_id,platform,metric_key,metric_date")
+            client.table(METRICS_TABLE)
+            .upsert(chunk, on_conflict="account_id,metric_key,metric_date")
             .execute()
         )
         if getattr(response, "error", None):
-            raise RuntimeError(f"Falha ao inserir metrics_daily: {response.error}")
+            raise RuntimeError(f"Falha ao inserir {METRICS_TABLE}: {response.error}")
+
+    return inserted, updated
 
 
 def build_rollup_payload(
@@ -189,7 +287,6 @@ def build_rollup_payload(
     value_avg = value_sum / len(numeric_values)
     payload = {
         "account_id": values[0]["account_id"],
-        "platform": PLATFORM,
         "metric_key": metric_key,
         "bucket": bucket,
         "start_date": start_date.isoformat(),
@@ -224,10 +321,9 @@ def refresh_rollups(
         start_date = metric_date - timedelta(days=days - 1)
         for metric_key in metric_keys:
             response = (
-                client.table("metrics_daily")
+                client.table(METRICS_TABLE)
                 .select("account_id,metric_date,value")
                 .eq("account_id", ig_id)
-                .eq("platform", PLATFORM)
                 .eq("metric_key", metric_key)
                 .gte("metric_date", start_date.isoformat())
                 .lte("metric_date", metric_date.isoformat())
@@ -245,8 +341,8 @@ def refresh_rollups(
                 end_date=metric_date,
             )
             result = (
-                client.table("metrics_daily_rollup")
-                .upsert(payload, on_conflict="account_id,platform,metric_key,bucket,start_date,end_date")
+                client.table(ROLLUP_TABLE)
+                .upsert(payload, on_conflict="account_id,metric_key,bucket,start_date,end_date")
                 .execute()
             )
             if getattr(result, "error", None):
@@ -263,6 +359,7 @@ def warm_instagram_posts_cache(ig_id: str, limit: int = DEFAULT_POSTS_LIMIT) -> 
             extra={"limit": limit},
             force=True,
             refresh_reason="ingest_job",
+            platform=PLATFORM,
         )
         logger.debug("Cache de posts atualizado para %s (limite %s)", ig_id, limit)
     except Exception as err:  # noqa: BLE001
@@ -276,6 +373,12 @@ def ingest_account_range(
     refresh_rollup: bool = True,
     warm_posts: bool = True,
 ) -> None:
+    log_client = get_supabase_client()
+    log_id: Optional[str] = None
+    started_at_iso = _now_utc_iso()
+    if log_client is not None:
+        log_id = _insert_ingest_log(log_client, ig_id, started_at_iso)
+
     all_rows: List[Dict[str, object]] = []
     metric_keys_touched: defaultdict[str, set] = defaultdict(set)
 
@@ -290,16 +393,45 @@ def ingest_account_range(
         for row in rows:
             metric_keys_touched[daily_date.isoformat()].add(row["metric_key"])
 
-    upsert_metrics(all_rows)
-    if warm_posts:
-        warm_instagram_posts_cache(ig_id)
+    inserted_total = 0
+    updated_total = 0
+    try:
+        inserted, updated = upsert_metrics(all_rows)
+        inserted_total += inserted
+        updated_total += updated
 
-    if not refresh_rollup:
-        return
+        if warm_posts:
+            warm_instagram_posts_cache(ig_id)
 
-    for date_iso, keys in metric_keys_touched.items():
-        metric_date = datetime.fromisoformat(date_iso).date()
-        refresh_rollups(ig_id, list(keys), metric_date)
+        if refresh_rollup:
+            for date_iso, keys in metric_keys_touched.items():
+                metric_date = datetime.fromisoformat(date_iso).date()
+                refresh_rollups(ig_id, list(keys), metric_date)
+
+        finished_iso = _now_utc_iso()
+        if log_client is not None:
+            _update_ingest_log(
+                log_client,
+                log_id,
+                status="succeeded",
+                finished_at=finished_iso,
+                records_inserted=inserted_total,
+                records_updated=updated_total,
+                error_message=None,
+            )
+        print(f"[instagram_ingest] {ig_id} inserted={inserted_total} updated={updated_total}")
+    except Exception as err:
+        if log_client is not None:
+            _update_ingest_log(
+                log_client,
+                log_id,
+                status="failed",
+                finished_at=_now_utc_iso(),
+                records_inserted=inserted_total,
+                records_updated=updated_total,
+                error_message=str(err),
+            )
+        raise
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:

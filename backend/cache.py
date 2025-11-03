@@ -16,13 +16,28 @@ logger = logging.getLogger(__name__)
 # Registrador de recursos -> fetchers
 FETCHERS: Dict[str, Callable[[str, Optional[int], Optional[int], Optional[Dict[str, Any]]], Any]] = {}
 
-CACHE_TABLE = os.getenv("SUPABASE_CACHE_TABLE", "meta_cache")
+DEFAULT_CACHE_TABLE = os.getenv("SUPABASE_CACHE_TABLE", "ig_cache")
 DEFAULT_TTL_HOURS = int(os.getenv("META_CACHE_TTL_HOURS", "24"))
 DAY_SECONDS = 86_400
 CACHE_NAMESPACE = os.getenv("META_CACHE_NAMESPACE", "").strip() or "default"
 
+PLATFORM_TABLES: Dict[str, str] = {
+    "instagram": DEFAULT_CACHE_TABLE or "ig_cache",
+    "facebook": "fb_cache",
+    "ads": "ads_cache",
+}
+
 _refresh_lock = threading.Lock()
 _refreshing_keys: set[str] = set()
+
+
+def get_table_name(platform: Optional[str] = "instagram") -> str:
+    """
+    Retorna o nome da tabela de cache conforme a plataforma solicitada.
+    Fallback para a tabela de Instagram quando plataforma n�o for reconhecida.
+    """
+    key = (platform or "instagram").lower()
+    return PLATFORM_TABLES.get(key, PLATFORM_TABLES["instagram"])
 
 
 def register_fetcher(
@@ -109,9 +124,9 @@ def _get_supabase() -> Optional[Client]:
     return get_supabase_client()
 
 
-def _select_entry(client: Client, cache_key: str) -> Optional[Dict[str, Any]]:
+def _select_entry(client: Client, table_name: str, cache_key: str) -> Optional[Dict[str, Any]]:
     try:
-        response = client.table(CACHE_TABLE).select("*").eq("cache_key", cache_key).limit(1).execute()
+        response = client.table(table_name).select("*").eq("cache_key", cache_key).limit(1).execute()
     except Exception as err:  # noqa: BLE001
         logger.error("Falha ao consultar cache Supabase: %s", err)
         return None
@@ -120,9 +135,9 @@ def _select_entry(client: Client, cache_key: str) -> Optional[Dict[str, Any]]:
     return data[0] if data else None
 
 
-def _persist_entry(client: Client, record: Dict[str, Any]) -> None:
+def _persist_entry(client: Client, table_name: str, record: Dict[str, Any]) -> None:
     try:
-        client.table(CACHE_TABLE).upsert(record, on_conflict="cache_key").execute()
+        client.table(table_name).upsert(record, on_conflict="cache_key").execute()
     except Exception as err:  # noqa: BLE001
         logger.error("Falha ao persistir cache Supabase: %s", err)
         raise
@@ -132,6 +147,7 @@ def get_latest_cached_payload(
     resource: str,
     owner_id: Optional[str],
     extra: Optional[Dict[str, Any]] = None,
+    platform: str = "instagram",
 ) -> Optional[Tuple[Any, Dict[str, Any]]]:
     """
     Recupera a entrada mais recente armazenada no cache para o recurso/owner fornecido.
@@ -148,8 +164,9 @@ def get_latest_cached_payload(
     if supabase is None:
         return None
 
+    table_name = get_table_name(platform)
     query = (
-        supabase.table(CACHE_TABLE)
+        supabase.table(table_name)
         .select("*")
         .eq("resource", resource)
     )
@@ -174,6 +191,7 @@ def get_latest_cached_payload(
     payload = _clone_payload(record.get("payload"))
     metadata = _build_metadata(record, stale=True, source="cache-fallback")
     metadata["fallback"] = True
+    metadata["platform"] = platform
     return payload, metadata
 
 
@@ -194,6 +212,7 @@ def _build_metadata(record: Dict[str, Any], stale: bool, source: str) -> Dict[st
 
 def _refresh_cache_entry(
     supabase: Client,
+    table_name: str,
     cache_key: str,
     resource: str,
     owner_id: str,
@@ -231,7 +250,7 @@ def _refresh_cache_entry(
         "updated_at": fetched_at_iso,
     }
 
-    _persist_entry(supabase, record)
+    _persist_entry(supabase, table_name, record)
     metadata = _build_metadata(record, stale=False, source="refresh" if stored else "prime")
     return payload, metadata
 
@@ -239,6 +258,7 @@ def _refresh_cache_entry(
 def _schedule_background_refresh(
     cache_key: str,
     supabase: Client,
+    table_name: str,
     resource: str,
     owner_id: str,
     since_ts_requested: Optional[int],
@@ -252,6 +272,7 @@ def _schedule_background_refresh(
         try:
             _refresh_cache_entry(
                 supabase,
+                table_name,
                 cache_key,
                 resource,
                 owner_id,
@@ -262,7 +283,7 @@ def _schedule_background_refresh(
                 extra,
                 fetcher,
                 refresh_reason="auto-stale",
-                stored=_select_entry(supabase, cache_key),
+                stored=_select_entry(supabase, table_name, cache_key),
             )
             logger.info("Cache %s atualizado em segundo plano.", cache_key)
         except Exception as err:  # noqa: BLE001
@@ -290,6 +311,7 @@ def get_cached_payload(
     *,
     force: bool = False,
     refresh_reason: Optional[str] = None,
+    platform: str = "instagram",
 ) -> Tuple[Any, Dict[str, Any]]:
     """
     Recupera dados do cache Supabase, buscando na Graph API se necessário.
@@ -314,6 +336,7 @@ def get_cached_payload(
             "ttl_hours": DEFAULT_TTL_HOURS,
             "last_refresh_status": "bypassed",
             "last_refresh_error": None,
+            "platform": platform,
         }
         return _clone_payload(payload), meta
 
@@ -323,8 +346,9 @@ def get_cached_payload(
     cache_until_ts = _bucket_ts(requested_until_ts)
     extra = _make_extra(extra)
 
+    table_name = get_table_name(platform)
     cache_key = _compute_cache_key(resource, owner_id, cache_since_ts, cache_until_ts, extra)
-    stored = _select_entry(supabase, cache_key)
+    stored = _select_entry(supabase, table_name, cache_key)
     now = datetime.now(timezone.utc)
 
     if stored and not force:
@@ -337,6 +361,7 @@ def get_cached_payload(
             _schedule_background_refresh(
                 cache_key,
                 supabase,
+                table_name,
                 resource,
                 owner_id,
                 requested_since_ts,
@@ -349,10 +374,12 @@ def get_cached_payload(
 
         source = "stale" if is_stale else "cache"
         metadata = _build_metadata(stored, stale=is_stale, source=source)
+        metadata["platform"] = platform
         return _clone_payload(stored.get("payload")), metadata
 
     payload, metadata = _refresh_cache_entry(
         supabase,
+        table_name,
         cache_key,
         resource,
         owner_id,
@@ -365,6 +392,7 @@ def get_cached_payload(
         refresh_reason,
         stored,
     )
+    metadata["platform"] = platform
     return _clone_payload(payload), metadata
 
 
@@ -375,11 +403,13 @@ def mark_cache_error(
     until_ts: Optional[int],
     extra: Optional[Dict[str, Any]],
     error_message: str,
+    platform: str = "instagram",
 ) -> None:
     supabase = _get_supabase()
     if supabase is None:
         return
 
+    table_name = get_table_name(platform)
     cache_key = _compute_cache_key(
         resource,
         owner_id,
@@ -387,11 +417,11 @@ def mark_cache_error(
         _bucket_ts(_normalize_ts(until_ts)),
         _make_extra(extra),
     )
-    record = _select_entry(supabase, cache_key)
+    record = _select_entry(supabase, table_name, cache_key)
     if not record:
         return
     try:
-        supabase.table(CACHE_TABLE).update(
+        supabase.table(table_name).update(
             {
                 "last_refresh_status": "failed",
                 "last_refresh_error": error_message,
@@ -402,21 +432,39 @@ def mark_cache_error(
         logger.error("Falha ao marcar erro de cache: %s", err)
 
 
-def list_due_entries(limit: int = 10) -> List[Dict[str, Any]]:
+def list_due_entries(limit: int = 10, platform: Optional[str] = None) -> List[Dict[str, Any]]:
     supabase = _get_supabase()
     if supabase is None:
         return []
     now_iso = datetime.now(timezone.utc).isoformat()
-    try:
-        response = (
-            supabase.table(CACHE_TABLE)
-            .select("*")
-            .lte("next_refresh_at", now_iso)
-            .order("next_refresh_at", desc=False)
-            .limit(limit)
-            .execute()
-        )
-    except Exception as err:  # noqa: BLE001
-        logger.error("Falha ao listar cache vencido: %s", err)
-        return []
-    return getattr(response, "data", None) or []
+    platforms: List[str]
+    if platform:
+        platforms = [platform]
+    else:
+        platforms = list(PLATFORM_TABLES.keys())
+
+    aggregated: List[Dict[str, Any]] = []
+    for plat in platforms:
+        table_name = get_table_name(plat)
+        try:
+            response = (
+                supabase.table(table_name)
+                .select("*")
+                .lte("next_refresh_at", now_iso)
+                .order("next_refresh_at", desc=False)
+                .limit(limit)
+                .execute()
+            )
+        except Exception as err:  # noqa: BLE001
+            logger.error("Falha ao listar cache vencido na tabela %s: %s", table_name, err)
+            continue
+        for row in getattr(response, "data", None) or []:
+            item = dict(row)
+            item["platform"] = plat
+            item["_cache_table"] = table_name
+            aggregated.append(item)
+
+    aggregated.sort(key=lambda item: item.get("next_refresh_at") or "")
+    if platform:
+        return aggregated[:limit]
+    return aggregated[:limit]

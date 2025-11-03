@@ -21,6 +21,19 @@ DEFAULT_INGEST_WARM_POSTS = os.getenv("INSTAGRAM_INGEST_WARM_POSTS", "1") != "0"
 DEFAULT_INGEST_LOOKBACK_DAYS = int(os.getenv("INSTAGRAM_INGEST_LOOKBACK_DAYS", "1") or "1")
 
 
+def cleanup_old_cache_job() -> None:
+    client = get_supabase_client()
+    if client is None:
+        print("[cleanup-cache] Supabase não configurado; ignorando limpeza.")
+        return
+    try:
+        response = client.rpc("cleanup_old_cache", params={}).execute()
+        removed = getattr(response, "data", None)
+        print(f"[cleanup-cache] cleanup_old_cache executado: {removed}")
+    except Exception as err:  # noqa: BLE001
+        print(f"[cleanup-cache] Falha ao executar cleanup_old_cache: {err}")
+
+
 class MetaSyncScheduler:
     def __init__(self, interval_minutes: int = DEFAULT_INTERVAL_MINUTES):
         self.interval_minutes = max(5, interval_minutes)
@@ -71,6 +84,17 @@ class MetaSyncScheduler:
                 ingest_tz.key if hasattr(ingest_tz, "key") else ingest_tz.tzname(datetime.utcnow()),
             )
 
+        cleanup_tz = ZoneInfo("America/Sao_Paulo")
+        self._scheduler.add_job(
+            cleanup_old_cache_job,
+            trigger="cron",
+            hour=4,
+            minute=0,
+            timezone=cleanup_tz,
+            id="cleanup_cache",
+            replace_existing=True,
+        )
+
         self._scheduler.start()
         self._started = True
         logger.info("Scheduler de sincronização iniciado (intervalo %s minutos).", self.interval_minutes)
@@ -109,6 +133,7 @@ class MetaSyncScheduler:
             until_ts = entry.get("until_ts")
             extra = entry.get("extra")
             cache_key = entry.get("cache_key")
+            platform = (entry.get("platform") or "instagram").lower()
 
             try:
                 get_cached_payload(
@@ -119,12 +144,13 @@ class MetaSyncScheduler:
                     extra,
                     force=True,
                     refresh_reason="scheduler",
+                    platform=platform,
                 )
                 logger.debug("Cache %s atualizado pelo scheduler.", cache_key)
             except Exception as err:  # noqa: BLE001
                 message = str(err)
                 logger.exception("Falha ao atualizar cache %s: %s", cache_key, message)
-                mark_cache_error(resource, owner_id, since_ts, until_ts, extra, message)
+                mark_cache_error(resource, owner_id, since_ts, until_ts, extra, message, platform=platform)
 
     def _resolve_ingest_accounts(self) -> List[str]:
         accounts = resolve_ingest_accounts(auto_discover=self._ingest_auto_discover)
