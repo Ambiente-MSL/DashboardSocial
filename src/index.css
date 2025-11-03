@@ -8665,26 +8665,54 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 }
 
 .ig-filter-pill {
-  padding: 6px 14px;
+  padding: 8px 16px;
   border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  border-radius: 8px;
   background: white;
   color: #6b7280;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.ig-filter-pill::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #db2777 0%, #7c3aed 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 8px;
+  z-index: -1;
 }
 
 .ig-filter-pill:hover {
-  border-color: #8b5cf6;
-  color: #8b5cf6;
+  border-color: transparent;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(219, 39, 119, 0.3);
+}
+
+.ig-filter-pill:hover::before {
+  opacity: 1;
 }
 
 .ig-filter-pill--active {
-  background: #8b5cf6;
-  border-color: #8b5cf6;
+  background: linear-gradient(135deg, #db2777 0%, #7c3aed 100%);
+  border-color: transparent;
   color: white;
+  box-shadow: 0 2px 8px rgba(219, 39, 119, 0.25);
+}
+
+.ig-filter-pill--active:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(219, 39, 119, 0.4);
 }
 
 .ig-chart-area {

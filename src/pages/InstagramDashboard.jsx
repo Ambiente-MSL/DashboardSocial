@@ -17,6 +17,7 @@ import {
   Line,
   ReferenceDot,
   ReferenceLine,
+  Sector,
 } from "recharts";
 import {
   BarChart3,
@@ -512,6 +513,42 @@ const BubbleTooltip = ({ active, payload, suffix = "" }) => {
     </div>
   );
 };
+
+const renderActiveShape = (props) => {
+  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+
+  return (
+    <g>
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={innerRadius}
+        outerRadius={outerRadius + 10}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+      />
+    </g>
+  );
+};
+
+const renderActiveGenderShape = (props) => {
+  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+
+  return (
+    <g>
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={innerRadius}
+        outerRadius={outerRadius + 8}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+      />
+    </g>
+  );
+};
 export default function InstagramDashboard() {
   const outlet = useOutletContext() || {};
   const { setTopbarConfig, resetTopbarConfig } = outlet;
@@ -626,6 +663,8 @@ export default function InstagramDashboard() {
   const [followerGrowthPreset, setFollowerGrowthPreset] = useState(DEFAULT_FOLLOWER_GROWTH_PRESET);
   const [activeFollowerGrowthBar, setActiveFollowerGrowthBar] = useState(-1);
   const latestFollowersRequestRef = useRef(0);
+  const [activeEngagementIndex, setActiveEngagementIndex] = useState(-1);
+  const [activeGenderIndex, setActiveGenderIndex] = useState(-1);
 
   const activeSnapshot = useMemo(
     () => (overviewSnapshot?.accountId === accountSnapshotKey && accountSnapshotKey ? overviewSnapshot : null),
@@ -1488,6 +1527,10 @@ export default function InstagramDashboard() {
                               outerRadius={85}
                               paddingAngle={3}
                               stroke="none"
+                              activeIndex={activeEngagementIndex}
+                              activeShape={renderActiveShape}
+                              onMouseEnter={(_, index) => setActiveEngagementIndex(index)}
+                              onMouseLeave={() => setActiveEngagementIndex(-1)}
                             >
                               {contentBreakdown.map((_, index) => (
                                 <Cell key={index} fill={IG_DONUT_COLORS[index % IG_DONUT_COLORS.length]} />
@@ -1911,11 +1954,13 @@ export default function InstagramDashboard() {
                     dataKey="value"
                     cx="50%"
                     cy="50%"
-                    outerRadius={85}
+                    outerRadius={activeGenderIndex === 1 ? 93 : 85}
                     innerRadius={0}
                     fill="#8b5cf6"
                     stroke="none"
-                    isAnimationActive={false}
+                    isAnimationActive={true}
+                    onMouseEnter={() => setActiveGenderIndex(1)}
+                    onMouseLeave={() => setActiveGenderIndex(-1)}
                   />
                   {/* Teal circle (foreground - overlapping) */}
                   <Pie
@@ -1924,13 +1969,16 @@ export default function InstagramDashboard() {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={85}
+                    outerRadius={activeGenderIndex === 0 ? 93 : 85}
                     innerRadius={0}
                     startAngle={90}
                     endAngle={90 + (genderStatsSeries[0]?.value || 0) * 3.6}
                     fill="#14b8a6"
                     stroke="none"
                     paddingAngle={0}
+                    isAnimationActive={true}
+                    onMouseEnter={() => setActiveGenderIndex(0)}
+                    onMouseLeave={() => setActiveGenderIndex(-1)}
                   />
                   <Tooltip content={(props) => <BubbleTooltip {...props} suffix="%" />} />
                 </PieChart>
