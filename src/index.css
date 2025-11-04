@@ -7792,14 +7792,24 @@ body:has(.instagram-dashboard--clean) .app-main__content {
   transform: translateX(-50%);
   width: 100vw;
   height: 480px;
-  background: linear-gradient(100deg, #4763ca 0%, #bd33b2 33%, #feb34d 66%, #ed4a5f 100%);
+  background: linear-gradient(100deg, #7b6ba8 0%, #c958a8 25%, #e97d6f 50%, #f7a26f 75%, #ffc4a0 100%);
   border-radius: 0;
-  filter: saturate(1.05);
-  opacity: 0.92;
+  filter: saturate(1.0);
+  opacity: 1;
   z-index: -1;
-  box-shadow: 0 40px 80px rgba(71, 99, 202, 0.25);
+  box-shadow: 0 40px 80px rgba(123, 107, 168, 0.25);
   pointer-events: none;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.65) 70%, transparent 100%);
+}
+
+.ig-hero-gradient::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.4) 15%, rgba(255, 255, 255, 0.4) 85%, transparent 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .facebook-dashboard--clean .ig-hero-gradient {
