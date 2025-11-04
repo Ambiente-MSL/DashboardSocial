@@ -2007,7 +2007,7 @@ export default function InstagramDashboard() {
               <h4>Idade</h4>
             </div>
             <div className="ig-analytics-card__body">
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={360}>
                 <BarChart
                   data={[
                     { age: "13-17", male: 20, female: 30 },
@@ -2017,19 +2017,61 @@ export default function InstagramDashboard() {
                     { age: "45++", male: 30, female: 25 },
                   ]}
                   layout="vertical"
-                  margin={{ left: 0, right: 0, top: 5, bottom: 5 }}
+                  margin={{ left: 0, right: 20, top: 20, bottom: 20 }}
+                  barGap={4}
+                  barCategoryGap="45%"
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                  <XAxis type="number" tick={{ fill: '#111827' }} fontSize={12} />
-                  <YAxis type="category" dataKey="age" tick={{ fill: '#111827' }} fontSize={12} width={60} />
-                  <Tooltip
-                    cursor={{ fill: 'rgba(139, 92, 246, 0.1)' }}
-                    formatter={(value) => Number(value).toLocaleString("pt-BR")}
+                  <defs>
+                    <linearGradient id="maleGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#6366f1" />
+                      <stop offset="100%" stopColor="#4f46e5" />
+                    </linearGradient>
+                    <linearGradient id="femaleGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#f472b6" />
+                      <stop offset="100%" stopColor="#ec4899" />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tick={{ fill: '#6b7280', fontFamily: 'Lato, sans-serif' }}
+                    fontSize={12}
+                    axisLine={false}
+                    tickLine={false}
                   />
-                  <Bar dataKey="male" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="female" fill="#ec4899" radius={[0, 4, 4, 0]} />
+                  <YAxis
+                    type="category"
+                    dataKey="age"
+                    tick={{ fill: '#374151', fontFamily: 'Lato, sans-serif', fontWeight: 600 }}
+                    fontSize={13}
+                    width={50}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(99, 102, 241, 0.08)' }}
+                    formatter={(value) => Number(value).toLocaleString("pt-BR")}
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+                    }}
+                  />
+                  <Bar dataKey="male" fill="url(#maleGradient)" radius={[0, 6, 6, 0]} barSize={14} />
+                  <Bar dataKey="female" fill="url(#femaleGradient)" radius={[0, 6, 6, 0]} barSize={14} />
                 </BarChart>
               </ResponsiveContainer>
+              <div className="ig-analytics-legend" style={{ marginTop: '16px', gap: '16px', justifyContent: 'center' }}>
+                <div className="ig-analytics-legend__item" style={{ fontSize: '13px', fontWeight: '500' }}>
+                  <span className="ig-analytics-legend__swatch" style={{ backgroundColor: '#4f46e5', width: '12px', height: '12px' }} />
+                  <span className="ig-analytics-legend__label">Homens</span>
+                </div>
+                <div className="ig-analytics-legend__item" style={{ fontSize: '13px', fontWeight: '500' }}>
+                  <span className="ig-analytics-legend__swatch" style={{ backgroundColor: '#ec4899', width: '12px', height: '12px' }} />
+                  <span className="ig-analytics-legend__label">Mulheres</span>
+                </div>
+              </div>
             </div>
           </section>
 
