@@ -1638,17 +1638,47 @@ export default function InstagramDashboard() {
                       <CartesianGrid vertical={false} strokeDasharray="4 8" stroke="#f3f4f6" />
                       <XAxis
                         dataKey="label"
-                        tick={{ fill: '#111827' }}
+                        tick={{ fill: '#6b7280', fontFamily: 'Lato, sans-serif' }}
                         fontSize={12}
                         tickLine={false}
                         axisLine={{ stroke: '#e5e7eb' }}
+                        tickFormatter={(value) => {
+                          if (!value) return '';
+                          // Converte formato "04/10" ou "4/Out" para "Out 4"
+                          const parts = value.split('/');
+                          if (parts.length === 2) {
+                            const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+                            const day = parts[0];
+                            const monthPart = parts[1];
+
+                            // Se já é nome de mês
+                            if (monthNames.includes(monthPart)) {
+                              return `${monthPart} ${day}`;
+                            }
+
+                            // Se é número de mês
+                            const monthIndex = parseInt(monthPart) - 1;
+                            if (!isNaN(monthIndex) && monthIndex >= 0 && monthIndex < 12) {
+                              return `${monthNames[monthIndex]} ${day}`;
+                            }
+                          }
+                          return value;
+                        }}
                       />
                       <YAxis
-                        tick={{ fill: '#111827' }}
+                        tick={{ fill: '#6b7280', fontFamily: 'Lato, sans-serif' }}
                         fontSize={12}
                         tickLine={false}
                         axisLine={{ stroke: '#e5e7eb' }}
-                        tickFormatter={(value) => value.toLocaleString("pt-BR")}
+                        tickFormatter={(value) => {
+                          if (value >= 1000000) {
+                            return `${Math.round(value / 1000000)}M`;
+                          }
+                          if (value >= 1000) {
+                            return `${Math.round(value / 1000)}k`;
+                          }
+                          return value;
+                        }}
                         domain={['dataMin', (dataMax) => (Number.isFinite(dataMax) ? Math.ceil(dataMax * 1.1) : dataMax)]}
                       />
                       <Tooltip
