@@ -2006,7 +2006,7 @@ export default function InstagramDashboard() {
               <h4>Idade</h4>
             </div>
             <div className="ig-analytics-card__body">
-              <ResponsiveContainer width="100%" height={360}>
+              <ResponsiveContainer width="100%" height={200}>
                 <BarChart
                   data={[
                     { age: "13-17", male: 20, female: 30 },
@@ -2016,7 +2016,7 @@ export default function InstagramDashboard() {
                     { age: "45++", male: 30, female: 25 },
                   ]}
                   layout="vertical"
-                  margin={{ left: 0, right: 20, top: 20, bottom: 20 }}
+                  margin={{ left: 0, right: 20, top: 5, bottom: 5 }}
                   barGap={4}
                   barCategoryGap="45%"
                 >
@@ -2061,7 +2061,7 @@ export default function InstagramDashboard() {
                   <Bar dataKey="female" fill="url(#femaleGradient)" radius={[0, 6, 6, 0]} barSize={14} />
                 </BarChart>
               </ResponsiveContainer>
-              <div className="ig-analytics-legend" style={{ marginTop: '16px', gap: '16px', justifyContent: 'center' }}>
+              <div className="ig-analytics-legend" style={{ marginTop: '4px', gap: '16px', justifyContent: 'center' }}>
                 <div className="ig-analytics-legend__item" style={{ fontSize: '13px', fontWeight: '500' }}>
                   <span className="ig-analytics-legend__swatch" style={{ backgroundColor: '#4f46e5', width: '12px', height: '12px' }} />
                   <span className="ig-analytics-legend__label">Homens</span>
@@ -2077,50 +2077,43 @@ export default function InstagramDashboard() {
           <section className="ig-card-white ig-analytics-card">
             <div className="ig-analytics-card__header">
               <h4>Top Cidades</h4>
+              <div className="ig-top-cities__summary">
+                <span className="ig-top-cities__total-number">1.500</span>
+                <svg width="16" height="16" viewBox="0 0 16 16" style={{ marginLeft: '6px' }}>
+                  <path d="M8 3 L13 9 L3 9 Z" fill="#10b981" />
+                </svg>
+              </div>
             </div>
             <div className="ig-analytics-card__body">
               <div className="ig-top-cities">
-                <div className="ig-top-cities__header">
-                  <div className="ig-top-cities__total">
-                    <span className="ig-top-cities__total-number">1.500</span>
-                    <div className="ig-top-cities__trend">
-                      <svg width="80" height="30" viewBox="0 0 80 30">
-                        <path
-                          d="M 0 25 Q 20 20, 40 15 T 80 5"
-                          fill="none"
-                          stroke="#14b8a6"
-                          strokeWidth="2"
-                        />
-                      </svg>
+                <div className="ig-top-cities__table">
+                  <div className="ig-top-city-row">
+                    <div className="ig-top-city-row__left">
+                      <span className="ig-top-city-row__icon" style={{ backgroundColor: "#3b82f6" }}></span>
+                      <span className="ig-top-city-row__name">Fortaleza</span>
                     </div>
+                    <span className="ig-top-city-row__value">350</span>
                   </div>
-                  <div className="ig-top-cities__legend">
-                    <span className="ig-top-cities__legend-item">
-                      <span className="ig-top-cities__legend-dot" style={{ backgroundColor: "#14b8a6" }} />
-                      Crato
-                    </span>
+                  <div className="ig-top-city-row">
+                    <div className="ig-top-city-row__left">
+                      <span className="ig-top-city-row__icon" style={{ backgroundColor: "#f87171" }}></span>
+                      <span className="ig-top-city-row__name">Crato</span>
+                    </div>
+                    <span className="ig-top-city-row__value">200</span>
                   </div>
-                </div>
-                <div className="ig-top-cities__list">
-                  <div className="ig-top-city-item">
-                    <span className="ig-top-city-item__icon" style={{ backgroundColor: "#3b82f6" }}>📍</span>
-                    <span className="ig-top-city-item__name">Fortaleza</span>
-                    <span className="ig-top-city-item__value">350</span>
+                  <div className="ig-top-city-row">
+                    <div className="ig-top-city-row__left">
+                      <span className="ig-top-city-row__icon" style={{ backgroundColor: "#fb923c" }}></span>
+                      <span className="ig-top-city-row__name">Massape</span>
+                    </div>
+                    <span className="ig-top-city-row__value">500</span>
                   </div>
-                  <div className="ig-top-city-item">
-                    <span className="ig-top-city-item__icon" style={{ backgroundColor: "#ef4444" }}>📍</span>
-                    <span className="ig-top-city-item__name">Crato</span>
-                    <span className="ig-top-city-item__value">200</span>
-                  </div>
-                  <div className="ig-top-city-item">
-                    <span className="ig-top-city-item__icon" style={{ backgroundColor: "#f97316" }}>📍</span>
-                    <span className="ig-top-city-item__name">Massape</span>
-                    <span className="ig-top-city-item__value">500</span>
-                  </div>
-                  <div className="ig-top-city-item">
-                    <span className="ig-top-city-item__icon" style={{ backgroundColor: "#14b8a6" }}>📍</span>
-                    <span className="ig-top-city-item__name">France</span>
-                    <span className="ig-top-city-item__value">700</span>
+                  <div className="ig-top-city-row">
+                    <div className="ig-top-city-row__left">
+                      <span className="ig-top-city-row__icon" style={{ backgroundColor: "#5eead4" }}></span>
+                      <span className="ig-top-city-row__name">France</span>
+                    </div>
+                    <span className="ig-top-city-row__value">700</span>
                   </div>
                 </div>
               </div>

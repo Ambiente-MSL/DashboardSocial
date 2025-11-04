@@ -2821,7 +2821,7 @@ input:focus {
 
   min-height: auto;
 
-  padding: 4px 0;
+  padding: 2px 0;
 
 }
 
@@ -6397,7 +6397,7 @@ td.posts-table__metric + td.posts-table__metric {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 0;
+  padding: 2px 0;
   color: var(--muted);
   font-size: 13px;
 }
@@ -9028,107 +9028,74 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 }
 
 /* Top Cities Card */
-.ig-top-cities {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.ig-top-cities__header {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.ig-top-cities__total {
+/* Top Cities - Table Layout */
+.ig-top-cities__summary {
   display: flex;
   align-items: center;
-  gap: 16px;
+  margin-top: 8px;
 }
 
 .ig-top-cities__total-number {
-  font-size: 48px;
+  font-size: 32px;
   font-weight: 700;
   color: #1e293b;
   font-family: 'Lato', sans-serif;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   line-height: 1;
 }
 
-.ig-top-cities__trend {
+.ig-top-cities {
   display: flex;
-  align-items: center;
-  flex: 1;
+  flex-direction: column;
 }
 
-.ig-top-cities__legend {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.ig-top-cities__legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #14b8a6;
-  font-weight: 500;
-  font-family: 'Lato', sans-serif;
-}
-
-.ig-top-cities__legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.ig-top-cities__list {
+.ig-top-cities__table {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.ig-top-city-item {
+.ig-top-city-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.ig-top-city-row:last-child {
+  border-bottom: none;
+}
+
+.ig-top-city-row__left {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 0;
-  transition: all 0.2s ease;
-}
-
-.ig-top-city-item:hover {
-  transform: translateX(2px);
-}
-
-.ig-top-city-item__icon {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  font-size: 14px;
-}
-
-.ig-top-city-item__name {
   flex: 1;
-  font-size: 16px;
+}
+
+.ig-top-city-row__icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: block;
+  border-radius: 3px;
+}
+
+.ig-top-city-row__name {
+  font-size: 15px;
   font-weight: 500;
   color: #64748b;
   font-family: 'Lato', sans-serif;
 }
 
-.ig-top-city-item__value {
-  font-size: 18px;
+.ig-top-city-row__value {
+  font-size: 16px;
   font-weight: 700;
   color: #1e293b;
   font-family: 'Lato', sans-serif;
 }
+
 
 /* Follower Growth Chart with Slider */
 .ig-follower-growth-card .ig-chart-container {
