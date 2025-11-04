@@ -1,6 +1,14 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+﻿import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Link, useLocation, useOutletContext } from "react-router-dom";
-import { differenceInCalendarDays, endOfDay, startOfDay, subDays } from "date-fns";
+import {
+  differenceInCalendarDays,
+  endOfDay,
+  endOfMonth,
+  startOfDay,
+  startOfMonth,
+  subDays,
+  eachDayOfInterval,
+} from "date-fns";
 import {
   ResponsiveContainer,
   Area,
@@ -77,7 +85,7 @@ const DEFAULT_PROFILE_REACH_SERIES = [
 ];
 
 // const HEATMAP_WEEK_LABELS = ["Sem 1", "Sem 2", "Sem 3", "Sem 4", "Sem 5", "Sem 6"];
-// const HEATMAP_DAY_LABELS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+// const HEATMAP_DAY_LABELS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"];
 // const DEFAULT_HEATMAP_MATRIX = HEATMAP_DAY_LABELS.map((day, dayIndex) => ({
 //   day,
 //   values: HEATMAP_WEEK_LABELS.map((_, weekIndex) => ((dayIndex + weekIndex) % 6) + 1),
@@ -106,6 +114,12 @@ const FOLLOWER_GROWTH_SERIES = [
   { label: "Out", value: 34000 },
   { label: "Nov", value: 9000 },
   { label: "Dez", value: 52000 },
+];
+
+const CALENDAR_MONTH_OPTIONS = [
+  { value: "2025-08", label: "Agosto 2025", year: 2025, month: 7 },
+  { value: "2025-09", label: "Setembro 2025", year: 2025, month: 8 },
+  { value: "2025-10", label: "Outubro 2025", year: 2025, month: 9 },
 ];
 
 const HERO_TABS = [
@@ -583,6 +597,23 @@ export default function InstagramDashboard() {
   const untilParam = getQuery("until");
   const sinceDate = useMemo(() => parseQueryDate(sinceParam), [sinceParam]);
   const untilDate = useMemo(() => parseQueryDate(untilParam), [untilParam]);
+
+  const defaultCalendarValue = useMemo(() => {
+    if (untilDate) {
+      const candidate = `${untilDate.getFullYear()}-${String(untilDate.getMonth() + 1).padStart(2, "0")}`;
+      if (CALENDAR_MONTH_OPTIONS.some((option) => option.value === candidate)) {
+        return candidate;
+      }
+    }
+    return CALENDAR_MONTH_OPTIONS[0]?.value ?? `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+  }, [untilDate]);
+
+  const [calendarMonth, setCalendarMonth] = useState(defaultCalendarValue);
+
+  useEffect(() => {
+    setCalendarMonth((current) => (current === defaultCalendarValue ? current : defaultCalendarValue));
+  }, [defaultCalendarValue]);
+
   const now = useMemo(() => new Date(), []);
   const defaultEnd = useMemo(() => endOfDay(subDays(startOfDay(now), 1)), [now]);
 
@@ -1193,6 +1224,53 @@ export default function InstagramDashboard() {
       value,
     }));
   }, [filteredPosts]);
+
+  const postCalendar = useMemo(() => {
+    const [calendarYear, calendarMonthIndex] = calendarMonth.split("-").map(Number);
+    const baseDate = Number.isFinite(calendarYear) && Number.isFinite(calendarMonthIndex)
+      ? new Date(calendarYear, calendarMonthIndex - 1, 1)
+      : new Date();
+    const monthStart = startOfMonth(baseDate);
+    const monthEnd = endOfMonth(baseDate);
+
+    const postsPerDay = new Map();
+    filteredPosts.forEach((post) => {
+      if (!post?.timestamp) return;
+      const dateObj = new Date(post.timestamp);
+      if (Number.isNaN(dateObj.getTime())) return;
+      if (dateObj < monthStart || dateObj > monthEnd) return;
+      const key = dateObj.toISOString().slice(0, 10);
+      postsPerDay.set(key, (postsPerDay.get(key) || 0) + 1);
+    });
+
+    const maxCount = Array.from(postsPerDay.values()).reduce(
+      (max, count) => Math.max(max, count),
+      0,
+    );
+
+    const days = eachDayOfInterval({ start: monthStart, end: monthEnd }).map((date) => {
+      const key = date.toISOString().slice(0, 10);
+      const count = postsPerDay.get(key) || 0;
+      const level = count === 0 || maxCount === 0 ? 0 : Math.min(4, Math.ceil((count / Math.max(maxCount, 1)) * 4));
+      return {
+        key,
+        date,
+        count,
+        level,
+        tooltip: `${count} ${count === 1 ? "publicacao" : "publicacoes"}`,
+      };
+    });
+
+    const leadingEmpty = monthStart.getDay();
+    const trailingEmpty = (7 - ((leadingEmpty + days.length) % 7)) % 7;
+
+    return {
+      leadingEmpty,
+      trailingEmpty,
+      days,
+      title: monthStart.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
+    };
+  }, [calendarMonth, filteredPosts]);
 
   const bestTimes = useMemo(() => analyzeBestTimes(filteredPosts), [filteredPosts]);
 
@@ -1970,7 +2048,21 @@ export default function InstagramDashboard() {
 
           <section className="ig-card-white ig-analytics-card">
             <div className="ig-analytics-card__header">
-              <h4>Quantidade de publicações por dia</h4>
+              <div>
+                <h4>Quantidade de publicações por dia</h4>
+                <span className="ig-calendar__month">{postCalendar.title}</span>
+              </div>
+              <select
+                className="ig-calendar__month-select"
+                value={calendarMonth}
+                onChange={(event) => setCalendarMonth(event.target.value)}
+              >
+                {CALENDAR_MONTH_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="ig-analytics-card__body">
               <div className="ig-calendar">
@@ -1984,29 +2076,23 @@ export default function InstagramDashboard() {
                   <span className="ig-calendar__weekday">Sáb</span>
                 </div>
                 <div className="ig-calendar__grid">
-                  {/* Abril 2024 - começa na segunda-feira (1º dia) */}
-                  {/* Dias vazios do mês anterior */}
-                  <div className="ig-calendar__day ig-calendar__day--empty" />
+                  {Array.from({ length: postCalendar.leadingEmpty }, (_, index) => (
+                    <div key={`calendar-leading-${index}`} className="ig-calendar__day ig-calendar__day--empty" />
+                  ))}
 
-                  {/* Dias de Abril */}
-                  {Array.from({ length: 30 }, (_, i) => {
-                    const day = i + 1;
-                    const posts = Math.floor(Math.random() * 6); // Mock: 0-5 publicações
-                    const level = posts === 0 ? 0 : Math.ceil((posts / 5) * 4);
+                  {postCalendar.days.map((day) => (
+                    <div
+                      key={day.key}
+                      className={`ig-calendar__day ig-calendar__day--level-${day.level}`}
+                      data-tooltip={day.tooltip}
+                    >
+                      <span className="ig-calendar__day-number">{day.date.getDate()}</span>
+                    </div>
+                  ))}
 
-                    return (
-                      <div
-                        key={day}
-                        className={`ig-calendar__day ig-calendar__day--level-${level}`}
-                        data-tooltip={`${posts} publicaç${posts === 1 ? 'ão' : 'ões'}`}
-                      >
-                        <span className="ig-calendar__day-number">{day}</span>
-                      </div>
-                    );
-                  })}
-
-                  {/* Dias vazios do próximo mês para completar a grade */}
-                  <div className="ig-calendar__day ig-calendar__day--empty" />
+                  {Array.from({ length: postCalendar.trailingEmpty }, (_, index) => (
+                    <div key={`calendar-trailing-${index}`} className="ig-calendar__day ig-calendar__day--empty" />
+                  ))}
                 </div>
               </div>
             </div>
@@ -2189,7 +2275,7 @@ export default function InstagramDashboard() {
         </section>
       </div>
 
-      {/* Hashtags e palavras-chave (seção antiga - manter para compatibilidade) */}
+      {/* Hashtags e palavras-chave (seAAo antiga - manter para compatibilidade) */}
       <div className="ig-clean-grid" style={{ display: 'none' }}>
         <div className="ig-card-white">
           <div className="ig-card__title">
