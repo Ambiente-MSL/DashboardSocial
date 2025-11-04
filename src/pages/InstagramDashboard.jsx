@@ -18,6 +18,7 @@ import {
   ReferenceDot,
   ReferenceLine,
   Sector,
+  Brush,
 } from "recharts";
 import {
   BarChart3,
@@ -1425,7 +1426,7 @@ export default function InstagramDashboard() {
                 {coverError ? (
                   <p className="ig-profile-vertical__cover-error">{coverError}</p>
                 ) : null}
-                <h3 className="ig-profile-vertical__username">
+                <h3 className="ig-profile-vertical__username" style={{ marginTop: '-10px' }}>
                   @{accountInfo?.username || accountInfo?.name || "insta_sample"}
                 </h3>
 
@@ -1745,10 +1746,10 @@ export default function InstagramDashboard() {
 
               <div className="ig-chart-area">
                 {followerGrowthChartData.length ? (
-                  <ResponsiveContainer width="100%" height={280}>
+                  <ResponsiveContainer width="100%" height={followerGrowthChartData.length > 15 ? 380 : 280}>
                     <BarChart
                       data={followerGrowthChartData}
-                      margin={{ top: 16, right: 16, bottom: 32, left: 0 }}
+                      margin={{ top: 16, right: 16, bottom: followerGrowthChartData.length > 15 ? 70 : 32, left: 0 }}
                       barCategoryGap="35%"
                     >
                         <defs>
@@ -1768,7 +1769,7 @@ export default function InstagramDashboard() {
                           tick={{ fill: "#9ca3af", fontSize: 12 }}
                           axisLine={false}
                           tickLine={false}
-                          interval={0}
+                          interval={followerGrowthChartData.length > 15 ? "preserveEnd" : 0}
                           height={32}
                         />
                         <YAxis
@@ -1830,7 +1831,7 @@ export default function InstagramDashboard() {
                         <Bar
                           dataKey="value"
                           radius={[12, 12, 0, 0]}
-                          barSize={36}
+                          barSize={followerGrowthChartData.length > 15 ? 30 : 36}
                           minPointSize={6}
                           onMouseEnter={(_, index) => setActiveFollowerGrowthBar(index)}
                           onMouseLeave={() => setActiveFollowerGrowthBar(-1)}
@@ -1844,6 +1845,22 @@ export default function InstagramDashboard() {
                             />
                           ))}
                         </Bar>
+                        {followerGrowthChartData.length > 15 && (
+                          <Brush
+                            dataKey="label"
+                            height={40}
+                            stroke="#c084fc"
+                            fill="transparent"
+                            startIndex={0}
+                            endIndex={Math.min(14, followerGrowthChartData.length - 1)}
+                            travellerWidth={14}
+                            y={280}
+                          >
+                            <BarChart>
+                              <Bar dataKey="value" fill="#e9d5ff" radius={[3, 3, 0, 0]} />
+                            </BarChart>
+                          </Brush>
+                        )}
                       </BarChart>
                     </ResponsiveContainer>
                 ) : (
