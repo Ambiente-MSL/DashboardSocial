@@ -1132,21 +1132,6 @@ export default function InstagramDashboard() {
   }, [followerSeriesNormalized, followerGrowthMetric?.value]);
 
   const avgFollowersPerDay = followerGrowthStats.average;
-  const weeklyFollowersPattern = followerGrowthStats.weeklyPattern;
-
-  const weeklyPostsPattern = useMemo(() => {
-    if (!filteredPosts.length) {
-      return buildWeeklyPattern(Array.from({ length: 7 }, () => 0));
-    }
-    const totalsByWeekday = Array.from({ length: 7 }, () => 0);
-    filteredPosts.forEach((post) => {
-      if (!post.timestamp) return;
-      const dateObj = new Date(post.timestamp);
-      if (Number.isNaN(dateObj.getTime())) return;
-      totalsByWeekday[dateObj.getDay()] += 1;
-    });
-    return buildWeeklyPattern(totalsByWeekday);
-  }, [filteredPosts]);
 
   const postsCount = filteredPosts.length;
 
@@ -1176,15 +1161,6 @@ export default function InstagramDashboard() {
     }),
     [activeSnapshot, avgFollowersPerDay, postsCount, reachValue, totalFollowers],
   );
-
-  const followersDailyDisplay = useMemo(() => (
-    Number.isFinite(overviewMetrics.followersDaily)
-      ? overviewMetrics.followersDaily.toLocaleString("pt-BR", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })
-      : "--"
-  ), [overviewMetrics.followersDaily]);
 
   const engagementRateDisplay = useMemo(() => (
     engagementRateValue != null
@@ -1453,66 +1429,22 @@ export default function InstagramDashboard() {
                   @{accountInfo?.username || accountInfo?.name || "insta_sample"}
                 </h3>
 
-                <div className="ig-profile-vertical__stats-grid">
+                <div className="ig-profile-vertical__stats-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '20px' }}>
+                  <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{Math.round(overviewMetrics.followers_daily || 0)}</div>
+                    <div className="ig-overview-stat__label">Seguidores diários</div>
+                  </div>
+                  <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.posts)}</div>
+                    <div className="ig-overview-stat__label">Posts criados</div>
+                  </div>
                   <div className="ig-overview-stat">
                     <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.followers)}</div>
                     <div className="ig-overview-stat__label">Total de seguidores</div>
                   </div>
                   <div className="ig-overview-stat">
                     <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.reach)}</div>
-                  <div className="ig-overview-stat__label">Alcance (30 dias)</div>
-                  </div>
-                </div>
-
-                <div className="ig-overview-activity">
-                  <div className="ig-overview-metric">
-                    <div className="ig-overview-metric__row">
-                      <div className="ig-overview-metric__info">
-                        <div className="ig-overview-metric__value">{followersDailyDisplay}</div>
-                        <div className="ig-overview-metric__label">Seguidores diários</div>
-                      </div>
-                      <div className="ig-weekly-chart">
-                        {weeklyFollowersPattern.map((day, index) => (
-                          <div
-                            key={`followers-${day.label}-${index}`}
-                            className={`ig-weekly-chart__item${day.active ? " ig-weekly-chart__item--active" : ""}${
-                              index === 0 ? " ig-weekly-chart__item--sunday" : ""
-                            }`}
-                          >
-                            <div
-                              className="ig-weekly-chart__bar"
-                              style={{ height: `${Math.max(day.percentage, 16)}%` }}
-                            />
-                            <span className="ig-weekly-chart__label">{day.label}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="ig-overview-metric">
-                    <div className="ig-overview-metric__row">
-                      <div className="ig-overview-metric__info">
-                        <div className="ig-overview-metric__value">{formatNumber(overviewMetrics.posts)}</div>
-                        <div className="ig-overview-metric__label">Posts criados</div>
-                      </div>
-                      <div className="ig-weekly-chart ig-weekly-chart--compact">
-                        {weeklyPostsPattern.map((day, index) => (
-                          <div
-                            key={`posts-${day.label}-${index}`}
-                            className={`ig-weekly-chart__item${day.active ? " ig-weekly-chart__item--active" : ""}${
-                              index === 0 ? " ig-weekly-chart__item--sunday" : ""
-                            }`}
-                          >
-                            <div
-                              className="ig-weekly-chart__bar"
-                              style={{ height: `${Math.max(day.percentage, 16)}%` }}
-                            />
-                            <span className="ig-weekly-chart__label">{day.label}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <div className="ig-overview-stat__label">Alcance (30 dias)</div>
                   </div>
                 </div>
 
@@ -1926,7 +1858,7 @@ export default function InstagramDashboard() {
               <h4>Estatística por gênero</h4>
             </div>
             <div className="ig-analytics-card__body">
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   {/* Purple circle (background) */}
                   <Pie
@@ -1934,7 +1866,7 @@ export default function InstagramDashboard() {
                     dataKey="value"
                     cx="50%"
                     cy="50%"
-                    outerRadius={activeGenderIndex === 1 ? 93 : 85}
+                    outerRadius={activeGenderIndex === 1 ? 130 : 120}
                     innerRadius={0}
                     fill="#8b5cf6"
                     stroke="none"
@@ -1949,7 +1881,7 @@ export default function InstagramDashboard() {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={activeGenderIndex === 0 ? 93 : 85}
+                    outerRadius={activeGenderIndex === 0 ? 130 : 120}
                     innerRadius={0}
                     startAngle={90}
                     endAngle={90 + (genderStatsSeries[0]?.value || 0) * 3.6}
@@ -1963,12 +1895,12 @@ export default function InstagramDashboard() {
                   <Tooltip content={(props) => <BubbleTooltip {...props} suffix="%" />} />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="ig-analytics-legend">
+              <div className="ig-analytics-legend" style={{ marginTop: '20px', gap: '18px' }}>
                 {genderStatsSeries.map((slice, index) => (
-                  <div key={slice.name || index} className="ig-analytics-legend__item">
+                  <div key={slice.name || index} className="ig-analytics-legend__item" style={{ fontSize: '16px', fontWeight: '500' }}>
                     <span
                       className="ig-analytics-legend__swatch"
-                      style={{ backgroundColor: index === 0 ? "#14b8a6" : "#8b5cf6" }}
+                      style={{ backgroundColor: index === 0 ? "#14b8a6" : "#8b5cf6", width: '16px', height: '16px' }}
                     />
                     <span className="ig-analytics-legend__label">{slice.name}</span>
                   </div>
