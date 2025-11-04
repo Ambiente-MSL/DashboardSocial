@@ -1431,20 +1431,20 @@ export default function InstagramDashboard() {
 
                 <div className="ig-profile-vertical__stats-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '20px' }}>
                   <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.followers)}</div>
+                    <div className="ig-overview-stat__label">Total de seguidores</div>
+                  </div>
+                  <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.reach)}</div>
+                    <div className="ig-overview-stat__label">Alcance</div>
+                  </div>
+                  <div className="ig-overview-stat">
                     <div className="ig-overview-stat__value">{Math.round(overviewMetrics.followers_daily || 0)}</div>
                     <div className="ig-overview-stat__label">Seguidores diários</div>
                   </div>
                   <div className="ig-overview-stat">
                     <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.posts)}</div>
                     <div className="ig-overview-stat__label">Posts criados</div>
-                  </div>
-                  <div className="ig-overview-stat">
-                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.followers)}</div>
-                    <div className="ig-overview-stat__label">Total de seguidores</div>
-                  </div>
-                  <div className="ig-overview-stat">
-                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.reach)}</div>
-                    <div className="ig-overview-stat__label">Alcance (30 dias)</div>
                   </div>
                 </div>
 
