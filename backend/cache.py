@@ -34,7 +34,7 @@ _refreshing_keys: set[str] = set()
 def get_table_name(platform: Optional[str] = "instagram") -> str:
     """
     Retorna o nome da tabela de cache conforme a plataforma solicitada.
-    Fallback para a tabela de Instagram quando plataforma n�o for reconhecida.
+    Fallback para a tabela de Instagram quando plataforma não for reconhecida.
     """
     key = (platform or "instagram").lower()
     return PLATFORM_TABLES.get(key, PLATFORM_TABLES["instagram"])

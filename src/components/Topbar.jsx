@@ -10,6 +10,8 @@ const DEFAULT_PRESETS = [
   { id: "7d", label: "7 Dias", days: 7 },
   { id: "1m", label: "1 Mês", days: 30 },
   { id: "3m", label: "3 Meses", days: 90 },
+  { id: "6m", label: "6 Meses", days: 180 },
+  { id: "1y", label: "1 Ano", days: 365 },
 ];
 
 const parseDateParam = (value) => {
@@ -91,7 +93,7 @@ export default function Topbar({
       <div className="topbar__inner">
         <div className="topbar__controls">
           <div className="topbar__notif">
-            <button type="button" className="topbar__notif-btn" aria-label="Notificações">
+            <button type="button" className="topbar__notif-btn" aria-label="NotificaÃ§Ãµes">
               <Bell size={16} />
               {displayNotification && <span className="topbar__notif-badge">{notificationCount}</span>}
             </button>

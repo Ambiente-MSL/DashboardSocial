@@ -50,7 +50,7 @@ const STOP_WORDS = new Set([
 
 const IG_TOPBAR_PRESETS = [
   { id: "7d", label: "7 dias", days: 7 },
-  { id: "1m", label: "1 mes", days: 30 },
+  { id: "1m", label: "1 mês", days: 30 },
   { id: "3m", label: "3 meses", days: 90 },
   { id: "6m", label: "6 meses", days: 180 },
   { id: "1y", label: "1 ano", days: 365 },
@@ -791,7 +791,6 @@ export default function InstagramDashboard() {
         .from("ig_metrics_daily")
         .select("value")
         .eq("account_id", igUserId)
-        .eq("platform", "instagram")
         .eq("metric_key", "followers_total")
         .order("metric_date", { ascending: false })
         .limit(1);

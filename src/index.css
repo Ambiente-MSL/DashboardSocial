@@ -9031,13 +9031,13 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 .ig-top-cities {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .ig-top-cities__header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid #e5e7eb;
 }
@@ -9045,83 +9045,89 @@ body:has(.instagram-dashboard--clean) .app-main__content {
 .ig-top-cities__total {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 
 .ig-top-cities__total-number {
-  font-size: 32px;
+  font-size: 48px;
   font-weight: 700;
-  color: #111827;
+  color: #1e293b;
+  font-family: 'Lato', sans-serif;
+  letter-spacing: -0.02em;
+  line-height: 1;
 }
 
 .ig-top-cities__trend {
   display: flex;
   align-items: center;
+  flex: 1;
 }
 
 .ig-top-cities__legend {
   display: flex;
-  gap: 16px;
+  gap: 8px;
   align-items: center;
 }
 
 .ig-top-cities__legend-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #6b7280;
+  gap: 8px;
+  font-size: 14px;
+  color: #14b8a6;
+  font-weight: 500;
+  font-family: 'Lato', sans-serif;
 }
 
 .ig-top-cities__legend-dot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .ig-top-cities__list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .ig-top-city-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px;
-  background: #f9fafb;
-  border-radius: 8px;
+  padding: 8px 0;
   transition: all 0.2s ease;
 }
 
 .ig-top-city-item:hover {
-  background: #f3f4f6;
   transform: translateX(2px);
 }
 
 .ig-top-city-item__icon {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
 }
 
 .ig-top-city-item__name {
   flex: 1;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
-  color: #374151;
+  color: #64748b;
+  font-family: 'Lato', sans-serif;
 }
 
 .ig-top-city-item__value {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
-  color: #111827;
+  color: #1e293b;
+  font-family: 'Lato', sans-serif;
 }
 
 /* Follower Growth Chart with Slider */
