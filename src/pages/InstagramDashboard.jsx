@@ -1523,14 +1523,14 @@ export default function InstagramDashboard() {
                   {contentBreakdown.length ? (
                     <>
                       <div className="ig-profile-vertical__engagement-chart">
-                        <ResponsiveContainer width="100%" height={220}>
+                        <ResponsiveContainer width="100%" height={260}>
                           <PieChart>
                             <Pie
                               data={contentBreakdown}
                               dataKey="value"
                               nameKey="name"
-                              innerRadius={55}
-                              outerRadius={85}
+                              innerRadius={65}
+                              outerRadius={100}
                               paddingAngle={3}
                               stroke="none"
                               activeIndex={activeEngagementIndex}
@@ -1547,12 +1547,12 @@ export default function InstagramDashboard() {
                         </ResponsiveContainer>
                       </div>
 
-                      <div className="ig-engagement-legend">
+                      <div className="ig-engagement-legend" style={{ marginTop: '12px', gap: '14px' }}>
                         {contentBreakdown.map((slice, index) => (
-                          <div key={slice.name || index} className="ig-engagement-legend__item">
+                          <div key={slice.name || index} className="ig-engagement-legend__item" style={{ fontSize: '15px' }}>
                             <span
                               className="ig-engagement-legend__swatch"
-                              style={{ backgroundColor: IG_DONUT_COLORS[index % IG_DONUT_COLORS.length] }}
+                              style={{ backgroundColor: IG_DONUT_COLORS[index % IG_DONUT_COLORS.length], width: '14px', height: '14px' }}
                             />
                             <span className="ig-engagement-legend__label">{slice.name}</span>
                           </div>
