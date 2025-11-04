@@ -91,16 +91,6 @@ const buildWeeklyPattern = (values) => {
   }));
 };
 
-const FOLLOWER_GROWTH_PRESETS = [
-  { id: "7d", label: "7 dias", days: 7 },
-  { id: "1m", label: "1 mes", days: 30 },
-  { id: "3m", label: "3 meses", days: 90 },
-  { id: "6m", label: "6 meses", days: 180 },
-  { id: "1y", label: "1 ano", days: 365 },
-  { id: "max", label: "Maximo" },
-];
-const DEFAULT_FOLLOWER_GROWTH_PRESET = "1m";
-
 const FOLLOWER_GROWTH_SERIES = [
   { label: "Jan", value: 28000 },
   { label: "Fev", value: 58000 },
@@ -674,7 +664,6 @@ export default function InstagramDashboard() {
   const [coverError, setCoverError] = useState("");
   const [coverUploading, setCoverUploading] = useState(false);
   const [latestFollowers, setLatestFollowers] = useState(null);
-  const [followerGrowthPreset, setFollowerGrowthPreset] = useState(DEFAULT_FOLLOWER_GROWTH_PRESET);
   const [activeFollowerGrowthBar, setActiveFollowerGrowthBar] = useState(-1);
   const latestFollowersRequestRef = useRef(0);
   const [activeEngagementIndex, setActiveEngagementIndex] = useState(-1);
@@ -696,7 +685,6 @@ export default function InstagramDashboard() {
     setCoverError("");
     setOverviewSnapshot(null);
     setLatestFollowers(null);
-    setFollowerGrowthPreset(DEFAULT_FOLLOWER_GROWTH_PRESET);
   }, [accountSnapshotKey]);
 
   useEffect(() => {
@@ -1226,13 +1214,6 @@ export default function InstagramDashboard() {
     ? [...filteredPosts].sort((a, b) => sumInteractions(b) - sumInteractions(a)).slice(0, 6)
     : []), [filteredPosts]);
 
-  const followerGrowthPresetConfig = useMemo(
-    () => FOLLOWER_GROWTH_PRESETS.find((preset) => preset.id === followerGrowthPreset)
-      || FOLLOWER_GROWTH_PRESETS.find((preset) => preset.id === DEFAULT_FOLLOWER_GROWTH_PRESET)
-      || FOLLOWER_GROWTH_PRESETS[0],
-    [followerGrowthPreset],
-  );
-
   const followerGrowthSeriesSorted = useMemo(() => {
     if (!followerSeriesNormalized.length) return [];
     return followerSeriesNormalized
@@ -1240,35 +1221,14 @@ export default function InstagramDashboard() {
       .sort((a, b) => (a.date > b.date ? 1 : -1));
   }, [followerSeriesNormalized]);
 
-  const followerGrowthSeriesForPreset = useMemo(() => {
-    if (!followerGrowthSeriesSorted.length) return [];
-    const preset = followerGrowthPresetConfig;
-    if (!preset?.days || preset.id === "max") {
-      return followerGrowthSeriesSorted;
-    }
-    const latestEntry = followerGrowthSeriesSorted[followerGrowthSeriesSorted.length - 1];
-    const latestDate = latestEntry?.date ? new Date(`${latestEntry.date}T00:00:00`) : null;
-    if (!latestDate || Number.isNaN(latestDate.getTime())) {
-      const sliceCount = Math.min(preset.days, followerGrowthSeriesSorted.length);
-      return followerGrowthSeriesSorted.slice(-sliceCount);
-    }
-    const cutoff = new Date(latestDate);
-    cutoff.setDate(cutoff.getDate() - (preset.days - 1));
-    const filtered = followerGrowthSeriesSorted.filter((entry) => {
-      const entryDate = entry?.date ? new Date(`${entry.date}T00:00:00`) : null;
-      if (!entryDate || Number.isNaN(entryDate.getTime())) return true;
-      return entryDate >= cutoff;
-    });
-    const MAX_POINTS = 64;
-    if (filtered.length > MAX_POINTS) {
-      return filtered.slice(filtered.length - MAX_POINTS);
-    }
-    return filtered;
-  }, [followerGrowthPresetConfig, followerGrowthSeriesSorted]);
-
   const followerGrowthChartData = useMemo(() => {
-    if (followerGrowthSeriesForPreset.length) {
-      return followerGrowthSeriesForPreset.map((entry, index) => {
+    if (followerGrowthSeriesSorted.length) {
+      const MAX_POINTS = 64;
+      const seriesToUse = followerGrowthSeriesSorted.length > MAX_POINTS
+        ? followerGrowthSeriesSorted.slice(followerGrowthSeriesSorted.length - MAX_POINTS)
+        : followerGrowthSeriesSorted;
+
+      return seriesToUse.map((entry, index) => {
         const dateKey = entry.date || null;
         const parsedDate = dateKey ? new Date(`${dateKey}T00:00:00`) : null;
         const validDate = parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate : null;
@@ -1286,24 +1246,12 @@ export default function InstagramDashboard() {
       });
     }
 
-    const preset = followerGrowthPresetConfig;
-    const fallbackSeries = (() => {
-      if (!preset?.days || preset.id === "max") {
-        return FOLLOWER_GROWTH_SERIES;
-      }
-      const approxCount = Math.min(
-        FOLLOWER_GROWTH_SERIES.length,
-        Math.max(4, Math.round(preset.days / 7)),
-      );
-      return FOLLOWER_GROWTH_SERIES.slice(-approxCount);
-    })();
-
-    return fallbackSeries.map((entry, index) => ({
+    return FOLLOWER_GROWTH_SERIES.map((entry, index) => ({
       label: entry.label || `${index + 1}`,
       value: extractNumber(entry.value, 0),
       tooltipDate: entry.label || `#${index + 1}`,
     }));
-  }, [followerGrowthSeriesForPreset, followerGrowthPresetConfig]);
+  }, [followerGrowthSeriesSorted]);
 
   const followerGrowthDomain = useMemo(() => {
     if (!followerGrowthChartData.length) return [0, "auto"];
@@ -1367,7 +1315,7 @@ export default function InstagramDashboard() {
 
   useEffect(() => {
     setActiveFollowerGrowthBar(-1);
-  }, [accountSnapshotKey, followerGrowthChartData, followerGrowthPreset]);
+  }, [accountSnapshotKey, followerGrowthChartData]);
 
   const genderDistribution = useMemo(() => {
     const breakdown =
@@ -1547,11 +1495,6 @@ export default function InstagramDashboard() {
                       <div className="ig-overview-metric__info">
                         <div className="ig-overview-metric__value">{formatNumber(overviewMetrics.posts)}</div>
                         <div className="ig-overview-metric__label">Posts criados</div>
-                        <select className="ig-overview-metric__select">
-                          <option>Esta semana</option>
-                          <option>Últimas 4 semanas</option>
-                          <option>Último trimestre</option>
-                        </select>
                       </div>
                       <div className="ig-weekly-chart ig-weekly-chart--compact">
                         {weeklyPostsPattern.map((day, index) => (
@@ -1740,20 +1683,6 @@ export default function InstagramDashboard() {
                   <h2 className="ig-clean-title2">Crescimento do perfil</h2>
                   <h3>Alcance</h3>
                 </div>
-                <div className="ig-filter-pills">
-                  {IG_TOPBAR_PRESETS.map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      className={`ig-filter-pill${activePreset === preset.id ? " ig-filter-pill--active" : ""}`}
-                      onClick={() => handlePresetSelect(preset.id)}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                  <button className="ig-filter-pill ig-filter-pill--active">1 ano</button>
-                  <button className="ig-filter-pill">Máximo</button>
-                </div>
               </header>
 
               <div className="ig-chart-area">
@@ -1880,19 +1809,6 @@ export default function InstagramDashboard() {
                   <h3>Crescimento de Seguidores</h3>
                 <p className="ig-card-subtitle">Evolução mensal</p>
                 </div>
-                <div className="ig-filter-pills">
-                  {FOLLOWER_GROWTH_PRESETS.map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      className={`ig-filter-pill${preset.id === followerGrowthPreset ? " ig-filter-pill--active" : ""}`}
-                      onClick={() => setFollowerGrowthPreset(preset.id)}
-                      aria-pressed={preset.id === followerGrowthPreset}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
               </header>
 
               <div className="ig-chart-area">
@@ -2008,7 +1924,6 @@ export default function InstagramDashboard() {
           <section className="ig-card-white ig-analytics-card">
             <div className="ig-analytics-card__header">
               <h4>Estatística por gênero</h4>
-              <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
             </div>
             <div className="ig-analytics-card__body">
               <ResponsiveContainer width="100%" height={200}>
@@ -2065,18 +1980,6 @@ export default function InstagramDashboard() {
           <section className="ig-card-white ig-analytics-card">
             <div className="ig-analytics-card__header">
               <h4>Quantidade de publicações por dia</h4>
-              <select className="ig-card-filter" defaultValue="abril">
-                <option value="janeiro">Janeiro 2024</option>
-                <option value="fevereiro">Fevereiro 2024</option>
-                <option value="marco">Março 2024</option>
-                <option value="abril">Abril 2024</option>
-                <option value="maio">Maio 2024</option>
-                <option value="junho">Junho 2024</option>
-                <option value="julho">Julho 2024</option>
-                <option value="agosto">Agosto 2024</option>
-                <option value="setembro">Setembro 2024</option>
-                <option value="outubro">Outubro 2024</option>
-              </select>
             </div>
             <div className="ig-analytics-card__body">
               <div className="ig-calendar">
@@ -2123,7 +2026,6 @@ export default function InstagramDashboard() {
           <section className="ig-card-white ig-analytics-card">
             <div className="ig-analytics-card__header">
               <h4>Idade</h4>
-              <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
             </div>
             <div className="ig-analytics-card__body">
               <ResponsiveContainer width="100%" height={220}>
@@ -2155,7 +2057,6 @@ export default function InstagramDashboard() {
           <section className="ig-card-white ig-analytics-card">
             <div className="ig-analytics-card__header">
               <h4>Top Cidades</h4>
-              <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
             </div>
             <div className="ig-analytics-card__body">
               <div className="ig-top-cities">
@@ -2215,7 +2116,6 @@ export default function InstagramDashboard() {
         <section className="ig-card-white ig-analytics-card ig-analytics-card--large">
           <div className="ig-analytics-card__header">
             <h4>Palavras chaves mais comentadas</h4>
-            <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
           </div>
           <div className="ig-analytics-card__body">
             <div className="ig-word-cloud ig-word-cloud--large">
@@ -2245,7 +2145,6 @@ export default function InstagramDashboard() {
         <section className="ig-card-white ig-analytics-card ig-analytics-card--large">
           <div className="ig-analytics-card__header">
             <h4>Hashtags mais usadas</h4>
-            <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
           </div>
           <div className="ig-analytics-card__body">
             <ResponsiveContainer width="100%" height={320}>
