@@ -32,6 +32,7 @@ import {
   Share2,
   Settings,
   Shield,
+  TrendingUp,
 } from "lucide-react";
 import useQueryState from "../hooks/useQueryState";
 import { useAccounts } from "../context/AccountsContext";
@@ -936,6 +937,14 @@ export default function InstagramDashboard() {
     });
   }, [posts, sinceDate, untilDate]);
 
+  // Calcula total de seguidores ganhos no período filtrado
+  const followersDelta = useMemo(() => {
+    if (!followerSeriesNormalized.length) return 0;
+    const firstValue = followerSeriesNormalized[0]?.value || 0;
+    const lastValue = followerSeriesNormalized[followerSeriesNormalized.length - 1]?.value || 0;
+    return Math.max(0, lastValue - firstValue);
+  }, [followerSeriesNormalized]);
+
 
 
   const reachTimelineFromCache = useMemo(() => {
@@ -1157,9 +1166,10 @@ export default function InstagramDashboard() {
       followers: activeSnapshot?.followers ?? totalFollowers ?? 0,
       reach: activeSnapshot?.reach ?? reachValue ?? 0,
       followersDaily: activeSnapshot?.followersDaily ?? avgFollowersPerDay ?? 0,
+      followersDelta: followersDelta,
       posts: activeSnapshot?.posts ?? postsCount ?? 0,
     }),
-    [activeSnapshot, avgFollowersPerDay, postsCount, reachValue, totalFollowers],
+    [activeSnapshot, avgFollowersPerDay, followersDelta, postsCount, reachValue, totalFollowers],
   );
 
   const engagementRateDisplay = useMemo(() => (
@@ -1439,12 +1449,15 @@ export default function InstagramDashboard() {
                     <div className="ig-overview-stat__label">Alcance</div>
                   </div>
                   <div className="ig-overview-stat" style={{ paddingTop: '8px' }}>
-                    <div className="ig-overview-stat__value">{Math.round(overviewMetrics.followers_daily || 0)}</div>
-                    <div className="ig-overview-stat__label">Seguidores diários</div>
-                  </div>
-                  <div className="ig-overview-stat" style={{ paddingTop: '8px' }}>
                     <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.posts)}</div>
                     <div className="ig-overview-stat__label">Posts criados</div>
+                  </div>
+                  <div className="ig-overview-stat" style={{ paddingTop: '8px' }}>
+                    <div className="ig-overview-stat__value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {formatNumber(overviewMetrics.followersDelta || 0)}
+                      <TrendingUp size={20} style={{ color: '#10b981' }} />
+                    </div>
+                    <div className="ig-overview-stat__label">Seguidores ganhos</div>
                   </div>
                 </div>
 
