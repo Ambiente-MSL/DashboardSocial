@@ -1183,7 +1183,7 @@ export default function InstagramDashboard() {
 
   const contentBreakdown = useMemo(() => {
     if (!filteredPosts.length) return [];
-    const totals = new Map();
+    const totals = new Map(Object.keys(IG_CONTENT_LABEL).map((type) => [type, 0]));
     filteredPosts.forEach((post) => {
       const kind = classifyMediaType(post);
       totals.set(kind, (totals.get(kind) || 0) + sumInteractions(post));

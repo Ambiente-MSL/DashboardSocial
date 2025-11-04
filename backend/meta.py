@@ -6,7 +6,7 @@ import hashlib
 import logging
 from datetime import datetime
 import requests
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Sequence
 from urllib.parse import urlencode
 
 from dotenv import load_dotenv
@@ -1301,6 +1301,61 @@ def ig_recent_posts(ig_user_id: str, limit: int = 6):
 
     posts = []
     VIDEO_TYPES = {"VIDEO", "REEL", "IGTV"}
+    unsupported_insight_metrics: set[str] = set()
+
+    def _coerce_numeric(value: Optional[Any]) -> Optional[float]:
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        try:
+            return float(str(value))
+        except (TypeError, ValueError):
+            return None
+
+    def _fetch_media_insights(media_id: str, metrics: Sequence[str]) -> Dict[str, float]:
+        request_metrics = [metric for metric in metrics if metric not in unsupported_insight_metrics]
+        if not request_metrics:
+            return {}
+        params = {
+            "metric": ",".join(request_metrics),
+            "period": "lifetime",
+        }
+        try:
+            response = gget(f"/{media_id}/insights", params)
+        except MetaAPIError as err:
+            if len(request_metrics) > 1:
+                combined: Dict[str, float] = {}
+                for metric in request_metrics:
+                    combined.update(_fetch_media_insights(media_id, [metric]))
+                return combined
+            metric_name = request_metrics[0]
+            logger.debug("Metric %s not supported for media %s: %s", metric_name, media_id, err)
+            unsupported_insight_metrics.add(metric_name)
+            return {}
+        except Exception as err:  # noqa: BLE001
+            logger.warning("Falha ao buscar insights do post %s: %s", media_id, err)
+            return {}
+
+        insight_values: Dict[str, float] = {}
+        for entry in response.get("data", []) or []:
+            name = str(entry.get("name") or "").lower()
+            values = entry.get("values")
+            value = None
+            if isinstance(values, list):
+                for candidate in values:
+                    if isinstance(candidate, dict) and candidate.get("value") is not None:
+                        value = candidate["value"]
+                        break
+            if value is None:
+                value = entry.get("value")
+            if isinstance(value, dict):
+                value = value.get("value")
+            numeric = _coerce_numeric(value)
+            if numeric is None:
+                continue
+            insight_values[name] = numeric
+        return insight_values
 
     def normalize_children(child_payload):
         if not child_payload:
@@ -1364,6 +1419,47 @@ def ig_recent_posts(ig_user_id: str, limit: int = 6):
         account = gget(f"/{ig_user_id}", {"fields": account_fields})
     except MetaAPIError:
         account = None
+
+    insight_aliases = {
+        "saved": "saves",
+        "save": "saves",
+        "saves": "saves",
+        "shares": "shares",
+    }
+
+    for post in posts:
+        media_id = post.get("id")
+        if not media_id:
+            continue
+        insights = _fetch_media_insights(media_id, ("saved", "shares"))
+        if insights:
+            formatted = {}
+            for key, numeric in insights.items():
+                normalized = insight_aliases.get(key, key)
+                value_int = int(round(numeric))
+                formatted[normalized] = {"value": value_int}
+                if normalized == "saves":
+                    post["saves"] = value_int
+                    post["saveCount"] = value_int
+                if normalized == "shares":
+                    post["shares"] = value_int
+                    post["shareCount"] = value_int
+            existing = post.get("insights") or {}
+            existing.update(formatted)
+            post["insights"] = existing
+        # Garantir chaves presentes para o frontend calcular engajamento completo
+        if "saves" not in post:
+            post["saves"] = 0
+        if "saveCount" not in post:
+            post["saveCount"] = post["saves"]
+        if "shares" not in post:
+            post["shares"] = 0
+        if "shareCount" not in post:
+            post["shareCount"] = post["shares"]
+        insights_container = post.get("insights") or {}
+        insights_container.setdefault("saves", {"value": post["saves"]})
+        insights_container.setdefault("shares", {"value": post["shares"]})
+        post["insights"] = insights_container
 
     return {
         "account": account,
