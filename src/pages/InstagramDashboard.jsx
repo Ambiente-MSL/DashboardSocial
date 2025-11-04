@@ -1453,7 +1453,7 @@ export default function InstagramDashboard() {
                     <div className="ig-overview-stat__label">Posts criados</div>
                   </div>
                   <div className="ig-overview-stat" style={{ paddingTop: '8px' }}>
-                    <div className="ig-overview-stat__value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="ig-overview-stat__value" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                       {formatNumber(overviewMetrics.followersDelta || 0)}
                       <TrendingUp size={20} style={{ color: '#10b981' }} />
                     </div>
