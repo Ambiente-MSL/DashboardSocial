@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 PLATFORM = "instagram"
 DEFAULT_BUCKETS = (7, 30, 90)
 DEFAULT_POSTS_LIMIT = int(os.getenv("INSTAGRAM_POSTS_LIMIT", "20") or "20")
-METRICS_TABLE = "ig_metrics_daily"
-ROLLUP_TABLE = "ig_metrics_rollup"
+METRICS_TABLE = "metrics_daily"
+ROLLUP_TABLE = "metrics_daily_rollup"
 INGEST_LOGS_TABLE = "ingest_logs"
 JOB_TYPE = "instagram_ingest"
 
@@ -175,6 +175,7 @@ def snapshot_to_rows(
         rows.append(
             {
                 "account_id": ig_id,
+                "platform": PLATFORM,
                 "metric_key": metric_key,
                 "metric_date": metric_date.isoformat(),
                 "value": float(numeric_value),
@@ -222,7 +223,11 @@ def upsert_metrics(rows: Sequence[Dict[str, object]]) -> Tuple[int, int]:
 
     existing_keys: set[Tuple[str, str, str]] = set()
     try:
-        query = client.table(METRICS_TABLE).select("account_id,metric_key,metric_date")
+        query = (
+            client.table(METRICS_TABLE)
+            .select("account_id,metric_key,metric_date")
+            .eq("platform", PLATFORM)
+        )
         account_list = list(account_ids)
         if account_list:
             if len(account_list) == 1:
@@ -252,6 +257,7 @@ def upsert_metrics(rows: Sequence[Dict[str, object]]) -> Tuple[int, int]:
         account_id = str(row.get("account_id"))
         metric_key = str(row.get("metric_key"))
         metric_date = str(row.get("metric_date"))
+        row["platform"] = PLATFORM
         key = (account_id, metric_key, metric_date)
         if key in existing_keys:
             updated += 1
@@ -264,7 +270,7 @@ def upsert_metrics(rows: Sequence[Dict[str, object]]) -> Tuple[int, int]:
         chunk = normalized_rows[index:index + chunk_size]
         response = (
             client.table(METRICS_TABLE)
-            .upsert(chunk, on_conflict="account_id,metric_key,metric_date")
+            .upsert(chunk, on_conflict="account_id,platform,metric_key,metric_date")
             .execute()
         )
         if getattr(response, "error", None):
@@ -287,6 +293,7 @@ def build_rollup_payload(
     value_avg = value_sum / len(numeric_values)
     payload = {
         "account_id": values[0]["account_id"],
+        "platform": PLATFORM,
         "metric_key": metric_key,
         "bucket": bucket,
         "start_date": start_date.isoformat(),
@@ -324,6 +331,7 @@ def refresh_rollups(
                 client.table(METRICS_TABLE)
                 .select("account_id,metric_date,value")
                 .eq("account_id", ig_id)
+                .eq("platform", PLATFORM)
                 .eq("metric_key", metric_key)
                 .gte("metric_date", start_date.isoformat())
                 .lte("metric_date", metric_date.isoformat())
@@ -342,7 +350,10 @@ def refresh_rollups(
             )
             result = (
                 client.table(ROLLUP_TABLE)
-                .upsert(payload, on_conflict="account_id,metric_key,bucket,start_date,end_date")
+                .upsert(
+                    payload,
+                    on_conflict="account_id,platform,metric_key,bucket,start_date,end_date",
+                )
                 .execute()
             )
             if getattr(result, "error", None):

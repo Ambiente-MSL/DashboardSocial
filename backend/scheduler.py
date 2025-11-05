@@ -174,6 +174,9 @@ class MetaSyncScheduler:
             len(account_ids),
         )
 
+        failures: List[tuple[str, str]] = []
+        successes: List[str] = []
+
         for ig_id in account_ids:
             try:
                 ingest_account_range(
@@ -184,5 +187,20 @@ class MetaSyncScheduler:
                     warm_posts=self._ingest_warm_posts,
                 )
                 logger.info("Ingestão concluída para %s.", ig_id)
+                successes.append(ig_id)
             except Exception as err:  # noqa: BLE001
                 logger.exception("Falha na ingestão para %s: %s", ig_id, err)
+                failures.append((ig_id, str(err)))
+
+        if failures:
+            failed_accounts = ", ".join(item[0] for item in failures)
+            logger.error(
+                "Ingestão diária finalizada com %s falha(s): %s",
+                len(failures),
+                failed_accounts,
+            )
+        else:
+            logger.info(
+                "Ingestão diária finalizada com sucesso para %s conta(s).",
+                len(successes),
+            )

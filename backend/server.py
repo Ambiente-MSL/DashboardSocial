@@ -60,8 +60,10 @@ DEFAULT_REFRESH_RESOURCES = [
     "ads_highlights",
 ]
 
-IG_METRICS_TABLE = "ig_metrics_daily"
-IG_ROLLUP_TABLE = "ig_metrics_rollup"
+IG_METRICS_TABLE = "metrics_daily"
+IG_METRICS_ROLLUP_TABLE = "metrics_daily_rollup"
+IG_METRICS_PLATFORM = "instagram"
+IG_ROLLUP_BUCKETS = ("7d", "30d", "90d")
 DEFAULT_CACHE_PLATFORM = "instagram"
 
 
@@ -652,6 +654,7 @@ def _ensure_instagram_daily_metrics(ig_id: str, start_date: date, end_date: date
         client.table(IG_METRICS_TABLE)
         .select("metric_date")
         .eq("account_id", ig_id)
+        .eq("platform", IG_METRICS_PLATFORM)
         .gte("metric_date", start_date.isoformat())
         .lte("metric_date", end_date.isoformat())
         .execute()
@@ -677,7 +680,13 @@ def _ensure_instagram_daily_metrics(ig_id: str, start_date: date, end_date: date
         missing_start,
         missing_end,
     )
-    ingest_account_range(ig_id, missing_start, missing_end, refresh_rollup=False, warm_posts=False)
+    ingest_account_range(
+        ig_id,
+        missing_start,
+        missing_end,
+        refresh_rollup=True,
+        warm_posts=False,
+    )
 
 
 def _load_metrics_map(ig_id: str, start_date: date, end_date: date) -> Dict[str, List[Dict[str, Any]]]:
@@ -689,6 +698,7 @@ def _load_metrics_map(ig_id: str, start_date: date, end_date: date) -> Dict[str,
         client.table(IG_METRICS_TABLE)
         .select("metric_key,metric_date,value,metadata")
         .eq("account_id", ig_id)
+        .eq("platform", IG_METRICS_PLATFORM)
         .gte("metric_date", start_date.isoformat())
         .lte("metric_date", end_date.isoformat())
         .execute()
@@ -716,6 +726,48 @@ def _load_metrics_map(ig_id: str, start_date: date, end_date: date) -> Dict[str,
         entries.sort(key=lambda item: item["metric_date"])
 
     return grouped
+
+
+def _load_instagram_rollups(ig_id: str, end_date: date) -> Dict[str, Dict[str, Any]]:
+    client = get_supabase_client()
+    if client is None:
+        return {}
+
+    response = (
+        client.table(IG_METRICS_ROLLUP_TABLE)
+        .select("metric_key,bucket,start_date,end_date,value_sum,value_avg,samples,payload")
+        .eq("account_id", ig_id)
+        .eq("platform", IG_METRICS_PLATFORM)
+        .eq("end_date", end_date.isoformat())
+        .in_("bucket", list(IG_ROLLUP_BUCKETS))
+        .execute()
+    )
+    if getattr(response, "error", None):
+        logger.warning("Falha ao carregar %s: %s", IG_METRICS_ROLLUP_TABLE, response.error)
+        return {}
+
+    rollups: Dict[str, Dict[str, Any]] = {}
+    for row in response.data or []:
+        bucket = str(row.get("bucket") or "")
+        metric_key = str(row.get("metric_key") or "")
+        if not bucket or not metric_key:
+            continue
+        entry: Dict[str, Any] = {
+            "start_date": row.get("start_date"),
+            "end_date": row.get("end_date"),
+            "sum": _to_float(row.get("value_sum")),
+            "avg": _to_float(row.get("value_avg")),
+        }
+        samples = row.get("samples")
+        if samples is not None:
+            try:
+                entry["samples"] = int(samples)
+            except (TypeError, ValueError):
+                entry["samples"] = samples
+        if row.get("payload") is not None:
+            entry["payload"] = row["payload"]
+        rollups.setdefault(bucket, {})[metric_key] = entry
+    return rollups
 
 
 def _sum_metric(data: Dict[str, List[Dict[str, Any]]], metric_key: str) -> float:
@@ -767,6 +819,17 @@ def _as_int(value: Optional[float]) -> Optional[int]:
     if value is None:
         return None
     return int(round(value))
+
+
+def _to_float(value: Optional[Any]) -> Optional[float]:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) -> Optional[Dict[str, Any]]:
@@ -922,6 +985,9 @@ def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) ->
         "top_posts": {"reach": [], "engagement": [], "saves": []},
         "reach_timeseries": reach_timeseries,
     }
+    rollups = _load_instagram_rollups(ig_id, until_date)
+    if rollups:
+        response["rollups"] = rollups
     response["cache"] = {
         "source": IG_METRICS_TABLE,
         "fetched_at": datetime.now(timezone.utc).isoformat(),

@@ -14,7 +14,7 @@ def test_instagram_cache():
 
 def test_metrics_daily_insert():
     """
-    Placeholder test to verify inserts into ig_metrics_daily.
+    Placeholder test to verify inserts into metrics_daily.
     """
     # Implementation pending integration with real Supabase test harness.
     assert True

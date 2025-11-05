@@ -820,9 +820,10 @@ export default function InstagramDashboard() {
 
     try {
       const { data, error } = await supabase
-        .from("ig_metrics_daily")
+        .from("metrics_daily")
         .select("value")
         .eq("account_id", igUserId)
+        .eq("platform", "instagram")
         .eq("metric_key", "followers_total")
         .order("metric_date", { ascending: false })
         .limit(1);
