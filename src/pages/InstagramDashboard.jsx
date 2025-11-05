@@ -2196,15 +2196,22 @@ export default function InstagramDashboard() {
           <section className="ig-card-white ig-analytics-card">
             <div className="ig-analytics-card__header">
               <h4>Top Cidades</h4>
-              <div className="ig-top-cities__summary">
-                <span className="ig-top-cities__total-number">1.500</span>
-                <svg width="16" height="16" viewBox="0 0 16 16" style={{ marginLeft: '6px' }}>
-                  <path d="M8 3 L13 9 L3 9 Z" fill="#10b981" />
-                </svg>
-              </div>
             </div>
-            <div className="ig-analytics-card__body">
-              <div className="ig-top-cities">
+            <div className="ig-top-cities-new-layout">
+              <div className="ig-top-cities-new-layout__left">
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '32px', fontWeight: '700', color: '#1f2937', lineHeight: '1', marginBottom: '8px' }}>
+                    1.500
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="ig-top-city-row__icon" style={{ backgroundColor: "#5eead4", width: '12px', height: '12px', borderRadius: '3px' }}></span>
+                    <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>Crato</span>
+                    <svg width="14" height="14" viewBox="0 0 16 16">
+                      <path d="M8 3 L13 9 L3 9 Z" fill="#10b981" />
+                    </svg>
+                  </div>
+                </div>
+
                 <div className="ig-top-cities__table">
                   <div className="ig-top-city-row">
                     <div className="ig-top-city-row__left">
@@ -2235,6 +2242,39 @@ export default function InstagramDashboard() {
                     <span className="ig-top-city-row__value">700</span>
                   </div>
                 </div>
+              </div>
+
+              <div className="ig-top-cities-new-layout__right">
+                <ResponsiveContainer width="100%" height={120}>
+                  <ComposedChart
+                    data={[
+                      { name: '26', value: 1200 },
+                      { name: '27', value: 1350 },
+                      { name: '28', value: 1300 },
+                      { name: '29', value: 1450 },
+                      { name: '30', value: 1400 },
+                      { name: '31', value: 1550 },
+                      { name: '01', value: 1500 }
+                    ]}
+                    margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                  >
+                    <defs>
+                      <linearGradient id="cityGrowthGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#5eead4" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#5eead4" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <Area
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#5eead4"
+                      strokeWidth={2}
+                      fill="url(#cityGrowthGradient)"
+                      dot={false}
+                      animationDuration={800}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </section>

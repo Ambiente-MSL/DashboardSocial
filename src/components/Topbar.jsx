@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import PropTypes from "prop-types";
 import { endOfDay, startOfDay, subDays, differenceInCalendarDays } from "date-fns";
-import { Bell, CalendarDays } from "lucide-react";
+import { Bell } from "lucide-react";
 import DateRangePicker from "./DateRangePicker";
 import AccountSelect from "./AccountSelect";
 import useQueryState from "../hooks/useQueryState";
@@ -14,16 +14,30 @@ const DEFAULT_PRESETS = [
   { id: "1y", label: "1 Ano", days: 365 },
 ];
 
+// Configurar timezone para Fortaleza, Brasil (UTC-3)
 const parseDateParam = (value) => {
   if (!value) return null;
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return null;
   const ms = numeric > 1_000_000_000_000 ? numeric : numeric * 1000;
+
+  // Criar data no timezone de Fortaleza (UTC-3)
   const d = new Date(ms);
-  return Number.isNaN(d.getTime()) ? null : d;
+
+  // Ajustar para timezone de Fortaleza se necessário
+  const tzOffset = d.getTimezoneOffset() * 60000; // offset em ms
+  const localTime = new Date(d.getTime() - tzOffset);
+
+  return Number.isNaN(localTime.getTime()) ? null : localTime;
 };
 
-const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
+const toUnixSeconds = (date) => {
+  if (!date) return null;
+  // Garantir que a data está no timezone correto antes de converter
+  const tzOffset = date.getTimezoneOffset() * 60000;
+  const localDate = new Date(date.getTime() - tzOffset);
+  return Math.floor(localDate.getTime() / 1000);
+};
 
 function useQueryRange() {
   const [get, set] = useQueryState({});
@@ -113,7 +127,6 @@ export default function Topbar({
           </div>
 
           <div className="topbar__range topbar__range--compact">
-            <CalendarDays size={16} />
             <DateRangePicker variant="compact" onRangeChange={handleRangeChange} />
           </div>
 

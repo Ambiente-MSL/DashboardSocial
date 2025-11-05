@@ -1995,6 +1995,393 @@ body.theme-light {
   }
 }
 
+/* ========================================
+   NEW DATE RANGE PICKER - REACT-DATE-RANGE
+   ======================================== */
+
+.date-range-wrapper-new {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.date-range-wrapper-new--compact {
+  display: inline-flex;
+}
+
+.date-range-wrapper-new--compact .date-range-preset-new {
+  display: none;
+}
+
+/* Preset Buttons */
+.date-range-preset-new {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Lato', sans-serif;
+}
+
+.date-range-preset-new:hover {
+  border-color: #a855f7;
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.05);
+}
+
+.date-range-preset-new--active {
+  border-color: #a855f7;
+  background: #a855f7;
+  color: #ffffff;
+}
+
+/* Custom Range Button */
+.date-range-custom-new {
+  position: relative;
+}
+
+.date-range-btn-new {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: 'Lato', sans-serif;
+  min-width: 240px;
+}
+
+.date-range-btn-new:hover {
+  border-color: #a855f7;
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.15);
+  transform: translateY(-1px);
+}
+
+.date-range-btn-new[data-open] {
+  border-color: #a855f7;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.2);
+}
+
+.date-range-btn-new__icon {
+  color: #a855f7;
+  flex-shrink: 0;
+}
+
+.date-range-btn-new__text {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.date-range-btn-new__chevron {
+  color: #9ca3af;
+  transition: transform 0.25s ease;
+  flex-shrink: 0;
+}
+
+.date-range-btn-new__chevron--open {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Container */
+.date-range-dropdown-new {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  z-index: 1000;
+  width: 420px;
+  animation: dropdownFadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.date-range-dropdown-new__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.date-range-dropdown-new__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  font-family: 'Lato', sans-serif;
+}
+
+.date-range-dropdown-new__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.date-range-dropdown-new__close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+/* Body */
+.date-range-dropdown-new__body {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+}
+
+/* Presets Sidebar */
+.date-range-dropdown-new__presets {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+  padding: 8px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.date-range-dropdown-new__preset {
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Lato', sans-serif;
+  white-space: nowrap;
+}
+
+.date-range-dropdown-new__preset:hover {
+  background: #ffffff;
+  color: #a855f7;
+  transform: translateX(2px);
+}
+
+.date-range-dropdown-new__preset--active {
+  background: #a855f7;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Calendar */
+.date-range-dropdown-new__calendar {
+  flex: 1;
+}
+
+/* Footer */
+.date-range-dropdown-new__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.date-range-dropdown-new__btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Lato', sans-serif;
+  border: none;
+}
+
+.date-range-dropdown-new__btn--secondary {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.date-range-dropdown-new__btn--secondary:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.date-range-dropdown-new__btn--primary {
+  background: #a855f7;
+  color: #ffffff;
+}
+
+.date-range-dropdown-new__btn--primary:hover:not(:disabled) {
+  background: #9333ea;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
+  transform: translateY(-1px);
+}
+
+.date-range-dropdown-new__btn--primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Override react-date-range default styles */
+.rdrCalendarWrapper {
+  font-family: 'Lato', sans-serif !important;
+  color: #374151 !important;
+}
+
+.rdrMonth {
+  padding: 0 !important;
+}
+
+.rdrMonthAndYearWrapper {
+  padding: 8px 0 !important;
+  height: auto !important;
+}
+
+.rdrMonthPicker select,
+.rdrYearPicker select {
+  padding: 5px 10px !important;
+  border-radius: 6px !important;
+  border: 1px solid #e5e7eb !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #111827 !important;
+  font-family: 'Lato', sans-serif !important;
+}
+
+.rdrMonthsVertical,
+.rdrMonthsHorizontal {
+  gap: 12px !important;
+}
+
+.rdrWeekDays {
+  padding: 6px 0 !important;
+}
+
+.rdrWeekDay {
+  color: #9ca3af !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 28px !important;
+  height: 28px !important;
+}
+
+.rdrDay {
+  color: #1f2937 !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  height: 34px !important;
+}
+
+.rdrDay span {
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  border-radius: 8px !important;
+}
+
+.rdrDay:not(.rdrDayPassive) .rdrInRange ~ .rdrDayNumber span,
+.rdrDay:not(.rdrDayPassive) .rdrStartEdge ~ .rdrDayNumber span,
+.rdrDay:not(.rdrDayPassive) .rdrEndEdge ~ .rdrDayNumber span,
+.rdrDay:not(.rdrDayPassive) .rdrSelected ~ .rdrDayNumber span {
+  color: #ffffff !important;
+}
+
+.rdrDayToday .rdrDayNumber span:after {
+  background: #a855f7 !important;
+  bottom: 4px !important;
+}
+
+.rdrDayPassive {
+  opacity: 0.3 !important;
+}
+
+.rdrDayDisabled {
+  opacity: 0.2 !important;
+}
+
+.rdrDayDisabled .rdrDayNumber span {
+  color: #d1d5db !important;
+}
+
+.rdrSelected,
+.rdrInRange,
+.rdrStartEdge,
+.rdrEndEdge {
+  background: rgba(168, 85, 247, 0.25) !important;
+}
+
+.rdrDayStartPreview,
+.rdrDayInPreview,
+.rdrDayEndPreview {
+  border: 0 !important;
+  background: rgba(168, 85, 247, 0.15) !important;
+}
+
+.rdrDefinedRangesWrapper {
+  display: none !important;
+}
+
+.rdrDateDisplayWrapper {
+  display: none !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .date-range-dropdown-new {
+    width: 95vw;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .date-range-dropdown-new__body {
+    flex-direction: column;
+  }
+
+  .date-range-dropdown-new__presets {
+    min-width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .date-range-dropdown-new__preset {
+    white-space: nowrap;
+  }
+
+  .rdrMonthsHorizontal {
+    flex-direction: column !important;
+  }
+}
+
 
 .filter-select {
   position: relative;
@@ -9450,6 +9837,37 @@ body:has(.instagram-dashboard--clean) .app-main__content {
   font-weight: 700;
   color: #1e293b;
   font-family: 'Lato', sans-serif;
+}
+
+/* Top Cities New Layout - Two Columns */
+.ig-top-cities-new-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 0 20px 20px 20px;
+}
+
+.ig-top-cities-new-layout__left {
+  flex: 1;
+  min-width: 0;
+}
+
+.ig-top-cities-new-layout__right {
+  flex-shrink: 0;
+  width: 180px;
+  padding-top: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .ig-top-cities-new-layout {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .ig-top-cities-new-layout__right {
+    width: 100%;
+  }
 }
 
 
