@@ -971,11 +971,20 @@ export default function InstagramDashboard() {
 
   // Calcula total de seguidores ganhos no período filtrado
   const followersDelta = useMemo(() => {
-    if (!followerSeriesNormalized.length) return 0;
-    const firstValue = followerSeriesNormalized[0]?.value || 0;
-    const lastValue = followerSeriesNormalized[followerSeriesNormalized.length - 1]?.value || 0;
-    return Math.max(0, lastValue - firstValue);
-  }, [followerSeriesNormalized]);
+    if (followerSeriesNormalized.length > 0) {
+      const firstValue = followerSeriesNormalized[0]?.value || 0;
+      const lastValue = followerSeriesNormalized[followerSeriesNormalized.length - 1]?.value || 0;
+      const diff = lastValue - firstValue;
+      if (Number.isFinite(diff) && diff > 0) {
+        return diff;
+      }
+    }
+    const fallback = extractNumber(followerGrowthMetric?.value, null);
+    if (fallback != null && Number.isFinite(fallback) && fallback > 0) {
+      return Math.round(fallback);
+    }
+    return 0;
+  }, [followerGrowthMetric?.value, followerSeriesNormalized]);
 
 
 

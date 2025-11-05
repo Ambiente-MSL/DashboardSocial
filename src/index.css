@@ -2046,8 +2046,9 @@ body.theme-light {
   border: 1px solid #e5e7eb;
   background: #ffffff;
   color: #374151;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
   transition: all 0.25s ease;
   font-family: 'Lato', sans-serif;
@@ -2096,7 +2097,7 @@ body.theme-light {
   border-radius: 10px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
   z-index: 1000;
-  width: 340px;
+  width: 300px;
   animation: dropdownFadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   overflow: hidden;
 }
@@ -2151,7 +2152,7 @@ body.theme-light {
 .date-range-dropdown-new__body {
   display: flex;
   gap: 8px;
-  padding: 10px;
+  padding: 12px;
 }
 
 /* Presets Sidebar */
@@ -2251,12 +2252,47 @@ body.theme-light {
 }
 
 .rdrMonth {
-  padding: 0 !important;
+  padding: 0 4px !important;
 }
 
 .rdrMonthAndYearWrapper {
-  padding: 6px 0 !important;
+  padding: 8px 4px !important;
   height: auto !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.rdrNextPrevButton {
+  background: transparent !important;
+  border: none !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.rdrNextPrevButton i {
+  border-width: 4px 4px 0 0 !important;
+  padding: 3px !important;
+  display: block !important;
+}
+
+.rdrPprevButton i {
+  transform: rotate(-135deg) !important;
+}
+
+.rdrNextButton i {
+  transform: rotate(45deg) !important;
+}
+
+.rdrMonthPicker,
+.rdrYearPicker {
+  margin: 0 !important;
 }
 
 .rdrMonthPicker select,
@@ -2264,10 +2300,13 @@ body.theme-light {
   padding: 4px 8px !important;
   border-radius: 5px !important;
   border: 1px solid #e5e7eb !important;
-  font-size: 12px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   color: #111827 !important;
   font-family: 'Lato', sans-serif !important;
+  background: #ffffff !important;
+  cursor: pointer !important;
+  min-width: 70px !important;
 }
 
 .rdrMonthsVertical,
@@ -2288,16 +2327,16 @@ body.theme-light {
 }
 
 .rdrDay {
-  color: #1f2937 !important;
+  color: #111827 !important;
   font-size: 11px !important;
-  font-weight: 500 !important;
-  height: 30px !important;
+  font-weight: 600 !important;
+  height: 32px !important;
 }
 
 .rdrDay span {
-  width: 28px !important;
-  height: 28px !important;
-  line-height: 28px !important;
+  width: 30px !important;
+  height: 30px !important;
+  line-height: 30px !important;
   border-radius: 6px !important;
 }
 

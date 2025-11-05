@@ -231,21 +231,6 @@ export default function DateRangePicker({ onRangeChange, variant = "default" }) 
             </div>
 
             <div className="date-range-dropdown-new__body">
-              <div className="date-range-dropdown-new__presets">
-                {presets.map(({ days, label }) => (
-                  <button
-                    key={days}
-                    type="button"
-                    className={`date-range-dropdown-new__preset ${
-                      activeDays === days ? "date-range-dropdown-new__preset--active" : ""
-                    }`}
-                    onClick={() => selectPreset(days)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
               <div className="date-range-dropdown-new__calendar">
                 <ReactDateRangePicker
                   onChange={handleRangeChange}

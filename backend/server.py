@@ -871,7 +871,17 @@ def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) ->
     comments_total = _sum_metric(current_data, "comments")
     comments_previous = _sum_metric(previous_data, "comments") if previous_data else None
 
-    followers_growth = _sum_metric(current_data, "followers_delta")
+    follower_delta_rows = current_data.get("followers_delta", [])
+    net_followers_growth: Optional[float] = None
+    if follower_delta_rows:
+        try:
+            net_followers_growth = sum(
+                float(entry["value"])
+                for entry in follower_delta_rows
+                if entry.get("value") is not None
+            )
+        except (TypeError, ValueError):
+            net_followers_growth = None
 
     followers_end = _latest_metric(current_data, "followers_total")
     followers_previous_end = _latest_metric(previous_data, "followers_total") if previous_data else None
@@ -882,6 +892,23 @@ def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) ->
 
     follows_total = _sum_metric(current_data, "follows")
     unfollows_total = _sum_metric(current_data, "unfollows")
+    previous_follows_total = _sum_metric(previous_data, "follows") if previous_data else None
+
+    if net_followers_growth is None:
+        if followers_start is not None and followers_end is not None:
+            net_followers_growth = followers_end - followers_start
+        elif follows_total or unfollows_total:
+            net_followers_growth = (follows_total or 0.0) - (unfollows_total or 0.0)
+        else:
+            net_followers_growth = 0.0
+
+    if net_followers_growth is None:
+        net_followers_growth = 0.0
+
+    if follows_total is not None:
+        followers_gained_total: Optional[float] = follows_total
+    else:
+        followers_gained_total = net_followers_growth if net_followers_growth > 0 else None
 
     engagement_rate = None
     if reach_total:
@@ -970,8 +997,10 @@ def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) ->
         {
             "key": "follower_growth",
             "label": "CRESCIMENTO DE SEGUIDORES",
-            "value": _as_int(followers_growth),
-            "deltaPct": None,
+            "value": _as_int(followers_gained_total if followers_gained_total is not None else net_followers_growth),
+            "deltaPct": _percentage_delta(follows_total, previous_follows_total)
+            if follows_total is not None and previous_follows_total not in (None, 0)
+            else None,
         },
     ]
 
