@@ -802,23 +802,23 @@ body.theme-light {
 
 .topbar__chip {
   border: 1px solid #e5e7eb;
-  border-radius: 999px;
+  border-radius: 8px;
   padding: 10px 18px;
-  background: #f9fafb;
-  color: #6b7280;
+  background: #ffffff;
+  color: #374151;
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.01em;
-  transition: transform 150ms ease, border-color 150ms ease, background 150ms ease, color 150ms ease;
+  transition: all 0.25s ease;
   height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
 }
 
 .topbar__chip:hover {
-  transform: translateY(-1px);
-  background: #f3f4f6;
+  background: #f9fafb;
   color: #111827;
   border-color: #d1d5db;
 }
@@ -834,14 +834,6 @@ body.theme-light {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border-radius: 999px;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  padding: 10px 16px;
-  color: #111827;
-  font-weight: 600;
-  font-size: 0.85rem;
-  height: 40px;
 }
 
 .topbar__range svg {
@@ -2048,18 +2040,19 @@ body.theme-light {
 .date-range-btn-new {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  border-radius: 10px;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
   border: 1px solid #e5e7eb;
   background: #ffffff;
   color: #374151;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.25s ease;
   font-family: 'Lato', sans-serif;
-  min-width: 240px;
+  min-width: 220px;
+  height: 40px;
 }
 
 .date-range-btn-new:hover {
@@ -2100,10 +2093,10 @@ body.theme-light {
   top: calc(100% + 8px);
   right: 0;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
   z-index: 1000;
-  width: 420px;
+  width: 340px;
   animation: dropdownFadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   overflow: hidden;
 }
@@ -2124,12 +2117,12 @@ body.theme-light {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid #f3f4f6;
 }
 
 .date-range-dropdown-new__title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #111827;
   font-family: 'Lato', sans-serif;
@@ -2139,9 +2132,9 @@ body.theme-light {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
   border: none;
   background: transparent;
   color: #6b7280;
@@ -2157,28 +2150,28 @@ body.theme-light {
 /* Body */
 .date-range-dropdown-new__body {
   display: flex;
-  gap: 12px;
-  padding: 12px;
+  gap: 8px;
+  padding: 10px;
 }
 
 /* Presets Sidebar */
 .date-range-dropdown-new__presets {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 120px;
-  padding: 8px;
+  gap: 3px;
+  min-width: 100px;
+  padding: 6px;
   background: #f9fafb;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .date-range-dropdown-new__preset {
-  padding: 7px 10px;
-  border-radius: 6px;
+  padding: 6px 8px;
+  border-radius: 5px;
   border: none;
   background: transparent;
   color: #6b7280;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   text-align: left;
   cursor: pointer;
@@ -2209,15 +2202,15 @@ body.theme-light {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 16px;
+  gap: 6px;
+  padding: 10px 12px;
   border-top: 1px solid #f3f4f6;
 }
 
 .date-range-dropdown-new__btn {
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 5px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -2262,16 +2255,16 @@ body.theme-light {
 }
 
 .rdrMonthAndYearWrapper {
-  padding: 8px 0 !important;
+  padding: 6px 0 !important;
   height: auto !important;
 }
 
 .rdrMonthPicker select,
 .rdrYearPicker select {
-  padding: 5px 10px !important;
-  border-radius: 6px !important;
+  padding: 4px 8px !important;
+  border-radius: 5px !important;
   border: 1px solid #e5e7eb !important;
-  font-size: 13px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
   color: #111827 !important;
   font-family: 'Lato', sans-serif !important;
@@ -2279,33 +2272,33 @@ body.theme-light {
 
 .rdrMonthsVertical,
 .rdrMonthsHorizontal {
-  gap: 12px !important;
+  gap: 8px !important;
 }
 
 .rdrWeekDays {
-  padding: 6px 0 !important;
+  padding: 4px 0 !important;
 }
 
 .rdrWeekDay {
   color: #9ca3af !important;
-  font-size: 11px !important;
+  font-size: 10px !important;
   font-weight: 600 !important;
-  line-height: 28px !important;
-  height: 28px !important;
+  line-height: 24px !important;
+  height: 24px !important;
 }
 
 .rdrDay {
   color: #1f2937 !important;
-  font-size: 12px !important;
+  font-size: 11px !important;
   font-weight: 500 !important;
-  height: 34px !important;
+  height: 30px !important;
 }
 
 .rdrDay span {
-  width: 32px !important;
-  height: 32px !important;
-  line-height: 32px !important;
-  border-radius: 8px !important;
+  width: 28px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  border-radius: 6px !important;
 }
 
 .rdrDay:not(.rdrDayPassive) .rdrInRange ~ .rdrDayNumber span,

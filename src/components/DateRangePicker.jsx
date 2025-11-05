@@ -206,12 +206,12 @@ export default function DateRangePicker({ onRangeChange, variant = "default" }) 
           className="date-range-btn-new"
           data-open={isOpen || undefined}
         >
-          <Calendar size={16} className="date-range-btn-new__icon" />
+          <Calendar size={14} className="date-range-btn-new__icon" />
           <span className="date-range-btn-new__text">
             {startDate && endDate ? `${fmt(startDate)} — ${fmt(endDate)}` : "Selecione o período"}
           </span>
           <ChevronDown
-            size={16}
+            size={14}
             className={`date-range-btn-new__chevron ${isOpen ? "date-range-btn-new__chevron--open" : ""}`}
           />
         </button>
@@ -226,7 +226,7 @@ export default function DateRangePicker({ onRangeChange, variant = "default" }) 
                 className="date-range-dropdown-new__close"
                 aria-label="Fechar"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
