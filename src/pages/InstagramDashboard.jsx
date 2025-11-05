@@ -1071,9 +1071,23 @@ export default function InstagramDashboard() {
       });
   }, [reachSeriesBase, sinceDate, untilDate]);
 
-  const profileReachData = useMemo(() => (
-    normalizedReachSeries.length ? normalizedReachSeries : DEFAULT_PROFILE_REACH_SERIES
-  ), [normalizedReachSeries]);
+  const profileReachData = useMemo(() => {
+    const data = normalizedReachSeries.length ? normalizedReachSeries : DEFAULT_PROFILE_REACH_SERIES;
+
+    // Limitar a 7 pontos de dados para melhor visualização
+    if (data.length <= 7) return data;
+
+    // Se houver mais de 7 pontos, distribuir uniformemente
+    const step = Math.floor(data.length / 7);
+    const sampledData = [];
+
+    for (let i = 0; i < 7; i++) {
+      const index = i === 6 ? data.length - 1 : i * step;
+      sampledData.push(data[index]);
+    }
+
+    return sampledData;
+  }, [normalizedReachSeries]);
 
   const profileReachTotal = useMemo(() => normalizedReachSeries.reduce(
     (acc, entry) => acc + (Number.isFinite(entry.value) ? entry.value : 0),
@@ -1726,31 +1740,36 @@ export default function InstagramDashboard() {
                           <stop offset="100%" stopColor="rgba(249, 115, 22, 0)" />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid vertical={false} strokeDasharray="4 8" stroke="#f3f4f6" />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="#e5e7eb"
+                        horizontal={true}
+                        vertical={true}
+                        strokeOpacity={0.5}
+                      />
                       <XAxis
                         dataKey="label"
                         tick={{ fill: '#6b7280', fontFamily: 'Lato, sans-serif' }}
                         fontSize={12}
                         tickLine={false}
                         axisLine={{ stroke: '#e5e7eb' }}
+                        interval={0}
+                        angle={0}
                         tickFormatter={(value) => {
                           if (!value) return '';
-                          // Converte formato "04/10" ou "4/Out" para "Out 4"
                           const parts = value.split('/');
                           if (parts.length === 2) {
                             const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
                             const day = parts[0];
                             const monthPart = parts[1];
 
-                            // Se já é nome de mês
                             if (monthNames.includes(monthPart)) {
-                              return `${monthPart} ${day}`;
+                              return `${day} ${monthPart}`;
                             }
 
-                            // Se é número de mês
                             const monthIndex = parseInt(monthPart) - 1;
                             if (!isNaN(monthIndex) && monthIndex >= 0 && monthIndex < 12) {
-                              return `${monthNames[monthIndex]} ${day}`;
+                              return `${day} ${monthNames[monthIndex]}`;
                             }
                           }
                           return value;
