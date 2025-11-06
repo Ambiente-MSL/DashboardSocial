@@ -2101,9 +2101,9 @@ body.theme-light {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border: 1px solid #e5e5e5;
   z-index: 1000;
-  width: 320px;
+  width: 340px;
   animation: dropdownFadeIn 0.2s ease-out;
-  overflow: hidden;
+  overflow: visible;
 }
 
 @keyframes dropdownFadeIn {
@@ -2143,10 +2143,9 @@ body.theme-light {
 
 /* Body */
 .date-range-dropdown-new__body {
-  display: flex;
-  gap: 0;
+  display: block;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Presets Sidebar */
@@ -2189,8 +2188,8 @@ body.theme-light {
 
 /* Calendar */
 .date-range-dropdown-new__calendar {
-  flex: 1;
-  overflow: hidden;
+  width: 100%;
+  overflow: visible;
 }
 
 /* Footer */
@@ -2242,48 +2241,37 @@ body.theme-light {
 
 /* Override react-date-range default styles */
 .rdrCalendarWrapper {
-  font-family: 'Lato', sans-serif !important;
-  color: #374151 !important;
-  overflow: hidden !important;
-  padding: 0 !important;
-  margin: 0 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
+  color: #1a1a1a !important;
+  width: 100% !important;
 }
 
 .rdrMonth {
-  padding: 18px 20px 18px 20px !important;
-  overflow: hidden !important;
+  padding: 20px !important;
   width: 100% !important;
-  box-sizing: border-box !important;
 }
 
 .rdrMonthAndYearWrapper {
-  padding: 0 0 12px 0 !important;
+  padding-bottom: 16px !important;
   height: auto !important;
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
-  gap: 12px !important;
-  border-bottom: none !important;
-  margin-bottom: 0 !important;
-  overflow: hidden !important;
-  position: relative !important;
 }
 
 .rdrNextPrevButton {
   background: transparent !important;
   border: none !important;
-  width: 24px !important;
-  height: 24px !important;
-  display: flex !important;
+  width: 28px !important;
+  height: 28px !important;
+  display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   padding: 0 !important;
-  margin: 0 !important;
+  margin: 0 2px !important;
   cursor: pointer !important;
-  border-radius: 4px !important;
-  transition: background 0.15s ease !important;
-  position: relative !important;
-  top: 2px !important;
+  border-radius: 6px !important;
+  transition: background 0.2s ease !important;
 }
 
 .rdrNextPrevButton:hover {
@@ -2291,27 +2279,19 @@ body.theme-light {
 }
 
 .rdrNextPrevButton i {
-  border-width: 5px 5px 0 0 !important;
-  padding: 3px !important;
+  border-width: 0 2px 2px 0 !important;
+  padding: 4px !important;
   display: block !important;
   border-color: #1a1a1a !important;
-}
-
-.rdrPprevButton {
-  order: 2 !important;
-  margin-right: 4px !important;
+  border-style: solid !important;
 }
 
 .rdrPprevButton i {
-  transform: rotate(-135deg) !important;
-}
-
-.rdrNextButton {
-  order: 3 !important;
+  transform: rotate(135deg) !important;
 }
 
 .rdrNextButton i {
-  transform: rotate(45deg) !important;
+  transform: rotate(-45deg) !important;
 }
 
 .rdrMonthPicker,
@@ -2320,27 +2300,11 @@ body.theme-light {
 }
 
 .rdrMonthAndYearPickers {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  font-size: 16px !important;
-  font-weight: 600 !important;
-  color: #000000 !important;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif !important;
   flex: 1 !important;
-  text-align: left !important;
-  letter-spacing: 0 !important;
-  order: 1 !important;
-  text-transform: uppercase !important;
-}
-
-.rdrMonthAndYearPickers span {
-  text-transform: uppercase !important;
-}
-
-.rdrMonthName,
-.rdrYearName {
-  text-transform: uppercase !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: #1a1a1a !important;
+  text-transform: capitalize !important;
 }
 
 .rdrMonthsVertical,
@@ -2356,119 +2320,79 @@ body.theme-light {
 }
 
 .rdrWeekDays {
-  padding: 0 0 10px 0 !important;
-  display: grid !important;
-  grid-template-columns: repeat(7, 1fr) !important;
-  gap: 2px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  padding-bottom: 8px !important;
 }
 
 .rdrDays {
-  display: grid !important;
-  grid-template-columns: repeat(7, 1fr) !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
 }
 
 .rdrWeekDay {
-  color: #b3b3b3 !important;
-  font-size: 0 !important;
-  font-weight: 400 !important;
-  line-height: 28px !important;
-  height: 28px !important;
-  text-transform: uppercase !important;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
-  position: relative !important;
-  overflow: hidden !important;
+  flex: 0 0 14.285% !important;
   text-align: center !important;
+  font-size: 0 !important;
+  font-weight: 500 !important;
+  color: #999999 !important;
+  line-height: 1 !important;
+  text-transform: uppercase !important;
 }
 
-/* Mostrar apenas primeira letra dos dias */
 .rdrWeekDay::first-letter {
   font-size: 11px !important;
-  visibility: visible !important;
-}
-
-.rdrWeekDay span {
-  font-size: 0 !important;
-  visibility: hidden !important;
-}
-
-.rdrWeekDay span::first-letter {
-  font-size: 11px !important;
-  visibility: visible !important;
-  color: #b3b3b3 !important;
 }
 
 .rdrDay {
-  color: #1a1a1a !important;
-  font-size: 13px !important;
-  font-weight: 400 !important;
-  height: 38px !important;
-  position: relative !important;
-  box-sizing: border-box !important;
-}
-
-.rdrDay span {
-  width: 34px !important;
-  height: 34px !important;
-  line-height: 34px !important;
-  border-radius: 50% !important;
-  transition: background 0.15s ease !important;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
-  color: #1a1a1a !important;
-  text-align: center !important;
-  display: inline-block !important;
-  box-sizing: border-box !important;
-  vertical-align: middle !important;
-}
-
-.rdrDayNumber {
-  position: absolute !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  width: 100% !important;
+  flex: 0 0 14.285% !important;
+  height: 40px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+  position: relative !important;
 }
 
-.rdrDay:not(.rdrDayPassive):not(.rdrDayDisabled):hover span {
+.rdrDayNumber {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+.rdrDayNumber span {
+  width: 36px !important;
+  height: 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  color: #1a1a1a !important;
+  transition: all 0.2s ease !important;
+}
+
+.rdrDay:not(.rdrDayPassive):not(.rdrDayDisabled):hover .rdrDayNumber span {
   background: #f5f5f5 !important;
 }
 
-.rdrDay:not(.rdrDayPassive) .rdrInRange ~ .rdrDayNumber span,
-.rdrDay:not(.rdrDayPassive) .rdrStartEdge ~ .rdrDayNumber span,
-.rdrDay:not(.rdrDayPassive) .rdrEndEdge ~ .rdrDayNumber span,
-.rdrDay:not(.rdrDayPassive) .rdrSelected ~ .rdrDayNumber span {
-  color: #ffffff !important;
-}
-
 .rdrDayToday .rdrDayNumber span {
-  background: transparent !important;
-  color: #1a1a1a !important;
-  font-weight: 400 !important;
   border: 1px solid #e0e0e0 !important;
 }
 
-.rdrDayToday .rdrDayNumber span:after {
+.rdrDayToday .rdrDayNumber span::after {
   display: none !important;
 }
 
-.rdrDayPassive {
-  opacity: 1 !important;
-}
-
 .rdrDayPassive .rdrDayNumber span {
-  color: #cccccc !important;
-  opacity: 1 !important;
+  color: #d0d0d0 !important;
 }
 
 .rdrDayDisabled {
-  opacity: 1 !important;
   pointer-events: none !important;
 }
 
 .rdrDayDisabled .rdrDayNumber span {
-  color: #e0e0e0 !important;
+  color: #e5e5e5 !important;
 }
 
 .rdrSelected,
@@ -2478,20 +2402,20 @@ body.theme-light {
   background: transparent !important;
   position: absolute !important;
   top: 0 !important;
+  bottom: 0 !important;
   left: 0 !important;
   right: 0 !important;
-  bottom: 0 !important;
+  z-index: 1 !important;
 }
 
-.rdrStartEdge .rdrDayNumber span,
-.rdrEndEdge .rdrDayNumber span {
+.rdrStartEdge ~ .rdrDayNumber span,
+.rdrEndEdge ~ .rdrDayNumber span {
   background: #1a1a1a !important;
   color: #ffffff !important;
-  font-weight: 400 !important;
 }
 
-.rdrInRange .rdrDayNumber span {
-  background: #f5f5f5 !important;
+.rdrInRange ~ .rdrDayNumber span {
+  background: #f0f0f0 !important;
   color: #1a1a1a !important;
 }
 
