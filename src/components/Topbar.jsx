@@ -5,6 +5,7 @@ import { Bell } from "lucide-react";
 import DateRangePicker from "./DateRangePicker";
 import AccountSelect from "./AccountSelect";
 import useQueryState from "../hooks/useQueryState";
+import logo from "../assets/logo-dashboard.svg";
 
 const DEFAULT_PRESETS = [
   { id: "7d", label: "7 Dias", days: 7 },
@@ -105,6 +106,10 @@ export default function Topbar({
   return (
     <header className={`topbar topbar--dark ${className}`.trim()}>
       <div className="topbar__inner">
+        <div className="topbar__logo">
+          <img src={logo} alt="Dashboard Logo" className="topbar__logo-img" />
+          <span className="topbar__logo-text">MSL ESTRATÉGIA</span>
+        </div>
         <div className="topbar__controls">
           <div className="topbar__notif">
             <button type="button" className="topbar__notif-btn" aria-label="NotificaÃ§Ãµes">

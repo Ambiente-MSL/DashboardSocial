@@ -61,15 +61,6 @@ const HERO_TABS = [
   { id: "settings", label: "Configurações", href: "/configuracoes", icon: Settings },
 ];
 
-const FOLLOWER_GROWTH_PRESETS = [
-  { id: "7d", label: "7 dias" },
-  { id: "1m", label: "1 mês" },
-  { id: "3m", label: "3 meses" },
-  { id: "6m", label: "6 meses" },
-  { id: "1y", label: "1 ano" },
-  { id: "max", label: "Máximo" },
-];
-
 const FOLLOWER_GROWTH_SERIES = [
   { label: "Jan", value: 28000 },
   { label: "Fev", value: 58000 },
@@ -369,6 +360,10 @@ export default function FacebookDashboard() {
     [coverStoragePath],
   );
 
+  const avatarUrl = useMemo(() => (
+    accountConfig?.profilePictureUrl || accountConfig?.pagePictureUrl || ""
+  ), [accountConfig?.pagePictureUrl, accountConfig?.profilePictureUrl]);
+
   const coverStyle = useMemo(() => {
     if (!coverImageUrl) return undefined;
     return {
@@ -663,7 +658,7 @@ export default function FacebookDashboard() {
 
               <div className="ig-profile-vertical__avatar-wrapper">
                 <div className="ig-profile-vertical__avatar">
-                  <span>{accountInitial}</span>
+                  {avatarUrl ? <img src={avatarUrl} alt="Profile" /> : <span>{accountInitial}</span>}
                 </div>
               </div>
 
@@ -682,7 +677,7 @@ export default function FacebookDashboard() {
                   </div>
                   <div className="ig-overview-stat">
                     <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.reach)}</div>
-                    <div className="ig-overview-stat__label">Alcance (30 dias)</div>
+                    <div className="ig-overview-stat__label">Alcance</div>
                   </div>
                 </div>
 
@@ -823,20 +818,6 @@ export default function FacebookDashboard() {
                   <h2 className="ig-clean-title2">Crescimento do perfil</h2>
                   <h3>Alcance</h3>
                 </div>
-                <div className="ig-filter-pills">
-                  {FB_TOPBAR_PRESETS.map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      className={`fb-filter-pill${activePreset === preset.id ? " fb-filter-pill--active" : ""}`}
-                      onClick={() => handlePresetSelect(preset.id)}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                  <button className="ig-filter-pill">1 ano</button>
-                  <button className="ig-filter-pill">Máximo</button>
-                </div>
               </header>
 
               <div className="ig-chart-area">
@@ -962,17 +943,6 @@ export default function FacebookDashboard() {
                 <div>
                   <h3>Crescimento de Seguidores</h3>
                   <p className="ig-card-subtitle">Evolução mensal</p>
-                </div>
-                <div className="ig-filter-pills">
-                  {FOLLOWER_GROWTH_PRESETS.map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      className={`fb-filter-pill${preset.id === "1y" ? " fb-filter-pill--active" : ""}`}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
                 </div>
               </header>
 

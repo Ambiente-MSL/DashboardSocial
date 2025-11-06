@@ -28,8 +28,16 @@ function normalizeAccount(raw, existing = []) {
     instagramUserId: String(instagramUserId || "").trim(),
     adAccountId: String(adAccountId || "").trim(),
   };
+  const profilePictureSource = raw.profilePictureUrl ?? raw.profile_picture_url;
+  if (profilePictureSource) {
+    normalized.profilePictureUrl = String(profilePictureSource).trim();
+  }
   if (instagramUsername) {
     normalized.instagramUsername = String(instagramUsername).trim();
+  }
+  const pagePictureSource = raw.pagePictureUrl ?? raw.page_picture_url;
+  if (pagePictureSource) {
+    normalized.pagePictureUrl = String(pagePictureSource).trim();
   }
   if (Array.isArray(adAccounts)) {
     const normalizedAds = adAccounts
@@ -195,6 +203,12 @@ export function AccountsProvider({ children }) {
               if (metaAccount.adAccounts) {
                 merged.adAccounts = metaAccount.adAccounts;
               }
+              if (metaAccount.profilePictureUrl) {
+                merged.profilePictureUrl = metaAccount.profilePictureUrl;
+              }
+              if (metaAccount.pagePictureUrl) {
+                merged.pagePictureUrl = metaAccount.pagePictureUrl;
+              }
               merged.source = current.source || metaAccount.source;
 
               const previousSnapshot = JSON.stringify(current);
@@ -244,6 +258,8 @@ export function AccountsProvider({ children }) {
           facebookPageId: payload.facebookPageId.trim(),
           instagramUserId: payload.instagramUserId.trim(),
           adAccountId: payload.adAccountId.trim(),
+          profilePictureUrl: payload.profilePictureUrl ? payload.profilePictureUrl.trim() : "",
+          pagePictureUrl: payload.pagePictureUrl ? payload.pagePictureUrl.trim() : "",
         },
       ];
       return next;
@@ -260,6 +276,10 @@ export function AccountsProvider({ children }) {
               facebookPageId: payload.facebookPageId.trim(),
               instagramUserId: payload.instagramUserId.trim(),
               adAccountId: payload.adAccountId.trim(),
+              profilePictureUrl: payload.profilePictureUrl
+                ? payload.profilePictureUrl.trim()
+                : account.profilePictureUrl || "",
+              pagePictureUrl: payload.pagePictureUrl ? payload.pagePictureUrl.trim() : account.pagePictureUrl || "",
             }
           : account,
       ),
