@@ -965,6 +965,28 @@ export default function InstagramDashboard() {
       return { date: dateKey, value: extractNumber(entry.value, null) };
     })
     .filter(Boolean), [followerSeries]);
+  const followerSeriesInRange = useMemo(() => {
+    if (!followerSeriesNormalized.length) return [];
+    const sorted = [...followerSeriesNormalized].sort((a, b) => {
+      if (!a?.date) return -1;
+      if (!b?.date) return 1;
+      return a.date.localeCompare(b.date);
+    });
+    if (!sinceDate && !untilDate) {
+      return sorted;
+    }
+    const startBoundary = sinceDate ? startOfDay(sinceDate).getTime() : null;
+    const endBoundary = untilDate ? endOfDay(untilDate).getTime() : null;
+    return sorted.filter((item) => {
+      if (!item?.date) return false;
+      const currentDate = new Date(`${item.date}T00:00:00`);
+      const current = currentDate.getTime();
+      if (Number.isNaN(current)) return false;
+      if (startBoundary != null && current < startBoundary) return false;
+      if (endBoundary != null && current > endBoundary) return false;
+      return true;
+    });
+  }, [followerSeriesNormalized, sinceDate, untilDate]);
 
   const filteredPosts = useMemo(() => {
     if (!posts.length) return [];
@@ -981,20 +1003,52 @@ export default function InstagramDashboard() {
 
   // Calcula total de seguidores ganhos no período filtrado
   const followersDelta = useMemo(() => {
-    if (followerSeriesNormalized.length > 0) {
-      const firstValue = followerSeriesNormalized[0]?.value || 0;
-      const lastValue = followerSeriesNormalized[followerSeriesNormalized.length - 1]?.value || 0;
+    const computeDeltaFromSeries = (series) => {
+      if (!Array.isArray(series) || series.length < 2) return null;
+      const firstValue = extractNumber(series[0]?.value, null);
+      const lastValue = extractNumber(series[series.length - 1]?.value, null);
+      if (firstValue == null || lastValue == null) return null;
       const diff = lastValue - firstValue;
-      if (Number.isFinite(diff) && diff > 0) {
-        return diff;
+      return Number.isFinite(diff) && diff > 0 ? diff : null;
+    };
+
+    const inRangeDelta = computeDeltaFromSeries(followerSeriesInRange);
+    if (inRangeDelta != null && inRangeDelta !== 0) {
+      return Math.round(inRangeDelta);
+    }
+
+    const fallbackSeriesDelta = computeDeltaFromSeries(followerSeriesNormalized);
+    if (fallbackSeriesDelta != null && fallbackSeriesDelta !== 0) {
+      return Math.round(fallbackSeriesDelta);
+    }
+
+    if (followerCounts) {
+      const startCount = extractNumber(followerCounts.start, null);
+      const endCount = extractNumber(followerCounts.end, null);
+      if (startCount != null && endCount != null) {
+        const diff = endCount - startCount;
+        if (Number.isFinite(diff) && diff > 0) {
+          return Math.round(diff);
+        }
+      }
+
+      const followsCount = extractNumber(followerCounts.follows, null);
+      const unfollowsCount = extractNumber(followerCounts.unfollows, null);
+      if (followsCount != null || unfollowsCount != null) {
+        const diff = (followsCount || 0) - (unfollowsCount || 0);
+        if (Number.isFinite(diff) && diff > 0) {
+          return Math.round(diff);
+        }
       }
     }
-    const fallback = extractNumber(followerGrowthMetric?.value, null);
-    if (fallback != null && Number.isFinite(fallback) && fallback > 0) {
-      return Math.round(fallback);
+
+    const fallbackMetric = extractNumber(followerGrowthMetric?.value, null);
+    if (fallbackMetric != null && Number.isFinite(fallbackMetric) && fallbackMetric > 0) {
+      return Math.round(fallbackMetric);
     }
+
     return 0;
-  }, [followerGrowthMetric?.value, followerSeriesNormalized]);
+  }, [followerCounts, followerGrowthMetric?.value, followerSeriesInRange, followerSeriesNormalized]);
 
 
 
@@ -1313,11 +1367,12 @@ export default function InstagramDashboard() {
     : []), [filteredPosts]);
 
   const followerGrowthSeriesSorted = useMemo(() => {
-    if (!followerSeriesNormalized.length) return [];
-    return followerSeriesNormalized
+    const source = followerSeriesInRange.length ? followerSeriesInRange : followerSeriesNormalized;
+    if (!source.length) return [];
+    return source
       .filter((entry) => entry?.date && Number.isFinite(entry.value))
       .sort((a, b) => (a.date > b.date ? 1 : -1));
-  }, [followerSeriesNormalized]);
+  }, [followerSeriesInRange, followerSeriesNormalized]);
 
   const followerGrowthChartData = useMemo(() => {
     if (followerGrowthSeriesSorted.length) {
@@ -1631,6 +1686,7 @@ export default function InstagramDashboard() {
                           <span className="ig-engagement-mini-card__value">{bestTimes.bestDay || "--"}</span>
                         </div>
                       </div>
+                      <p className="ig-best-time-caption">*Baseado nas publicações dos últimos 30 dias</p>
                     </>
                   ) : (
                     <div className="ig-empty-state">Sem dados</div>
