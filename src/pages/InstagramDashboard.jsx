@@ -46,6 +46,7 @@ import useQueryState from "../hooks/useQueryState";
 import { useAccounts } from "../context/AccountsContext";
 import { DEFAULT_ACCOUNTS } from "../data/accounts";
 import { supabase } from "../lib/supabaseClient";
+import WordCloudCard from "../components/WordCloudCard";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const FALLBACK_ACCOUNT_ID = DEFAULT_ACCOUNTS[0]?.id || "";
@@ -313,6 +314,13 @@ const sumInteractions = (post) => {
 const truncate = (text, length = 120) => {
   if (!text) return "";
   return text.length <= length ? text : `${text.slice(0, length - 3)}...`;
+};
+const toUtcDateString = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return undefined;
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 const parseQueryDate = (value) => {
   if (!value) return null;
@@ -597,6 +605,8 @@ export default function InstagramDashboard() {
   const untilParam = getQuery("until");
   const sinceDate = useMemo(() => parseQueryDate(sinceParam), [sinceParam]);
   const untilDate = useMemo(() => parseQueryDate(untilParam), [untilParam]);
+  const sinceIso = useMemo(() => toUtcDateString(sinceDate), [sinceDate]);
+  const untilIso = useMemo(() => toUtcDateString(untilDate), [untilDate]);
 
   const defaultCalendarValue = useMemo(() => {
     if (untilDate) {
@@ -1608,7 +1618,7 @@ export default function InstagramDashboard() {
 
                       <div className="ig-engagement-summary">
                         <div className="ig-engagement-summary__value">{engagementRateDisplay}</div>
-                        <div className="ig-engagement-summary__label">Total de engajamento do período</div>
+                        <div className="ig-engagement-summary__label">Taxa de engajamento</div>
                       </div>
 
                       <div className="ig-engagement-mini-grid">
@@ -2300,29 +2310,16 @@ export default function InstagramDashboard() {
           </div>
           <div className="ig-analytics-card__body">
             <div className="ig-word-cloud ig-word-cloud--large">
-              <span className="ig-word-cloud__word ig-word-cloud__word--xl" style={{ color: '#ef4444' }}>dance</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--lg" style={{ color: '#f97316' }}>travel</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--lg" style={{ color: '#ec4899' }}>photography</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--md" style={{ color: '#a855f7' }}>design</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--md" style={{ color: '#f97316' }}>fashion</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--sm" style={{ color: '#fbbf24' }}>makeup</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--md" style={{ color: '#ef4444' }}>indian</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--sm" style={{ color: '#ec4899' }}>life</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--xl" style={{ color: '#f97316' }}>frocks</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--sm" style={{ color: '#fbbf24' }}>girl</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--md" style={{ color: '#a855f7' }}>travel</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--lg" style={{ color: '#ef4444' }}>hot</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--sm" style={{ color: '#ec4899' }}>beautiful</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--md" style={{ color: '#fbbf24' }}>shorthair</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--sm" style={{ color: '#a855f7' }}>brunette</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--md" style={{ color: '#f97316' }}>ctress</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--sm" style={{ color: '#ef4444' }}>model</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--lg" style={{ color: '#ec4899' }}>shopping</span>
-              <span className="ig-word-cloud__word ig-word-cloud__word--sm" style={{ color: '#fbbf24' }}>short</span>
+              <WordCloudCard
+                apiBaseUrl={API_BASE_URL}
+                igUserId={accountConfig?.instagramUserId}
+                since={sinceIso}
+                until={untilIso}
+                top={120}
+              />
             </div>
           </div>
         </section>
-
         <section className="ig-card-white ig-analytics-card ig-analytics-card--large">
           <div className="ig-analytics-card__header">
             <h4>Hashtags mais usadas</h4>

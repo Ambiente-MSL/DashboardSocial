@@ -1,9 +1,11 @@
 # backend/server.py
 import os
+import re
 import time
 import logging
 import math
-from collections import defaultdict
+import unicodedata
+from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -29,6 +31,7 @@ from meta import (
     gget,
 )
 from jobs.instagram_ingest import ingest_account_range, daterange
+from jobs.instagram_comments_ingest import ingest_account_comments
 from scheduler import MetaSyncScheduler
 from supabase_client import get_supabase_client
 
@@ -65,6 +68,28 @@ IG_METRICS_ROLLUP_TABLE = "metrics_daily_rollup"
 IG_METRICS_PLATFORM = "instagram"
 IG_ROLLUP_BUCKETS = ("7d", "30d", "90d")
 DEFAULT_CACHE_PLATFORM = "instagram"
+IG_COMMENTS_TABLE = "ig_comments"
+IG_COMMENTS_DAILY_TABLE = "ig_comments_daily"
+WORDCLOUD_DEFAULT_TOP = 120
+WORDCLOUD_MAX_TOP = 250
+WORDCLOUD_MAX_RANGE_DAYS = 365
+COMMENTS_INGEST_DEFAULT_DAYS = 30
+WORDCLOUD_STOPWORDS = {
+    "a", "as", "o", "os", "um", "uma", "uns", "umas",
+    "de", "do", "da", "dos", "das", "em", "no", "na", "nos", "nas",
+    "para", "por", "pra", "pro", "com", "sem", "que", "quem", "qual", "quais",
+    "como", "onde", "quando", "porque", "pois", "isso", "isto", "aquele", "aquela",
+    "aqueles", "aquelas", "este", "esta", "estes", "estas", "esse", "essa", "esses", "essas",
+    "ele", "ela", "eles", "elas", "eu", "tu", "voce", "voces", "nos", "nosso", "nossa", "nossos", "nossas",
+    "seu", "sua", "seus", "suas", "meu", "minha", "meus", "minhas", "dele", "dela", "deles", "delas",
+    "mais", "menos", "muito", "muita", "muitos", "muitas", "todo", "toda", "todos", "todas",
+    "ja", "foi", "era", "sao", "sou", "estou", "esta", "estao", "tem", "ter", "ser",
+    "vai", "vao", "vou", "fui", "sido", "havia", "haviam",
+    "bem", "mal", "sim", "nao", "opa", "ola", "oi", "alguem", "ninguem",
+    "the", "and", "for", "with", "you", "your", "yours", "from", "this", "that", "was", "are", "were", "been", "have", "has",
+    "to", "of", "in", "on", "at", "by", "or", "an", "is", "be", "it", "its", "we", "us", "our", "ours", "they", "them", "their", "theirs",
+    "https", "http", "www"
+}
 
 
 def validate_timestamp(ts: int, param_name: str = "timestamp") -> int:
@@ -154,6 +179,71 @@ def unix_range(args, default_days=DEFAULT_DAYS):
 
 def _duration(since_ts: int, until_ts: int) -> int:
     return max(1, until_ts - since_ts)
+
+
+def strip_accents(text: str) -> str:
+    normalized = unicodedata.normalize("NFD", text)
+    return "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+
+
+def tokenize_wordcloud_text(text: str) -> List[str]:
+    if not text:
+        return []
+    lowered = text.lower()
+    lowered = re.sub(r"https?://\S+|www\.\S+", " ", lowered)
+    lowered = lowered.replace("&amp;", " ")
+    lowered = re.sub(r"\s+", " ", lowered)
+    tokens = lowered.split()
+    words: List[str] = []
+    for token in tokens:
+        if not token:
+            continue
+        if token.startswith("@"):
+            continue
+        if token.startswith("#"):
+            token = token[1:]
+        cleaned = "".join(ch for ch in token if ch.isalpha())
+        if len(cleaned) < 2:
+            continue
+        base = strip_accents(cleaned)
+        if cleaned in WORDCLOUD_STOPWORDS or base in WORDCLOUD_STOPWORDS:
+            continue
+        words.append(cleaned)
+    return words
+
+
+def fetch_comments_for_wordcloud(
+    client,
+    account_id: str,
+    since_iso: Optional[str],
+    until_iso: Optional[str],
+) -> List[Dict[str, Any]]:
+    page_size = 1000
+    offset = 0
+    rows: List[Dict[str, Any]] = []
+    while True:
+        query = (
+            client.table(IG_COMMENTS_TABLE)
+            .select("comment_id,text,created_at_utc")
+            .eq("account_id", account_id)
+        )
+        if since_iso:
+            query = query.gte("created_at_utc", since_iso)
+        if until_iso:
+            query = query.lte("created_at_utc", until_iso)
+        response = (
+            query.order("created_at_utc", desc=False)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        data = getattr(response, "data", None) or []
+        if not data:
+            break
+        rows.extend(data)
+        if len(data) < page_size:
+            break
+        offset += page_size
+    return rows
 
 
 def fetch_facebook_metrics(
@@ -1372,6 +1462,119 @@ def instagram_posts():
     response = dict(payload)
     response["cache"] = meta
     return jsonify(response)
+
+
+def _parse_date_param(value: Optional[str]) -> date:
+    if not value:
+        raise ValueError("missing")
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError as err:  # pragma: no cover - defensive
+        raise ValueError("invalid") from err
+
+
+@app.get("/api/instagram/comments/wordcloud")
+def instagram_comments_wordcloud():
+    ig_user_id = request.args.get("igUserId", IG_ID)
+    if not ig_user_id:
+        return jsonify({"error": "Missing igUserId"}), 400
+
+    top_param = request.args.get("top")
+    top_n = WORDCLOUD_DEFAULT_TOP
+    if top_param is not None:
+        try:
+            top_n = int(top_param)
+        except ValueError:
+            return jsonify({"error": "top must be an integer"}), 400
+        top_n = max(1, min(WORDCLOUD_MAX_TOP, top_n))
+
+    today_utc = datetime.now(timezone.utc).date()
+    default_since = today_utc - timedelta(days=COMMENTS_INGEST_DEFAULT_DAYS)
+
+    since_param = request.args.get("since")
+    until_param = request.args.get("until")
+
+    try:
+        since_date = _parse_date_param(since_param) if since_param else default_since
+    except ValueError:
+        return jsonify({"error": "since must be in YYYY-MM-DD format"}), 400
+    try:
+        until_date = _parse_date_param(until_param) if until_param else today_utc
+    except ValueError:
+        return jsonify({"error": "until must be in YYYY-MM-DD format"}), 400
+
+    if since_date > until_date:
+        return jsonify({"error": "since cannot be after until"}), 400
+
+    span_days = (until_date - since_date).days
+    if span_days > WORDCLOUD_MAX_RANGE_DAYS:
+        since_date = until_date - timedelta(days=WORDCLOUD_MAX_RANGE_DAYS)
+
+    since_iso = datetime.combine(since_date, datetime.min.time()).replace(tzinfo=timezone.utc).isoformat()
+    until_iso = datetime.combine(until_date, datetime.max.time()).replace(tzinfo=timezone.utc).isoformat()
+
+    client = get_supabase_client()
+    if client is None:
+        return jsonify({"error": "Supabase client is not configured"}), 500
+
+    try:
+        rows = fetch_comments_for_wordcloud(client, ig_user_id, since_iso, until_iso)
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Failed to fetch comments for wordcloud")
+        return jsonify({"error": str(err)}), 500
+
+    counter: Counter[str] = Counter()
+    for row in rows:
+        tokens = tokenize_wordcloud_text(str((row or {}).get("text") or ""))
+        if tokens:
+            counter.update(tokens)
+
+    words_payload = [
+        {"word": word, "count": count}
+        for word, count in counter.most_common(top_n)
+    ]
+
+    response = {
+        "igUserId": ig_user_id,
+        "since": since_date.isoformat(),
+        "until": until_date.isoformat(),
+        "total_comments": len(rows),
+        "words": words_payload,
+    }
+    return jsonify(response)
+
+
+@app.post("/api/instagram/comments/ingest")
+def instagram_comments_ingest_http():
+    expected_token = os.getenv("CRON_TOKEN")
+    provided_token = request.args.get("token") or request.headers.get("X-Cron-Token")
+    if expected_token and expected_token != provided_token:
+        return jsonify({"error": "invalid token"}), 403
+
+    ig_user_id = request.args.get("igUserId", IG_ID)
+    if not ig_user_id:
+        return jsonify({"error": "Missing igUserId"}), 400
+
+    days_param = request.args.get("days")
+    try:
+        days = int(days_param) if days_param is not None else COMMENTS_INGEST_DEFAULT_DAYS
+    except ValueError:
+        return jsonify({"error": "days must be an integer"}), 400
+    days = max(1, min(WORDCLOUD_MAX_RANGE_DAYS, days))
+
+    try:
+        medias_scanned, inserted, updated = ingest_account_comments(ig_user_id, days)
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Failed to ingest comments for %s", ig_user_id)
+        return jsonify({"error": str(err)}), 500
+
+    return jsonify({
+        "igUserId": ig_user_id,
+        "days": days,
+        "medias_scanned": medias_scanned,
+        "inserted": inserted,
+        "updated": updated,
+    })
 
 @app.get("/api/ads/highlights")
 def ads_high():
