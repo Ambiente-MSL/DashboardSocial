@@ -1,8 +1,10 @@
 // src/pages/Reports.jsx
 import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { FileText } from "lucide-react";
 import Section from "../components/Section";
 import ExportButtons from "../components/ExportButtons";
+import NavigationHero from "../components/NavigationHero";
 import useQueryState from "../hooks/useQueryState";
 import { supabase } from "../lib/supabaseClient";
 import ReportGrid from "../components/ReportGrid";
@@ -204,9 +206,13 @@ export default function Reports() {
   };
 
   return (
-    <>
+    <div className="instagram-dashboard--clean">
+      <div className="ig-clean-container">
+        <NavigationHero title="Relatórios" icon={FileText} />
 
-      <div className="page-content">
+        <h2 className="ig-clean-title">Relatórios</h2>
+
+        <div className="page-content">
         <Section title="Origem dos dados">
           <div className="report-filters">
             <label className={`btn ${scope === "facebook" ? "btn--active" : ""}`}>
@@ -253,8 +259,9 @@ export default function Reports() {
             onExport={onExport}
           />
         </Section>
+        </div>
       </div>
-    </>
+    </div>
   );
 }
 

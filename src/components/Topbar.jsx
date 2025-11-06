@@ -67,6 +67,7 @@ export default function Topbar({
   avatarUrl,
   notificationCount = 0,
   className = "",
+  showFilters = true,
 }) {
 
   const { since, until, setRange } = useQueryRange();
@@ -118,22 +119,26 @@ export default function Topbar({
             </button>
           </div>
 
-          <div className="topbar__chips topbar__chips--compact">
-            {presets.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                className={`topbar__chip${activePreset === preset.id ? " topbar__chip--active" : ""}`}
-                onClick={handlePresetClick(preset)}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
+          {showFilters && (
+            <>
+              <div className="topbar__chips topbar__chips--compact">
+                {presets.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    className={`topbar__chip${activePreset === preset.id ? " topbar__chip--active" : ""}`}
+                    onClick={handlePresetClick(preset)}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
 
-          <div className="topbar__range topbar__range--compact">
-            <DateRangePicker variant="compact" onRangeChange={handleRangeChange} />
-          </div>
+              <div className="topbar__range topbar__range--compact">
+                <DateRangePicker variant="compact" onRangeChange={handleRangeChange} />
+              </div>
+            </>
+          )}
 
           <div className="topbar__account">
             <AccountSelect />
@@ -159,4 +164,5 @@ Topbar.propTypes = {
   avatarUrl: PropTypes.string,
   notificationCount: PropTypes.number,
   className: PropTypes.string,
+  showFilters: PropTypes.bool,
 };

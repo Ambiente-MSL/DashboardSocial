@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useOutletContext } from 'react-router-dom';
 
-import { ChevronDown, Edit3, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, Edit3, Plus, Trash2, Settings as SettingsIcon } from 'lucide-react';
 
 import { useTheme } from '../context/ThemeContext';
 
 import { useAccounts } from '../context/AccountsContext';
+
+import NavigationHero from '../components/NavigationHero';
 
 
 
@@ -305,10 +307,13 @@ export default function Settings() {
 
 
   return (
+    <div className="instagram-dashboard--clean">
+      <div className="ig-clean-container">
+        <NavigationHero title="Configurações" icon={SettingsIcon} />
 
-    <>
+        <h2 className="ig-clean-title">Configurações</h2>
 
-      <div className="page-content">
+        <div className="page-content">
 
         <div className="settings-layout">
 
@@ -714,9 +719,11 @@ export default function Settings() {
 
         </div>
 
+        </div>
+
       </div>
 
-    </>
+    </div>
 
   );
 
