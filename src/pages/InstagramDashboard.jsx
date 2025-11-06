@@ -2309,15 +2309,13 @@ export default function InstagramDashboard() {
             <h4>Palavras chaves mais comentadas</h4>
           </div>
           <div className="ig-analytics-card__body">
-            <div className="ig-word-cloud ig-word-cloud--large">
-              <WordCloudCard
-                apiBaseUrl={API_BASE_URL}
-                igUserId={accountConfig?.instagramUserId}
-                since={sinceIso}
-                until={untilIso}
-                top={120}
-              />
-            </div>
+            <WordCloudCard
+              apiBaseUrl={API_BASE_URL}
+              igUserId={accountConfig?.instagramUserId}
+              since={sinceIso}
+              until={untilIso}
+              top={120}
+            />
           </div>
         </section>
         <section className="ig-card-white ig-analytics-card ig-analytics-card--large">
