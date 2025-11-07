@@ -1177,6 +1177,83 @@ def facebook_metrics():
     return jsonify(response)
 
 
+@app.get("/api/facebook/followers")
+def facebook_followers():
+    """
+    Retorna apenas o total de seguidores da página do Facebook para o período solicitado.
+    Consulta diretamente a Meta API sem usar o cache Supabase.
+    """
+    page_id = request.args.get("pageId", PAGE_ID)
+    if not page_id:
+        return jsonify({"error": "META_PAGE_ID is not configured"}), 500
+    since, until = unix_range(request.args)
+    try:
+        payload = fetch_facebook_metrics(page_id, since, until, None)
+    except MetaAPIError as err:
+        return meta_error_response(err)
+    except ValueError as err:
+        return jsonify({"error": str(err)}), 400
+
+    payload = dict(payload or {})
+    _enrich_facebook_metrics_payload(payload)
+
+    followers_metric = None
+    for metric in payload.get("metrics") or []:
+        if isinstance(metric, dict) and metric.get("key") == "followers_total":
+            followers_metric = metric
+            break
+
+    if followers_metric is None:
+        page_overview = payload.get("page_overview") or {}
+        followers_value = page_overview.get("followers_total")
+        followers_metric = {
+            "key": "followers_total",
+            "label": "Seguidores da pagina",
+            "value": followers_value,
+            "deltaPct": None,
+        }
+
+    response = {
+        "since": payload.get("since") or since,
+        "until": payload.get("until") or until,
+        "followers": followers_metric,
+    }
+    return jsonify(response)
+
+
+@app.get("/api/facebook/reach")
+def facebook_reach():
+    """
+    Retorna apenas a métrica de alcance da página do Facebook para o período solicitado.
+    Consulta diretamente a Meta API sem usar o cache Supabase.
+    """
+    page_id = request.args.get("pageId", PAGE_ID)
+    if not page_id:
+        return jsonify({"error": "META_PAGE_ID is not configured"}), 500
+    since, until = unix_range(request.args)
+    try:
+        payload = fetch_facebook_metrics(page_id, since, until, None)
+    except MetaAPIError as err:
+        return meta_error_response(err)
+    except ValueError as err:
+        return jsonify({"error": str(err)}), 400
+
+    payload = dict(payload or {})
+    _enrich_facebook_metrics_payload(payload)
+    reach_metric = None
+    for metric in payload.get("metrics") or []:
+        if isinstance(metric, dict) and metric.get("key") == "reach":
+            reach_metric = metric
+            break
+
+    response = {
+        "since": payload.get("since") or since,
+        "until": payload.get("until") or until,
+        "reach": reach_metric,
+    }
+    return jsonify(response)
+
+
 @app.get("/api/facebook/posts")
 def facebook_posts():
     page_id = request.args.get("pageId", PAGE_ID)

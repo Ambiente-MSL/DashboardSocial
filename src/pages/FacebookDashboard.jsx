@@ -42,6 +42,7 @@ const FB_TOPBAR_PRESETS = [
   { id: "6m", label: "6 meses", days: 180 },
   { id: "1y", label: "1 ano", days: 365 },
 ];
+const DEFAULT_FACEBOOK_RANGE_DAYS = 7;
 
 const WEEKDAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"];
 const DEFAULT_WEEKLY_FOLLOWERS = [3, 4, 5, 6, 7, 5, 4];
@@ -220,6 +221,14 @@ export default function FacebookDashboard() {
     [defaultEnd, setQuery],
   );
 
+  const selectedRange = useMemo(() => {
+    const until = untilDate ? endOfDay(untilDate) : defaultEnd;
+    const since = sinceDate
+      ? startOfDay(sinceDate)
+      : startOfDay(subDays(until, DEFAULT_FACEBOOK_RANGE_DAYS - 1));
+    return { since, until };
+  }, [defaultEnd, sinceDate, untilDate]);
+
   const handleDateChange = useCallback(
     (start, end) => {
       if (!start || !end) return;
@@ -253,20 +262,17 @@ export default function FacebookDashboard() {
 
   const [pageMetrics, setPageMetrics] = useState([]);
   const [pageError, setPageError] = useState("");
-  // eslint-disable-next-line no-unused-vars
-  const [loadingPage, setLoadingPage] = useState(false);
   const [netFollowersSeries, setNetFollowersSeries] = useState([]);
-  const [demographicsData, setDemographicsData] = useState(null);
-  // eslint-disable-next-line no-unused-vars
-  const [loadingDemographics, setLoadingDemographics] = useState(true);
-  // eslint-disable-next-line no-unused-vars
-  const [demographicsError, setDemographicsError] = useState(null);
 
   const coverInputRef = useRef(null);
   const [coverImageUrl, setCoverImageUrl] = useState("");
   const [coverError, setCoverError] = useState("");
   const [coverUploading, setCoverUploading] = useState(false);
   const [overviewSnapshot, setOverviewSnapshot] = useState(null);
+  const [reachApiValue, setReachApiValue] = useState(null);
+  const [reachLoading, setReachLoading] = useState(false);
+  const [followersApiValue, setFollowersApiValue] = useState(null);
+  const [followersLoading, setFollowersLoading] = useState(false);
 
   const activeSnapshot = useMemo(
     () => (overviewSnapshot?.accountId === accountSnapshotKey && accountSnapshotKey ? overviewSnapshot : null),
@@ -279,6 +285,9 @@ export default function FacebookDashboard() {
     setCoverImageUrl("");
     setCoverError("");
     setOverviewSnapshot(null);
+    setReachApiValue(null);
+    setFollowersApiValue(null);
+    setPageError("");
   }, [accountSnapshotKey]);
 
   useEffect(() => {
@@ -317,6 +326,100 @@ export default function FacebookDashboard() {
       cancelled = true;
     };
   }, [coverStoragePath]);
+
+  useEffect(() => {
+    if (!accountConfig?.facebookPageId) {
+      setReachApiValue(null);
+      setReachLoading(false);
+      setPageError("Página do Facebook não configurada.");
+      return () => {};
+    }
+
+    const controller = new AbortController();
+    let cancelled = false;
+
+    const loadReachFromApi = async () => {
+      setReachLoading(true);
+      setPageError("");
+      try {
+        const params = new URLSearchParams();
+        params.set("pageId", accountConfig.facebookPageId);
+        if (sinceParam) params.set("since", sinceParam);
+        if (untilParam) params.set("until", untilParam);
+        const url = `${API_BASE_URL}/api/facebook/reach?${params.toString()}`;
+        const response = await fetch(url, { signal: controller.signal });
+        const raw = await response.text();
+        const json = safeParseJson(raw) || {};
+        if (!response.ok) {
+          throw new Error(describeApiError(json, "Falha ao carregar alcance do Facebook."));
+        }
+        if (cancelled) return;
+        const metricValue = extractNumber(json?.reach?.value, null);
+        setReachApiValue(metricValue != null ? metricValue : null);
+      } catch (err) {
+        if (cancelled || err.name === "AbortError") return;
+        console.error(err);
+        setReachApiValue(null);
+        setPageError(err.message || "Não foi possível carregar o alcance do Facebook.");
+      } finally {
+        if (!cancelled) {
+          setReachLoading(false);
+        }
+      }
+    };
+
+    loadReachFromApi();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [accountConfig?.facebookPageId, sinceParam, untilParam]);
+
+  useEffect(() => {
+    if (!accountConfig?.facebookPageId) {
+      setFollowersApiValue(null);
+      setFollowersLoading(false);
+      return () => {};
+    }
+
+    const controller = new AbortController();
+    let cancelled = false;
+
+    const loadFollowersFromApi = async () => {
+      setFollowersLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.set("pageId", accountConfig.facebookPageId);
+        if (sinceParam) params.set("since", sinceParam);
+        if (untilParam) params.set("until", untilParam);
+        const url = `${API_BASE_URL}/api/facebook/followers?${params.toString()}`;
+        const response = await fetch(url, { signal: controller.signal });
+        const raw = await response.text();
+        const json = safeParseJson(raw) || {};
+        if (!response.ok) {
+          throw new Error(describeApiError(json, "Falha ao carregar seguidores do Facebook."));
+        }
+        if (cancelled) return;
+        const metricValue = extractNumber(json?.followers?.value, null);
+        setFollowersApiValue(metricValue != null ? metricValue : null);
+      } catch (err) {
+        if (cancelled || err.name === "AbortError") return;
+        console.error(err);
+        setFollowersApiValue(null);
+        setPageError(err.message || "Não foi possível carregar seguidores do Facebook.");
+      } finally {
+        if (!cancelled) {
+          setFollowersLoading(false);
+        }
+      }
+    };
+
+    loadFollowersFromApi();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [accountConfig?.facebookPageId, sinceParam, untilParam]);
 
   const handleCoverButtonClick = useCallback(() => {
     setCoverError("");
@@ -371,83 +474,7 @@ export default function FacebookDashboard() {
     };
   }, [coverImageUrl]);
 
-  // Load Facebook metrics
-  useEffect(() => {
-    if (!accountConfig?.facebookPageId) {
-      setPageMetrics([]);
-      setNetFollowersSeries([]);
-      setPageError("Página do Facebook não configurada.");
-      return;
-    }
-
-    const controller = new AbortController();
-
-    const loadMetrics = async () => {
-      setLoadingPage(true);
-      setPageError("");
-      try {
-        const params = new URLSearchParams();
-        params.set("pageId", accountConfig.facebookPageId);
-        if (sinceParam) params.set("since", sinceParam);
-        if (untilParam) params.set("until", untilParam);
-
-        const url = `${API_BASE_URL}/api/facebook/metrics?${params.toString()}`;
-        const response = await fetch(url, { signal: controller.signal });
-        const raw = await response.text();
-        const json = safeParseJson(raw) || {};
-        if (!response.ok) {
-          throw new Error(describeApiError(json, "Falha ao carregar métricas de página."));
-        }
-        setPageMetrics(json.metrics || []);
-        setNetFollowersSeries(json.net_followers_series || []);
-      } catch (err) {
-        if (err.name !== "AbortError") {
-          console.error(err);
-          setPageMetrics([]);
-          setNetFollowersSeries([]);
-          setPageError(err.message || "Não foi possível carregar as métricas de página.");
-        }
-      } finally {
-        setLoadingPage(false);
-      }
-    };
-
-    loadMetrics();
-    return () => controller.abort();
-  }, [accountConfig?.facebookPageId, sinceParam, untilParam]);
-
-  // Load demographics
-  useEffect(() => {
-    if (!accountConfig?.facebookPageId) return;
-
-    const controller = new AbortController();
-    const loadDemographics = async () => {
-      try {
-        setLoadingDemographics(true);
-        setDemographicsError(null);
-
-        const url = `${API_BASE_URL}/api/facebook/audience?pageId=${accountConfig.facebookPageId}`;
-        const response = await fetch(url, { signal: controller.signal });
-
-        if (!response.ok) {
-          throw new Error(`Erro HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        setDemographicsData(data);
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.error('Erro ao carregar demografia:', err);
-          setDemographicsError(err.message);
-        }
-      } finally {
-        setLoadingDemographics(false);
-      }
-    };
-
-    loadDemographics();
-    return () => controller.abort();
-  }, [accountConfig?.facebookPageId]);
+  // Facebook metrics no longer trigger full API calls; only reach uses the backend.
 
   const pageMetricsByKey = useMemo(() => {
     const map = {};
@@ -462,6 +489,8 @@ export default function FacebookDashboard() {
   const reachValue = extractNumber(pageMetricsByKey.reach?.value, 0);
   const newFollowers = extractNumber(pageMetricsByKey.followers_gained?.value, 0);
   const postsCount = extractNumber(pageMetricsByKey.posts_count?.value, 3); // Mock value
+  const reachMetricValue = reachApiValue != null ? reachApiValue : reachValue;
+  const followersMetricValue = followersApiValue != null ? followersApiValue : totalFollowers;
 
   const avgFollowersPerDay = useMemo(() => {
     if (netFollowersSeries.length >= 2) {
@@ -476,13 +505,20 @@ export default function FacebookDashboard() {
 
   const overviewMetrics = useMemo(
     () => ({
-      followers: activeSnapshot?.followers ?? totalFollowers ?? 0,
-      reach: activeSnapshot?.reach ?? reachValue ?? 0,
+      followers: activeSnapshot?.followers ?? followersMetricValue ?? 0,
+      reach: activeSnapshot?.reach ?? reachMetricValue ?? 0,
       followersDaily: activeSnapshot?.followersDaily ?? avgFollowersPerDay ?? 0,
       posts: activeSnapshot?.posts ?? postsCount ?? 0,
     }),
-    [activeSnapshot, avgFollowersPerDay, postsCount, reachValue, totalFollowers],
+    [activeSnapshot, avgFollowersPerDay, postsCount, reachMetricValue, followersMetricValue],
   );
+
+  const reachPeriodLabel = useMemo(() => {
+    if (!selectedRange.since || !selectedRange.until) return "Alcance";
+    const sinceLabel = SHORT_DATE_FORMATTER.format(selectedRange.since);
+    const untilLabel = SHORT_DATE_FORMATTER.format(selectedRange.until);
+    return sinceLabel === untilLabel ? `Alcance (${sinceLabel})` : `Alcance (${sinceLabel} - ${untilLabel})`;
+  }, [selectedRange.since, selectedRange.until]);
 
   const followersDailyDisplay = useMemo(() => (
     Number.isFinite(overviewMetrics.followersDaily)
@@ -524,20 +560,8 @@ export default function FacebookDashboard() {
     ].filter(item => item.value > 0);
   }, [pageMetricsByKey]);
 
-  // Gender distribution
-  const genderStatsSeries = useMemo(() => {
-    if (!demographicsData?.gender) return DEFAULT_GENDER_STATS;
-
-    const genderData = demographicsData.gender;
-    const total = Object.values(genderData).reduce((sum, val) => sum + extractNumber(val, 0), 0);
-
-    if (total === 0) return DEFAULT_GENDER_STATS;
-
-    return Object.entries(genderData).map(([key, value]) => ({
-      name: key === 'M' ? 'Homens' : key === 'F' ? 'Mulheres' : key,
-      value: Math.round((extractNumber(value, 0) / total) * 100),
-    }));
-  }, [demographicsData]);
+  // Gender distribution (placeholder since Facebook API calls were removed)
+  const genderStatsSeries = DEFAULT_GENDER_STATS;
 
   // Reach timeline
   const reachTimelineData = useMemo(() => {
@@ -672,12 +696,18 @@ export default function FacebookDashboard() {
 
                 <div className="ig-profile-vertical__stats-grid">
                   <div className="ig-overview-stat">
-                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.followers)}</div>
+                    <div className="ig-overview-stat__value">
+                      {followersLoading ? "..." : formatNumber(overviewMetrics.followers)}
+                    </div>
                     <div className="ig-overview-stat__label">Total de seguidores</div>
                   </div>
                   <div className="ig-overview-stat">
-                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.reach)}</div>
-                    <div className="ig-overview-stat__label">Alcance</div>
+                    <div className="ig-overview-stat__value">
+                      {reachLoading ? "..." : formatNumber(overviewMetrics.reach)}
+                    </div>
+                    <div className="ig-overview-stat__label">
+                      {reachLoading ? "Alcance (carregando)" : reachPeriodLabel}
+                    </div>
                   </div>
                 </div>
 
