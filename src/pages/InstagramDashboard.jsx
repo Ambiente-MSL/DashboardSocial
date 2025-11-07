@@ -73,6 +73,11 @@ const DEFAULT_GENDER_STATS = [
   { name: "Mulheres", value: 70 },
 ];
 
+const DEFAULT_AUDIENCE_TYPE = [
+  { name: "Não Seguidores", value: 35 },
+  { name: "Seguidores", value: 65 },
+];
+
 const DEFAULT_PROFILE_REACH_SERIES = [
   { dateKey: "2025-01-29", label: "29/01", value: 12000 },
   { dateKey: "2025-01-30", label: "30/01", value: 28000 },
@@ -1500,6 +1505,29 @@ export default function InstagramDashboard() {
       : DEFAULT_GENDER_STATS
   ), [genderDistribution]);
 
+  // Série de dados para o gráfico de Audiência (Seguidores vs Não Seguidores)
+  const audienceTypeSeries = useMemo(() => {
+    // Tenta calcular a partir dos dados reais de alcance
+    const reachValue = extractNumber(reachMetric?.value, 0);
+    const followersValue = extractNumber(followersMetric?.value, 0);
+
+    if (reachValue > 0 && followersValue > 0) {
+      // Estima percentual de não seguidores baseado no alcance vs seguidores
+      const nonFollowerReachEstimate = Math.max(0, reachValue - followersValue);
+      const totalReach = reachValue;
+
+      const nonFollowerPct = totalReach > 0 ? (nonFollowerReachEstimate / totalReach) * 100 : 35;
+      const followerPct = 100 - nonFollowerPct;
+
+      return [
+        { name: "Não Seguidores", value: Math.round(nonFollowerPct * 10) / 10 },
+        { name: "Seguidores", value: Math.round(followerPct * 10) / 10 },
+      ];
+    }
+
+    return DEFAULT_AUDIENCE_TYPE;
+  }, [reachMetric, followersMetric]);
+
   // const heatmapData = useMemo(() => DEFAULT_HEATMAP_MATRIX, []);
 
   // const maxHeatmapValue = useMemo(() => (
@@ -2087,12 +2115,13 @@ export default function InstagramDashboard() {
         <div className="ig-analytics-grid ig-analytics-grid--pair">
           <section className="ig-card-white ig-analytics-card">
             <div className="ig-analytics-card__header">
-              <h4>Estatística por gênero</h4>
+              <h4>Audiência</h4>
+              <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>Seguidores vs Não Seguidores</p>
             </div>
             <div className="ig-analytics-card__body">
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  {/* Purple circle (background) */}
+                  {/* Círculo de seguidores (background) */}
                   <Pie
                     data={[{ value: 100 }]}
                     dataKey="value"
@@ -2100,15 +2129,15 @@ export default function InstagramDashboard() {
                     cy="50%"
                     outerRadius={activeGenderIndex === 1 ? 130 : 120}
                     innerRadius={0}
-                    fill="#8b5cf6"
+                    fill="#6366f1"
                     stroke="none"
                     isAnimationActive={true}
                     onMouseEnter={() => setActiveGenderIndex(1)}
                     onMouseLeave={() => setActiveGenderIndex(-1)}
                   />
-                  {/* Teal circle (foreground - overlapping) */}
+                  {/* Círculo de não seguidores (foreground - overlapping) */}
                   <Pie
-                    data={genderStatsSeries}
+                    data={audienceTypeSeries}
                     dataKey="value"
                     nameKey="name"
                     cx="50%"
@@ -2116,8 +2145,8 @@ export default function InstagramDashboard() {
                     outerRadius={activeGenderIndex === 0 ? 130 : 120}
                     innerRadius={0}
                     startAngle={90}
-                    endAngle={90 + (genderStatsSeries[0]?.value || 0) * 3.6}
-                    fill="#14b8a6"
+                    endAngle={90 + (audienceTypeSeries[0]?.value || 0) * 3.6}
+                    fill="#f472b6"
                     stroke="none"
                     paddingAngle={0}
                     isAnimationActive={true}
@@ -2128,11 +2157,11 @@ export default function InstagramDashboard() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="ig-analytics-legend" style={{ marginTop: '20px', gap: '18px' }}>
-                {genderStatsSeries.map((slice, index) => (
+                {audienceTypeSeries.map((slice, index) => (
                   <div key={slice.name || index} className="ig-analytics-legend__item" style={{ fontSize: '16px', fontWeight: '500' }}>
                     <span
                       className="ig-analytics-legend__swatch"
-                      style={{ backgroundColor: index === 0 ? "#14b8a6" : "#8b5cf6", width: '16px', height: '16px' }}
+                      style={{ backgroundColor: index === 0 ? "#f472b6" : "#6366f1", width: '16px', height: '16px' }}
                     />
                     <span className="ig-analytics-legend__label">{slice.name}</span>
                   </div>
