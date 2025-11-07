@@ -1008,23 +1008,51 @@ export default function InstagramDashboard() {
 
   // Calcula total de seguidores ganhos no período filtrado
   const followersDelta = useMemo(() => {
-    const computeDeltaFromSeries = (series) => {
+    const sumPositiveDiff = (series) => {
+      if (!Array.isArray(series) || series.length < 2) return null;
+      let prev = null;
+      let total = 0;
+      series.forEach((entry) => {
+        const value = extractNumber(entry?.value, null);
+        if (value == null) return;
+        if (prev != null) {
+          const diff = value - prev;
+          if (Number.isFinite(diff) && diff > 0) {
+            total += diff;
+          }
+        }
+        prev = value;
+      });
+      return total > 0 ? total : 0;
+    };
+
+    const inRangePositive = sumPositiveDiff(followerSeriesInRange);
+    if (Number.isFinite(inRangePositive) && inRangePositive > 0) {
+      return Math.round(inRangePositive);
+    }
+
+    const normalizedPositive = sumPositiveDiff(followerSeriesNormalized);
+    if (Number.isFinite(normalizedPositive) && normalizedPositive > 0) {
+      return Math.round(normalizedPositive);
+    }
+
+    const computeNetDelta = (series) => {
       if (!Array.isArray(series) || series.length < 2) return null;
       const firstValue = extractNumber(series[0]?.value, null);
       const lastValue = extractNumber(series[series.length - 1]?.value, null);
       if (firstValue == null || lastValue == null) return null;
       const diff = lastValue - firstValue;
-      return Number.isFinite(diff) && diff > 0 ? diff : null;
+      return Number.isFinite(diff) ? diff : null;
     };
 
-    const inRangeDelta = computeDeltaFromSeries(followerSeriesInRange);
-    if (inRangeDelta != null && inRangeDelta !== 0) {
-      return Math.round(inRangeDelta);
+    const netDelta = computeNetDelta(followerSeriesInRange);
+    if (Number.isFinite(netDelta)) {
+      return Math.round(netDelta);
     }
 
-    const fallbackSeriesDelta = computeDeltaFromSeries(followerSeriesNormalized);
-    if (fallbackSeriesDelta != null && fallbackSeriesDelta !== 0) {
-      return Math.round(fallbackSeriesDelta);
+    const fallbackNet = computeNetDelta(followerSeriesNormalized);
+    if (Number.isFinite(fallbackNet)) {
+      return Math.round(fallbackNet);
     }
 
     if (followerCounts) {
@@ -1032,7 +1060,7 @@ export default function InstagramDashboard() {
       const endCount = extractNumber(followerCounts.end, null);
       if (startCount != null && endCount != null) {
         const diff = endCount - startCount;
-        if (Number.isFinite(diff) && diff > 0) {
+        if (Number.isFinite(diff)) {
           return Math.round(diff);
         }
       }
@@ -1041,14 +1069,14 @@ export default function InstagramDashboard() {
       const unfollowsCount = extractNumber(followerCounts.unfollows, null);
       if (followsCount != null || unfollowsCount != null) {
         const diff = (followsCount || 0) - (unfollowsCount || 0);
-        if (Number.isFinite(diff) && diff > 0) {
+        if (Number.isFinite(diff)) {
           return Math.round(diff);
         }
       }
     }
 
     const fallbackMetric = extractNumber(followerGrowthMetric?.value, null);
-    if (fallbackMetric != null && Number.isFinite(fallbackMetric) && fallbackMetric > 0) {
+    if (Number.isFinite(fallbackMetric)) {
       return Math.round(fallbackMetric);
     }
 
@@ -1386,6 +1414,7 @@ export default function InstagramDashboard() {
         ? followerGrowthSeriesSorted.slice(followerGrowthSeriesSorted.length - MAX_POINTS)
         : followerGrowthSeriesSorted;
 
+      let previousValue = null;
       return seriesToUse.map((entry, index) => {
         const dateKey = entry.date || null;
         const parsedDate = dateKey ? new Date(`${dateKey}T00:00:00`) : null;
@@ -1396,9 +1425,16 @@ export default function InstagramDashboard() {
         const tooltipDate = validDate && monthLabel
           ? `${String(validDate.getDate()).padStart(2, "0")} - ${monthLabel} - ${validDate.getFullYear()}`
           : dateKey || label;
+        const currentValue = extractNumber(entry.value, null);
+        let growthValue = 0;
+        if (previousValue != null && currentValue != null) {
+          const diff = currentValue - previousValue;
+          growthValue = Number.isFinite(diff) ? Math.max(0, diff) : 0;
+        }
+        previousValue = currentValue != null ? currentValue : previousValue;
         return {
           label,
-          value: extractNumber(entry.value, 0),
+          value: growthValue,
           tooltipDate,
         };
       });
@@ -1406,7 +1442,7 @@ export default function InstagramDashboard() {
 
     return FOLLOWER_GROWTH_SERIES.map((entry, index) => ({
       label: entry.label || `${index + 1}`,
-      value: extractNumber(entry.value, 0),
+      value: Math.max(0, extractNumber(entry.value, 0)),
       tooltipDate: entry.label || `#${index + 1}`,
     }));
   }, [followerGrowthSeriesSorted]);
@@ -2040,7 +2076,7 @@ export default function InstagramDashboard() {
                             return (
                               <div className="ig-follower-tooltip">
                                 <div className="ig-follower-tooltip__label">
-                                  Total seguidores: {tooltipValue}
+                                  Seguidores ganhos: {tooltipValue}
                                 </div>
                                 <div className="ig-follower-tooltip__date">{tooltipDate}</div>
                               </div>
