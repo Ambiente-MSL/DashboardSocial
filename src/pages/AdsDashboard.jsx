@@ -233,19 +233,19 @@ export default function AdsDashboard() {
     <div className="instagram-dashboard instagram-dashboard--clean">
       {/* Container Limpo */}
       <div className="ig-clean-container">
-        {/* Hero Gradient - Gray */}
+        {/* Hero Gradient - Dark Blue */}
         <div
           className="ig-hero-gradient"
           aria-hidden="true"
           style={{
-            background: 'linear-gradient(180deg, rgba(107, 114, 128, 0.12) 0%, rgba(75, 85, 99, 0.08) 50%, transparent 100%)'
+            background: 'linear-gradient(180deg, rgba(30, 58, 138, 0.15) 0%, rgba(29, 78, 216, 0.10) 50%, transparent 100%)'
           }}
         />
 
         {/* Header com Logo e Tabs */}
         <div className="ig-clean-header">
           <div className="ig-clean-header__brand">
-            <div className="ig-clean-header__logo" style={{ background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)' }}>
+            <div className="ig-clean-header__logo" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%)' }}>
               <TrendingUp size={32} />
             </div>
             <h1>Anúncios</h1>
@@ -289,107 +289,290 @@ export default function AdsDashboard() {
           {/* Left Column - Overview Card */}
           <div className="ig-clean-grid__left">
             <section className="ig-profile-vertical">
-              <div className="ig-profile-vertical__cover" style={{ background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)' }}>
-                <div className="ig-profile-vertical__avatar-wrap" style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' }}>
-                  <DollarSign size={40} color="white" strokeWidth={2.5} />
-                </div>
-              </div>
-
-              <div className="ig-profile-vertical__header">
-                <h3 className="ig-profile-vertical__title">Métricas de Anúncios</h3>
-                <p className="ig-profile-vertical__subtitle">Campanhas Publicitárias</p>
-              </div>
-
-              <div className="ig-profile-vertical__stats">
-                <div className="ig-profile-vertical__stat">
-                  <span className="ig-profile-vertical__stat-label">
-                    <DollarSign size={14} />
-                    Investimento
-                  </span>
-                  <span className="ig-profile-vertical__stat-value">
+              {/* Grid 3x3 de Métricas */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '10px',
+                padding: '20px'
+              }}>
+                {/* Investimento */}
+                <div style={{
+                  padding: '14px',
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(99, 102, 241, 0.2)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '6px',
+                      background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <DollarSign size={12} color="white" strokeWidth={2.5} />
+                    </div>
+                    <span style={{ fontSize: '10px', fontWeight: 600, color: '#1f2937', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      Investimento
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
                     {formatCurrency(MOCK_OVERVIEW_STATS.spend.value)}
-                  </span>
-                  <span className="ig-profile-vertical__stat-delta ig-profile-vertical__stat-delta--positive">
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>
                     +{MOCK_OVERVIEW_STATS.spend.delta}%
-                  </span>
+                  </div>
                 </div>
 
-                <div className="ig-profile-vertical__stat">
-                  <span className="ig-profile-vertical__stat-label">
-                    <Eye size={14} />
-                    Impressões
-                  </span>
-                  <span className="ig-profile-vertical__stat-value">
-                    {formatNumber(MOCK_OVERVIEW_STATS.impressions.value)}
-                  </span>
-                  <span className="ig-profile-vertical__stat-delta ig-profile-vertical__stat-delta--positive">
-                    +{MOCK_OVERVIEW_STATS.impressions.delta}%
-                  </span>
-                </div>
-
-                <div className="ig-profile-vertical__stat">
-                  <span className="ig-profile-vertical__stat-label">
-                    <Users size={14} />
-                    Alcance
-                  </span>
-                  <span className="ig-profile-vertical__stat-value">
+                {/* Alcance */}
+                <div style={{
+                  padding: '14px',
+                  background: 'rgba(255, 255, 255, 0.6)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(0, 0, 0, 0.08)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '6px',
+                      background: 'rgba(139, 92, 246, 0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Users size={12} color="#8b5cf6" strokeWidth={2.5} />
+                    </div>
+                    <span style={{ fontSize: '10px', fontWeight: 600, color: '#1f2937', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      Alcance
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
                     {formatNumber(MOCK_OVERVIEW_STATS.reach.value)}
-                  </span>
-                  <span className="ig-profile-vertical__stat-delta ig-profile-vertical__stat-delta--positive">
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>
                     +{MOCK_OVERVIEW_STATS.reach.delta}%
-                  </span>
+                  </div>
                 </div>
 
-                <div className="ig-profile-vertical__stat">
-                  <span className="ig-profile-vertical__stat-label">
-                    <MousePointerClick size={14} />
-                    Cliques
-                  </span>
-                  <span className="ig-profile-vertical__stat-value">
+                {/* Frequência */}
+                <div style={{
+                  padding: '14px',
+                  background: 'rgba(255, 255, 255, 0.6)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(0, 0, 0, 0.08)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '6px',
+                      background: 'rgba(168, 85, 247, 0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Activity size={12} color="#a855f7" strokeWidth={2.5} />
+                    </div>
+                    <span style={{ fontSize: '10px', fontWeight: 600, color: '#1f2937', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      Frequência
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
+                    2.1x
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>
+                    +0.3x
+                  </div>
+                </div>
+
+                {/* Impressões */}
+                <div style={{
+                  padding: '14px',
+                  background: 'rgba(255, 255, 255, 0.6)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(0, 0, 0, 0.08)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '6px',
+                      background: 'rgba(192, 132, 252, 0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Eye size={12} color="#c084fc" strokeWidth={2.5} />
+                    </div>
+                    <span style={{ fontSize: '10px', fontWeight: 600, color: '#1f2937', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      Impressões
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
+                    {formatNumber(MOCK_OVERVIEW_STATS.impressions.value)}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>
+                    +{MOCK_OVERVIEW_STATS.impressions.delta}%
+                  </div>
+                </div>
+
+                {/* Cliques */}
+                <div style={{
+                  padding: '14px',
+                  background: 'rgba(255, 255, 255, 0.6)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(0, 0, 0, 0.08)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '6px',
+                      background: 'rgba(216, 180, 254, 0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <MousePointerClick size={12} color="#d8b4fe" strokeWidth={2.5} />
+                    </div>
+                    <span style={{ fontSize: '10px', fontWeight: 600, color: '#1f2937', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      Cliques
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
                     {formatNumber(MOCK_OVERVIEW_STATS.clicks.value)}
-                  </span>
-                  <span className="ig-profile-vertical__stat-delta ig-profile-vertical__stat-delta--positive">
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>
                     +{MOCK_OVERVIEW_STATS.clicks.delta}%
-                  </span>
+                  </div>
                 </div>
 
-                <div className="ig-profile-vertical__stat">
-                  <span className="ig-profile-vertical__stat-label">
-                    <Target size={14} />
-                    CTR
-                  </span>
-                  <span className="ig-profile-vertical__stat-value">
-                    {MOCK_OVERVIEW_STATS.ctr.value}%
-                  </span>
-                  <span className="ig-profile-vertical__stat-delta ig-profile-vertical__stat-delta--positive">
-                    +{MOCK_OVERVIEW_STATS.ctr.delta}%
-                  </span>
-                </div>
-
-                <div className="ig-profile-vertical__stat">
-                  <span className="ig-profile-vertical__stat-label">
-                    <Activity size={14} />
-                    CPC
-                  </span>
-                  <span className="ig-profile-vertical__stat-value">
-                    {formatCurrency(MOCK_OVERVIEW_STATS.cpc.value)}
-                  </span>
-                  <span className="ig-profile-vertical__stat-delta ig-profile-vertical__stat-delta--negative">
-                    {MOCK_OVERVIEW_STATS.cpc.delta}%
-                  </span>
-                </div>
-
-                <div className="ig-profile-vertical__stat">
-                  <span className="ig-profile-vertical__stat-label">
-                    <Zap size={14} />
-                    Conversões
-                  </span>
-                  <span className="ig-profile-vertical__stat-value">
+                {/* Conversões */}
+                <div style={{
+                  padding: '14px',
+                  background: 'rgba(255, 255, 255, 0.6)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(0, 0, 0, 0.08)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '6px',
+                      background: 'rgba(99, 102, 241, 0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Zap size={12} color="#6366f1" strokeWidth={2.5} />
+                    </div>
+                    <span style={{ fontSize: '10px', fontWeight: 600, color: '#1f2937', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      Conversões
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
                     {formatNumber(MOCK_OVERVIEW_STATS.conversions.value)}
-                  </span>
-                  <span className="ig-profile-vertical__stat-delta ig-profile-vertical__stat-delta--positive">
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>
                     +{MOCK_OVERVIEW_STATS.conversions.delta}%
-                  </span>
+                  </div>
+                </div>
+
+                {/* CTR */}
+                <div style={{
+                  padding: '14px',
+                  background: 'rgba(255, 255, 255, 0.6)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(0, 0, 0, 0.08)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '6px',
+                      background: 'rgba(139, 92, 246, 0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Target size={12} color="#8b5cf6" strokeWidth={2.5} />
+                    </div>
+                    <span style={{ fontSize: '10px', fontWeight: 600, color: '#1f2937', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      CTR
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
+                    {MOCK_OVERVIEW_STATS.ctr.value}%
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>
+                    +{MOCK_OVERVIEW_STATS.ctr.delta}%
+                  </div>
+                </div>
+
+                {/* CPC */}
+                <div style={{
+                  padding: '14px',
+                  background: 'rgba(255, 255, 255, 0.6)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(0, 0, 0, 0.08)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '6px',
+                      background: 'rgba(168, 85, 247, 0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Activity size={12} color="#a855f7" strokeWidth={2.5} />
+                    </div>
+                    <span style={{ fontSize: '10px', fontWeight: 600, color: '#1f2937', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      CPC
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
+                    {formatCurrency(MOCK_OVERVIEW_STATS.cpc.value)}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#ef4444', fontWeight: 600 }}>
+                    {MOCK_OVERVIEW_STATS.cpc.delta}%
+                  </div>
+                </div>
+
+                {/* CPA */}
+                <div style={{
+                  padding: '14px',
+                  background: 'rgba(255, 255, 255, 0.6)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(0, 0, 0, 0.08)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '6px',
+                      background: 'rgba(192, 132, 252, 0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <TrendingUp size={12} color="#c084fc" strokeWidth={2.5} />
+                    </div>
+                    <span style={{ fontSize: '10px', fontWeight: 600, color: '#1f2937', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      CPA
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
+                    {formatCurrency(MOCK_OVERVIEW_STATS.cpa.value)}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#ef4444', fontWeight: 600 }}>
+                    {MOCK_OVERVIEW_STATS.cpa.delta}%
+                  </div>
                 </div>
               </div>
 
