@@ -238,7 +238,7 @@ export default function AdsDashboard() {
           className="ig-hero-gradient"
           aria-hidden="true"
           style={{
-            background: 'linear-gradient(180deg, rgba(30, 58, 138, 0.15) 0%, rgba(29, 78, 216, 0.10) 50%, transparent 100%)'
+            background: 'linear-gradient(180deg, rgba(30, 58, 138, 0.40) 0%, rgba(29, 78, 216, 0.30) 50%, rgba(37, 99, 235, 0.15) 100%)'
           }}
         />
 
@@ -246,7 +246,7 @@ export default function AdsDashboard() {
         <div className="ig-clean-header">
           <div className="ig-clean-header__brand">
             <div className="ig-clean-header__logo" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%)' }}>
-              <TrendingUp size={32} />
+              <TrendingUp size={32} color="white" />
             </div>
             <h1>Anúncios</h1>
           </div>
