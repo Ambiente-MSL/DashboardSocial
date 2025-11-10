@@ -56,7 +56,7 @@ const DEFAULT_GENDER_STATS = [
 const HERO_TABS = [
   { id: "instagram", label: "Instagram", href: "/instagram", icon: InstagramIcon },
   { id: "facebook", label: "Facebook", href: "/facebook", icon: Facebook },
-  { id: "ads", label: "Ads", icon: BarChart3 },
+  { id: "ads", label: "Ads", href: "/ads", icon: BarChart3 },
   { id: "reports", label: "Relatórios", href: "/relatorios", icon: FileText },
   { id: "admin", label: "Admin", href: "/admin", icon: Shield },
   { id: "settings", label: "Configurações", href: "/configuracoes", icon: Settings },

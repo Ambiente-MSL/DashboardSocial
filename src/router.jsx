@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import App from './App';
 import FacebookDashboard from './pages/FacebookDashboard';
 import InstagramDashboard from './pages/InstagramDashboard';
+import AdsDashboard from './pages/AdsDashboard';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
@@ -17,6 +18,7 @@ const router = createBrowserRouter([
       { path: '/', element: <Navigate to='/instagram' replace /> },
       { path: '/facebook', element: <FacebookDashboard /> },
       { path: '/instagram', element: <InstagramDashboard /> },
+      { path: '/ads', element: <AdsDashboard /> },
       { path: '/relatorios', element: <Reports /> },
       { path: '/configuracoes', element: <Settings /> },
       { path: '/admin', element: <Admin /> },

@@ -13,6 +13,7 @@ export default function App() {
       '/': 'Visao Geral',
       '/facebook': 'Facebook',
       '/instagram': 'Instagram',
+      '/ads': 'Anúncios',
       '/relatorios': 'Relatórios',
       '/configuracoes': 'Configurações',
       '/admin': 'Admin',

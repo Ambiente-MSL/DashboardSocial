@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Shield, UserCog, AlertCircle, CheckCircle } from 'lucide-react';
 import Section from '../components/Section';
+import NavigationHero from '../components/NavigationHero';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 
@@ -73,6 +74,7 @@ export default function Admin() {
   if (role !== 'admin') {
     return (
       <>
+        <NavigationHero title="Admin" icon={Shield} />
         <div className="page-content">
           <Section title="Acesso Negado">
             <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--muted)' }}>
@@ -90,6 +92,7 @@ export default function Admin() {
 
   return (
     <>
+      <NavigationHero title="Admin" icon={Shield} />
       <div className="page-content">
         <Section
           title="Gerenciamento de Usuarios"

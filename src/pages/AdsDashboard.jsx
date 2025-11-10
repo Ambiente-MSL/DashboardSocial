@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { Link, useLocation, useOutletContext } from "react-router-dom";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -16,6 +17,7 @@ import {
   Line,
   ReferenceLine,
   ReferenceDot,
+  Sector,
 } from "recharts";
 import {
   TrendingUp,
@@ -26,8 +28,23 @@ import {
   Target,
   Activity,
   Zap,
+  BarChart3,
+  FileText,
+  Facebook,
+  Instagram as InstagramIcon,
+  Settings,
+  Shield,
 } from "lucide-react";
-import NavigationHero from "../components/NavigationHero";
+
+// Hero Tabs
+const HERO_TABS = [
+  { id: "instagram", label: "Instagram", href: "/instagram", icon: InstagramIcon },
+  { id: "facebook", label: "Facebook", href: "/facebook", icon: Facebook },
+  { id: "ads", label: "Ads", href: "/ads", icon: BarChart3 },
+  { id: "reports", label: "Relatórios", href: "/relatorios", icon: FileText },
+  { id: "admin", label: "Admin", href: "/admin", icon: Shield },
+  { id: "settings", label: "Configurações", href: "/configuracoes", icon: Settings },
+];
 
 // Mock Data
 const MOCK_OVERVIEW_STATS = {
@@ -166,14 +183,22 @@ const renderActiveShape = (props) => {
   );
 };
 
-// Import Sector from recharts
-import { Sector } from "recharts";
-
 export default function AdsDashboard() {
+  const location = useLocation();
+  const outletContext = useOutletContext() || {};
+  const { setTopbarConfig, resetTopbarConfig } = outletContext;
+
   const [activeSpendBar, setActiveSpendBar] = useState(-1);
   const [activeGenderIndex, setActiveGenderIndex] = useState(-1);
   const [activeDeviceIndex, setActiveDeviceIndex] = useState(-1);
   const [activeCampaignIndex, setActiveCampaignIndex] = useState(-1);
+
+  // Configure Topbar
+  useEffect(() => {
+    if (!setTopbarConfig) return undefined;
+    setTopbarConfig({ title: "Anúncios", showFilters: true });
+    return () => resetTopbarConfig?.();
+  }, [setTopbarConfig, resetTopbarConfig]);
 
   const formatNumber = (num) => {
     if (typeof num !== "number") return num;
@@ -205,41 +230,90 @@ export default function AdsDashboard() {
   const highlightedSpendPoint = highlightedSpendIndex >= 0 ? MOCK_SPEND_SERIES[highlightedSpendIndex] : null;
 
   return (
-    <>
-      <NavigationHero title="Anúncios" icon={TrendingUp} />
+    <div className="instagram-dashboard instagram-dashboard--clean">
+      {/* Container Limpo */}
+      <div className="ig-clean-container">
+        {/* Hero Gradient - Gray */}
+        <div
+          className="ig-hero-gradient"
+          aria-hidden="true"
+          style={{
+            background: 'linear-gradient(180deg, rgba(107, 114, 128, 0.12) 0%, rgba(75, 85, 99, 0.08) 50%, transparent 100%)'
+          }}
+        />
 
-      <div className="ig-dashboard">
-        {/* Gradient Background - Gray */}
-        <div className="ig-dashboard__bg">
-          <div
-            className="ig-gradient-orb ig-gradient-orb--1"
-            style={{ background: "linear-gradient(135deg, #6b7280 0%, #4b5563 100%)" }}
-          />
-          <div
-            className="ig-gradient-orb ig-gradient-orb--2"
-            style={{ background: "linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)" }}
-          />
-          <div
-            className="ig-gradient-orb ig-gradient-orb--3"
-            style={{ background: "linear-gradient(135deg, #4b5563 0%, #374151 100%)" }}
-          />
+        {/* Header com Logo e Tabs */}
+        <div className="ig-clean-header">
+          <div className="ig-clean-header__brand">
+            <div className="ig-clean-header__logo" style={{ background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)' }}>
+              <TrendingUp size={32} />
+            </div>
+            <h1>Anúncios</h1>
+          </div>
+
+          <nav className="ig-clean-tabs">
+            {HERO_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = tab.href ? location.pathname === tab.href : tab.id === "ads";
+              const linkTarget = tab.href
+                ? (location.search ? { pathname: tab.href, search: location.search } : tab.href)
+                : null;
+              return tab.href ? (
+                <Link
+                  key={tab.id}
+                  to={linkTarget}
+                  className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
+                >
+                  <Icon size={18} />
+                  <span>{tab.label}</span>
+                </Link>
+              ) : (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
+                  disabled={!tab.href}
+                >
+                  <Icon size={18} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* Content */}
-        <div className="ig-dashboard__content">
-          {/* Main Grid Layout */}
-          <div className="ig-profile-layout">
-            {/* Left Column - Overview Card */}
-            <aside className="ig-profile-vertical">
-              <div className="ig-profile-vertical__header">
-                <div className="ig-profile-vertical__avatar-wrap" style={{ background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)" }}>
-                  <DollarSign size={32} color="white" />
+        <h2 className="ig-clean-title">Visão Geral</h2>
+
+        {/* Grid Principal */}
+        <div className="ig-clean-grid">
+          {/* Left Column - Overview Card */}
+          <div className="ig-clean-grid__left">
+            <section className="ig-profile-vertical">
+              <div className="ig-profile-vertical__cover" style={{ background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)' }}>
+                <div className="ig-profile-vertical__avatar-wrap" style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' }}>
+                  <DollarSign size={40} color="white" strokeWidth={2.5} />
                 </div>
-                <h3 className="ig-profile-vertical__title">Visão Geral</h3>
-                <p className="ig-profile-vertical__subtitle">Métricas de Anúncios</p>
+              </div>
+
+              <div className="ig-profile-vertical__header">
+                <h3 className="ig-profile-vertical__title">Métricas de Anúncios</h3>
+                <p className="ig-profile-vertical__subtitle">Campanhas Publicitárias</p>
               </div>
 
               <div className="ig-profile-vertical__stats">
+                <div className="ig-profile-vertical__stat">
+                  <span className="ig-profile-vertical__stat-label">
+                    <DollarSign size={14} />
+                    Investimento
+                  </span>
+                  <span className="ig-profile-vertical__stat-value">
+                    {formatCurrency(MOCK_OVERVIEW_STATS.spend.value)}
+                  </span>
+                  <span className="ig-profile-vertical__stat-delta ig-profile-vertical__stat-delta--positive">
+                    +{MOCK_OVERVIEW_STATS.spend.delta}%
+                  </span>
+                </div>
+
                 <div className="ig-profile-vertical__stat">
                   <span className="ig-profile-vertical__stat-label">
                     <Eye size={14} />
@@ -414,331 +488,331 @@ export default function AdsDashboard() {
                   ))}
                 </div>
               </div>
-            </aside>
+            </section>
+          </div>
 
-            {/* Right Column - Charts */}
-            <div className="ig-profile-main">
-              {/* Investimento Chart */}
-              <section className="ig-growth-clean">
-                <header className="ig-card-header">
-                  <div>
-                    <h3>Investimento ao Longo do Tempo</h3>
-                    <p className="ig-card-subtitle">Gastos diários em campanhas</p>
-                  </div>
-                </header>
+          {/* Right Column - Charts */}
+          <div className="ig-clean-grid__right">
+            {/* Investimento Chart */}
+            <section className="ig-growth-clean">
+              <header className="ig-card-header">
+                <div>
+                  <h3>Investimento ao Longo do Tempo</h3>
+                  <p className="ig-card-subtitle">Gastos diários em campanhas</p>
+                </div>
+              </header>
 
-                <div className="ig-chart-area">
-                  <ResponsiveContainer width="100%" height={320}>
-                    <BarChart
-                      data={MOCK_SPEND_SERIES}
-                      margin={{ top: 16, right: 16, bottom: 32, left: 0 }}
-                      barCategoryGap="35%"
+              <div className="ig-chart-area">
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart
+                    data={MOCK_SPEND_SERIES}
+                    margin={{ top: 16, right: 16, bottom: 32, left: 0 }}
+                    barCategoryGap="35%"
+                  >
+                    <defs>
+                      <linearGradient id="spendBar" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#6366f1" />
+                        <stop offset="100%" stopColor="#8b5cf6" />
+                      </linearGradient>
+                      <linearGradient id="spendBarActive" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f472b6" />
+                        <stop offset="45%" stopColor="#d946ef" />
+                        <stop offset="100%" stopColor="#6366f1" />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(value) => `R$ ${formatNumber(value)}`}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "rgba(99, 102, 241, 0.1)" }}
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        return (
+                          <div className="ig-follower-tooltip">
+                            <div className="ig-follower-tooltip__label">
+                              Investimento: {formatCurrency(payload[0].value)}
+                            </div>
+                            <div className="ig-follower-tooltip__date">{payload[0].payload.date}</div>
+                          </div>
+                        );
+                      }}
+                    />
+                    {highlightedSpendPoint && (
+                      <>
+                        <ReferenceLine
+                          x={highlightedSpendPoint.date}
+                          stroke="#111827"
+                          strokeDasharray="4 4"
+                          strokeOpacity={0.3}
+                        />
+                        <ReferenceLine
+                          y={highlightedSpendPoint.value}
+                          stroke="#111827"
+                          strokeDasharray="4 4"
+                          strokeOpacity={0.35}
+                        />
+                        <ReferenceDot
+                          x={highlightedSpendPoint.date}
+                          y={highlightedSpendPoint.value}
+                          r={6}
+                          fill="#111827"
+                          stroke="#ffffff"
+                          strokeWidth={2}
+                        />
+                      </>
+                    )}
+                    <Bar
+                      dataKey="value"
+                      radius={[12, 12, 0, 0]}
+                      barSize={36}
+                      onMouseEnter={(_, index) => setActiveSpendBar(index)}
+                      onMouseLeave={() => setActiveSpendBar(-1)}
                     >
-                      <defs>
-                        <linearGradient id="spendBar" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#6366f1" />
-                          <stop offset="100%" stopColor="#8b5cf6" />
-                        </linearGradient>
-                        <linearGradient id="spendBarActive" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#f472b6" />
-                          <stop offset="45%" stopColor="#d946ef" />
-                          <stop offset="100%" stopColor="#6366f1" />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fill: "#9ca3af", fontSize: 12 }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tick={{ fill: "#9ca3af", fontSize: 12 }}
-                        axisLine={false}
-                        tickLine={false}
-                        tickFormatter={(value) => `R$ ${formatNumber(value)}`}
-                      />
-                      <Tooltip
-                        cursor={{ fill: "rgba(99, 102, 241, 0.1)" }}
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null;
-                          return (
-                            <div className="ig-follower-tooltip">
-                              <div className="ig-follower-tooltip__label">
-                                Investimento: {formatCurrency(payload[0].value)}
-                              </div>
-                              <div className="ig-follower-tooltip__date">{payload[0].payload.date}</div>
-                            </div>
-                          );
-                        }}
-                      />
-                      {highlightedSpendPoint && (
-                        <>
-                          <ReferenceLine
-                            x={highlightedSpendPoint.date}
-                            stroke="#111827"
-                            strokeDasharray="4 4"
-                            strokeOpacity={0.3}
-                          />
-                          <ReferenceLine
-                            y={highlightedSpendPoint.value}
-                            stroke="#111827"
-                            strokeDasharray="4 4"
-                            strokeOpacity={0.35}
-                          />
-                          <ReferenceDot
-                            x={highlightedSpendPoint.date}
-                            y={highlightedSpendPoint.value}
-                            r={6}
-                            fill="#111827"
-                            stroke="#ffffff"
-                            strokeWidth={2}
-                          />
-                        </>
-                      )}
-                      <Bar
-                        dataKey="value"
-                        radius={[12, 12, 0, 0]}
-                        barSize={36}
-                        onMouseEnter={(_, index) => setActiveSpendBar(index)}
-                        onMouseLeave={() => setActiveSpendBar(-1)}
-                      >
-                        {MOCK_SPEND_SERIES.map((entry, index) => (
-                          <Cell
-                            key={entry.date}
-                            fill={index === highlightedSpendIndex ? "url(#spendBarActive)" : "url(#spendBar)"}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </section>
-
-              {/* Performance Metrics Chart */}
-              <section className="ig-growth-clean">
-                <header className="ig-card-header">
-                  <div>
-                    <h3>Performance de Métricas</h3>
-                    <p className="ig-card-subtitle">Impressões, Cliques e Conversões</p>
-                  </div>
-                </header>
-
-                <div className="ig-chart-area">
-                  <ResponsiveContainer width="100%" height={320}>
-                    <ComposedChart data={MOCK_PERFORMANCE_SERIES} margin={{ top: 16, right: 16, bottom: 32, left: 0 }}>
-                      <defs>
-                        <linearGradient id="impressionsGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
-                          <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fill: "#9ca3af", fontSize: 12 }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tick={{ fill: "#9ca3af", fontSize: 12 }}
-                        axisLine={false}
-                        tickLine={false}
-                        tickFormatter={(value) => {
-                          if (value >= 1000) return `${Math.round(value / 1000)}k`;
-                          return value;
-                        }}
-                      />
-                      <Tooltip
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null;
-                          return (
-                            <div className="ig-follower-tooltip">
-                              <div className="ig-follower-tooltip__date">{payload[0].payload.date}</div>
-                              <div className="ig-follower-tooltip__label">
-                                Impressões: {formatNumber(payload[0].payload.impressions)}
-                              </div>
-                              <div className="ig-follower-tooltip__label">
-                                Cliques: {formatNumber(payload[0].payload.clicks)}
-                              </div>
-                              <div className="ig-follower-tooltip__label">
-                                Conversões: {formatNumber(payload[0].payload.conversions)}
-                              </div>
-                            </div>
-                          );
-                        }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="impressions"
-                        stroke="#6366f1"
-                        strokeWidth={2}
-                        fill="url(#impressionsGradient)"
-                      />
-                      <Line type="monotone" dataKey="clicks" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="conversions" stroke="#a855f7" strokeWidth={2} dot={false} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              </section>
-
-              {/* Age Distribution */}
-              <section className="ig-growth-clean">
-                <header className="ig-card-header">
-                  <div>
-                    <h3>Distribuição por Idade</h3>
-                    <p className="ig-card-subtitle">Alcance por faixa etária</p>
-                  </div>
-                </header>
-
-                <div className="ig-chart-area">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={MOCK_AGE_DISTRIBUTION} margin={{ top: 16, right: 16, bottom: 16, left: 0 }}>
-                      <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
-                      <XAxis
-                        dataKey="range"
-                        tick={{ fill: "#9ca3af", fontSize: 12 }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tick={{ fill: "#9ca3af", fontSize: 12 }}
-                        axisLine={false}
-                        tickLine={false}
-                        tickFormatter={(value) => `${value}%`}
-                      />
-                      <Tooltip
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null;
-                          return (
-                            <div className="ig-follower-tooltip">
-                              <div className="ig-follower-tooltip__label">
-                                {payload[0].payload.range} anos
-                              </div>
-                              <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
-                            </div>
-                          );
-                        }}
-                      />
-                      <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={48}>
-                        {MOCK_AGE_DISTRIBUTION.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </section>
-
-              {/* Campaign Performance by Objective */}
-              <section className="ig-growth-clean">
-                <header className="ig-card-header">
-                  <div>
-                    <h3>Performance por Objetivo</h3>
-                    <p className="ig-card-subtitle">Distribuição de investimento</p>
-                  </div>
-                </header>
-
-                <div className="ig-chart-area">
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart
-                      data={MOCK_CAMPAIGN_PERFORMANCE}
-                      margin={{ top: 16, right: 16, bottom: 16, left: 80 }}
-                      layout="vertical"
-                    >
-                      <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" horizontal={false} />
-                      <XAxis
-                        type="number"
-                        tick={{ fill: "#9ca3af", fontSize: 12 }}
-                        axisLine={false}
-                        tickLine={false}
-                        tickFormatter={(value) => `${value}%`}
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="name"
-                        tick={{ fill: "#9ca3af", fontSize: 12 }}
-                        axisLine={false}
-                        tickLine={false}
-                        width={80}
-                      />
-                      <Tooltip
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null;
-                          return (
-                            <div className="ig-follower-tooltip">
-                              <div className="ig-follower-tooltip__label">{payload[0].payload.name}</div>
-                              <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
-                            </div>
-                          );
-                        }}
-                      />
-                      <Bar
-                        dataKey="value"
-                        radius={[0, 8, 8, 0]}
-                        barSize={32}
-                        onMouseEnter={(_, index) => setActiveCampaignIndex(index)}
-                        onMouseLeave={() => setActiveCampaignIndex(-1)}
-                      >
-                        {MOCK_CAMPAIGN_PERFORMANCE.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={entry.color}
-                            opacity={activeCampaignIndex === -1 || activeCampaignIndex === index ? 1 : 0.5}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </section>
-
-              {/* Top Campaigns Table */}
-              <section className="ig-growth-clean">
-                <header className="ig-card-header">
-                  <div>
-                    <h3>Melhores Campanhas</h3>
-                    <p className="ig-card-subtitle">Top 4 por performance</p>
-                  </div>
-                </header>
-
-                <div className="posts-table-container" style={{ marginTop: "16px" }}>
-                  <table className="posts-table">
-                    <thead>
-                      <tr>
-                        <th>Nome da Campanha</th>
-                        <th>Objetivo</th>
-                        <th>Impressões</th>
-                        <th>Cliques</th>
-                        <th>CTR</th>
-                        <th>Investimento</th>
-                        <th>Conversões</th>
-                        <th>CPA</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {MOCK_TOP_CAMPAIGNS.map((campaign) => (
-                        <tr key={campaign.id}>
-                          <td className="posts-table__caption" style={{ fontWeight: 600 }}>
-                            {campaign.name}
-                          </td>
-                          <td>{campaign.objective}</td>
-                          <td>{formatNumber(campaign.impressions)}</td>
-                          <td>{formatNumber(campaign.clicks)}</td>
-                          <td>{campaign.ctr}%</td>
-                          <td>{formatCurrency(campaign.spend)}</td>
-                          <td>{formatNumber(campaign.conversions)}</td>
-                          <td>{formatCurrency(campaign.cpa)}</td>
-                        </tr>
+                      {MOCK_SPEND_SERIES.map((entry, index) => (
+                        <Cell
+                          key={entry.date}
+                          fill={index === highlightedSpendIndex ? "url(#spendBarActive)" : "url(#spendBar)"}
+                        />
                       ))}
-                    </tbody>
-                  </table>
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+            {/* Performance Metrics Chart */}
+            <section className="ig-growth-clean">
+              <header className="ig-card-header">
+                <div>
+                  <h3>Performance de Métricas</h3>
+                  <p className="ig-card-subtitle">Impressões, Cliques e Conversões</p>
                 </div>
-              </section>
-            </div>
+              </header>
+
+              <div className="ig-chart-area">
+                <ResponsiveContainer width="100%" height={320}>
+                  <ComposedChart data={MOCK_PERFORMANCE_SERIES} margin={{ top: 16, right: 16, bottom: 32, left: 0 }}>
+                    <defs>
+                      <linearGradient id="impressionsGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(value) => {
+                        if (value >= 1000) return `${Math.round(value / 1000)}k`;
+                        return value;
+                      }}
+                    />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        return (
+                          <div className="ig-follower-tooltip">
+                            <div className="ig-follower-tooltip__date">{payload[0].payload.date}</div>
+                            <div className="ig-follower-tooltip__label">
+                              Impressões: {formatNumber(payload[0].payload.impressions)}
+                            </div>
+                            <div className="ig-follower-tooltip__label">
+                              Cliques: {formatNumber(payload[0].payload.clicks)}
+                            </div>
+                            <div className="ig-follower-tooltip__label">
+                              Conversões: {formatNumber(payload[0].payload.conversions)}
+                            </div>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="impressions"
+                      stroke="#6366f1"
+                      strokeWidth={2}
+                      fill="url(#impressionsGradient)"
+                    />
+                    <Line type="monotone" dataKey="clicks" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="conversions" stroke="#a855f7" strokeWidth={2} dot={false} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+            {/* Age Distribution */}
+            <section className="ig-growth-clean">
+              <header className="ig-card-header">
+                <div>
+                  <h3>Distribuição por Idade</h3>
+                  <p className="ig-card-subtitle">Alcance por faixa etária</p>
+                </div>
+              </header>
+
+              <div className="ig-chart-area">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={MOCK_AGE_DISTRIBUTION} margin={{ top: 16, right: 16, bottom: 16, left: 0 }}>
+                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
+                    <XAxis
+                      dataKey="range"
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        return (
+                          <div className="ig-follower-tooltip">
+                            <div className="ig-follower-tooltip__label">
+                              {payload[0].payload.range} anos
+                            </div>
+                            <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={48}>
+                      {MOCK_AGE_DISTRIBUTION.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+            {/* Campaign Performance by Objective */}
+            <section className="ig-growth-clean">
+              <header className="ig-card-header">
+                <div>
+                  <h3>Performance por Objetivo</h3>
+                  <p className="ig-card-subtitle">Distribuição de investimento</p>
+                </div>
+              </header>
+
+              <div className="ig-chart-area">
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart
+                    data={MOCK_CAMPAIGN_PERFORMANCE}
+                    margin={{ top: 16, right: 16, bottom: 16, left: 80 }}
+                    layout="vertical"
+                  >
+                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" horizontal={false} />
+                    <XAxis
+                      type="number"
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={80}
+                    />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        return (
+                          <div className="ig-follower-tooltip">
+                            <div className="ig-follower-tooltip__label">{payload[0].payload.name}</div>
+                            <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Bar
+                      dataKey="value"
+                      radius={[0, 8, 8, 0]}
+                      barSize={32}
+                      onMouseEnter={(_, index) => setActiveCampaignIndex(index)}
+                      onMouseLeave={() => setActiveCampaignIndex(-1)}
+                    >
+                      {MOCK_CAMPAIGN_PERFORMANCE.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.color}
+                          opacity={activeCampaignIndex === -1 || activeCampaignIndex === index ? 1 : 0.5}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+            {/* Top Campaigns Table */}
+            <section className="ig-growth-clean">
+              <header className="ig-card-header">
+                <div>
+                  <h3>Melhores Campanhas</h3>
+                  <p className="ig-card-subtitle">Top 4 por performance</p>
+                </div>
+              </header>
+
+              <div className="posts-table-container" style={{ marginTop: "16px" }}>
+                <table className="posts-table">
+                  <thead>
+                    <tr>
+                      <th>Nome da Campanha</th>
+                      <th>Objetivo</th>
+                      <th>Impressões</th>
+                      <th>Cliques</th>
+                      <th>CTR</th>
+                      <th>Investimento</th>
+                      <th>Conversões</th>
+                      <th>CPA</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {MOCK_TOP_CAMPAIGNS.map((campaign) => (
+                      <tr key={campaign.id}>
+                        <td className="posts-table__caption" style={{ fontWeight: 600 }}>
+                          {campaign.name}
+                        </td>
+                        <td>{campaign.objective}</td>
+                        <td>{formatNumber(campaign.impressions)}</td>
+                        <td>{formatNumber(campaign.clicks)}</td>
+                        <td>{campaign.ctr}%</td>
+                        <td>{formatCurrency(campaign.spend)}</td>
+                        <td>{formatNumber(campaign.conversions)}</td>
+                        <td>{formatCurrency(campaign.cpa)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
