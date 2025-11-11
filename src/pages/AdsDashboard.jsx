@@ -147,6 +147,121 @@ const MOCK_TOP_CAMPAIGNS = [
   },
 ];
 
+const MOCK_DETAILED_CAMPAIGNS = [
+  {
+    id: "c1",
+    name: "Prefeito 2025 - 1ª fase",
+    objective: "Conversões",
+    spend: 3500,
+    impressions: 250000,
+    clicks: 5200,
+    ctr: 2.1,
+    conversions: 220,
+    cpa: 15.90,
+    status: "active",
+    statusLabel: "Ativa"
+  },
+  {
+    id: "c2",
+    name: "Tráfego Instagram",
+    objective: "Tráfego",
+    spend: 1800,
+    impressions: 180000,
+    clicks: 2400,
+    ctr: 1.3,
+    conversions: 80,
+    cpa: 22.50,
+    status: "paused",
+    statusLabel: "Pausada"
+  },
+];
+
+const MOCK_CREATIVES = [
+  {
+    id: "cr1",
+    name: "imagem1.jpg",
+    type: "Imagem",
+    preview: "📷",
+    clicks: 2300,
+    ctr: 2.9,
+    cpc: 0.85,
+    conversions: 145,
+    cpa: 14.20,
+    roas: 3.2
+  },
+  {
+    id: "cr2",
+    name: "video1.mp4",
+    type: "Vídeo",
+    preview: "🎥",
+    clicks: 1100,
+    ctr: 1.8,
+    cpc: 1.10,
+    conversions: 70,
+    cpa: 15.70,
+    roas: 2.9
+  },
+  {
+    id: "cr3",
+    name: "carrossel1.jpg",
+    type: "Carrossel",
+    preview: "🎨",
+    clicks: 1800,
+    ctr: 2.4,
+    cpc: 0.95,
+    conversions: 110,
+    cpa: 16.36,
+    roas: 2.7
+  },
+];
+
+const MOCK_AGE_GENDER_DATA = [
+  { age: "18-24", male: 850, female: 1200 },
+  { age: "25-34", male: 1500, female: 1800 },
+  { age: "35-44", male: 1100, female: 950 },
+  { age: "45-54", male: 600, female: 700 },
+  { age: "55+", male: 400, female: 500 },
+];
+
+const MOCK_LOCATION_DATA = [
+  { name: "São Paulo", value: 2800, color: "#6366f1" },
+  { name: "Rio de Janeiro", value: 1900, color: "#8b5cf6" },
+  { name: "Brasília", value: 1200, color: "#a855f7" },
+  { name: "Belo Horizonte", value: 950, color: "#c084fc" },
+  { name: "Outros", value: 1150, color: "#d8b4fe" },
+];
+
+const MOCK_PLACEMENT_DATA = [
+  { name: "Feed Instagram", value: 3200, percent: 40 },
+  { name: "Stories Instagram", value: 2400, percent: 30 },
+  { name: "Feed Facebook", value: 1600, percent: 20 },
+  { name: "Reels", value: 800, percent: 10 },
+];
+
+const MOCK_INSIGHTS = [
+  {
+    id: "i1",
+    type: "warning",
+    icon: "⚠️",
+    message: "Custo por resultado ↑ 18% esta semana.",
+    color: "#f59e0b"
+  },
+  {
+    id: "i2",
+    type: "success",
+    icon: "🔥",
+    message: "Criativo \"Vídeo 02\" performa 2x melhor que \"Imagem 03\".",
+    color: "#10b981"
+  },
+  {
+    id: "i3",
+    type: "info",
+    icon: "💡",
+    message: "Melhor horário para anúncios: 18h-21h (CTR +35%).",
+    color: "#3b82f6"
+  },
+];
+
 const MOCK_CAMPAIGN_PERFORMANCE = [
   { name: "Conversão", value: 35, color: "#6366f1" },
   { name: "Tráfego", value: 28, color: "#8b5cf6" },
@@ -991,6 +1106,476 @@ export default function AdsDashboard() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </section>
+
+            {/* 📋 CAMPANHAS DETALHADAS */}
+            <section className="ig-growth-clean" style={{ marginTop: '24px' }}>
+              <header className="ig-card-header">
+                <div>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '20px' }}>📋</span>
+                    CAMPANHAS
+                  </h3>
+                  <p className="ig-card-subtitle">Status e performance detalhada</p>
+                </div>
+              </header>
+
+              <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {MOCK_DETAILED_CAMPAIGNS.map((campaign) => (
+                  <div
+                    key={campaign.id}
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%)',
+                      border: '1px solid rgba(0, 0, 0, 0.08)',
+                      borderRadius: '12px',
+                      padding: '20px',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                      gap: '16px',
+                      alignItems: 'center',
+                      transition: 'all 0.2s ease',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', marginBottom: '4px' }}>
+                        {campaign.name}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                        {campaign.objective}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>Gasto</div>
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>
+                        {formatCurrency(campaign.spend)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>Impressões</div>
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>
+                        {formatNumber(campaign.impressions)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>Cliques</div>
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>
+                        {formatNumber(campaign.clicks)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>CTR</div>
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#6366f1' }}>
+                        {campaign.ctr}%
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>Conversões</div>
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#10b981' }}>
+                        {formatNumber(campaign.conversions)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>CPA</div>
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>
+                        {formatCurrency(campaign.cpa)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>Status</div>
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        background: campaign.status === 'active' ? '#d1fae5' : '#fed7aa',
+                        color: campaign.status === 'active' ? '#065f46' : '#9a3412'
+                      }}>
+                        <span>{campaign.status === 'active' ? '🟢' : '🟠'}</span>
+                        {campaign.statusLabel}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* 🎨 CRIATIVOS */}
+            <section className="ig-growth-clean" style={{ marginTop: '24px' }}>
+              <header className="ig-card-header">
+                <div>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '20px' }}>🎨</span>
+                    CRIATIVOS
+                  </h3>
+                  <p className="ig-card-subtitle">Performance por tipo de conteúdo</p>
+                </div>
+              </header>
+
+              <div className="posts-table-container" style={{ marginTop: '16px' }}>
+                <table className="posts-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '60px' }}>Preview</th>
+                      <th>Nome</th>
+                      <th>Tipo</th>
+                      <th>Cliques</th>
+                      <th>CTR</th>
+                      <th>CPC</th>
+                      <th>Conversões</th>
+                      <th>CPA</th>
+                      <th>ROAS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {MOCK_CREATIVES.map((creative) => (
+                      <tr key={creative.id}>
+                        <td style={{ textAlign: 'center', fontSize: '24px' }}>
+                          {creative.preview}
+                        </td>
+                        <td style={{ fontWeight: 600, fontSize: '13px' }}>{creative.name}</td>
+                        <td>
+                          <span style={{
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            background: creative.type === 'Vídeo' ? '#dbeafe' : creative.type === 'Imagem' ? '#fce7f3' : '#e0e7ff',
+                            color: creative.type === 'Vídeo' ? '#1e40af' : creative.type === 'Imagem' ? '#9f1239' : '#3730a3'
+                          }}>
+                            {creative.type}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: 600 }}>{formatNumber(creative.clicks)}</td>
+                        <td style={{ color: '#6366f1', fontWeight: 600 }}>{creative.ctr}%</td>
+                        <td>{formatCurrency(creative.cpc)}</td>
+                        <td style={{ color: '#10b981', fontWeight: 600 }}>{formatNumber(creative.conversions)}</td>
+                        <td>{formatCurrency(creative.cpa)}</td>
+                        <td>
+                          <span style={{
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            background: creative.roas >= 3 ? '#d1fae5' : '#fef3c7',
+                            color: creative.roas >= 3 ? '#065f46' : '#92400e'
+                          }}>
+                            {creative.roas}x
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            {/* 🧭 SEGMENTAÇÃO E PÚBLICO */}
+            <section className="ig-growth-clean" style={{ marginTop: '24px' }}>
+              <header className="ig-card-header">
+                <div>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '20px' }}>🧭</span>
+                    SEGMENTAÇÃO E PÚBLICO
+                  </h3>
+                  <p className="ig-card-subtitle">Distribuição demográfica e comportamental</p>
+                </div>
+              </header>
+
+              <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                {/* Gráfico Idade x Gênero */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  border: '1px solid rgba(0, 0, 0, 0.08)',
+                  borderRadius: '12px',
+                  padding: '20px'
+                }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '16px' }}>
+                    Idade × Gênero
+                  </h4>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart
+                      data={MOCK_AGE_GENDER_DATA}
+                      layout="vertical"
+                      margin={{ left: 0, right: 10, top: 5, bottom: 5 }}
+                      barGap={4}
+                      barCategoryGap="20%"
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
+                      <XAxis
+                        type="number"
+                        tick={{ fill: '#6b7280', fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="age"
+                        tick={{ fill: '#374151', fontSize: 12, fontWeight: 600 }}
+                        width={50}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip
+                        cursor={{ fill: 'rgba(99, 102, 241, 0.08)' }}
+                        formatter={(value) => Number(value).toLocaleString("pt-BR")}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                          fontSize: '12px'
+                        }}
+                      />
+                      <Bar dataKey="male" fill="#6366f1" radius={[0, 6, 6, 0]} barSize={12} name="Homens" />
+                      <Bar dataKey="female" fill="#ec4899" radius={[0, 6, 6, 0]} barSize={12} name="Mulheres" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                      <span style={{ width: '12px', height: '12px', borderRadius: '3px', background: '#6366f1' }}></span>
+                      <span style={{ color: '#6b7280', fontWeight: 500 }}>Homens</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                      <span style={{ width: '12px', height: '12px', borderRadius: '3px', background: '#ec4899' }}></span>
+                      <span style={{ color: '#6b7280', fontWeight: 500 }}>Mulheres</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Gráfico Localização */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  border: '1px solid rgba(0, 0, 0, 0.08)',
+                  borderRadius: '12px',
+                  padding: '20px'
+                }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '16px' }}>
+                    Localização
+                  </h4>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <PieChart>
+                      <Pie
+                        data={MOCK_LOCATION_DATA}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={70}
+                        paddingAngle={4}
+                        dataKey="value"
+                      >
+                        {MOCK_LOCATION_DATA.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value) => Number(value).toLocaleString("pt-BR")}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                          fontSize: '12px'
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
+                    {MOCK_LOCATION_DATA.map((item) => (
+                      <div key={item.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: item.color }}></span>
+                          <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 500 }}>{item.name}</span>
+                        </div>
+                        <span style={{ fontSize: '12px', color: '#111827', fontWeight: 600 }}>
+                          {formatNumber(item.value)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Gráfico Posicionamento */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  border: '1px solid rgba(0, 0, 0, 0.08)',
+                  borderRadius: '12px',
+                  padding: '20px'
+                }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '16px' }}>
+                    Posicionamento
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {MOCK_PLACEMENT_DATA.map((placement) => (
+                      <div key={placement.name}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>
+                            {placement.name}
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '12px', fontWeight: '700', color: '#6366f1' }}>
+                              {placement.percent}%
+                            </span>
+                            <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                              ({formatNumber(placement.value)})
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{
+                          height: '8px',
+                          background: '#e5e7eb',
+                          borderRadius: '4px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{
+                            width: `${placement.percent}%`,
+                            height: '100%',
+                            background: 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%)',
+                            borderRadius: '4px',
+                            transition: 'width 0.6s ease'
+                          }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* 💡 INSIGHTS AUTOMÁTICOS */}
+            <section className="ig-growth-clean" style={{ marginTop: '24px' }}>
+              <header className="ig-card-header">
+                <div>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '20px' }}>💡</span>
+                    INSIGHTS AUTOMÁTICOS
+                  </h3>
+                  <p className="ig-card-subtitle">Alertas e recomendações inteligentes</p>
+                </div>
+              </header>
+
+              <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {MOCK_INSIGHTS.map((insight) => (
+                  <div
+                    key={insight.id}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.9)',
+                      border: `1px solid ${insight.color}30`,
+                      borderLeft: `4px solid ${insight.color}`,
+                      borderRadius: '8px',
+                      padding: '16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateX(4px)';
+                      e.currentTarget.style.boxShadow = `0 4px 12px ${insight.color}20`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateX(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <span style={{ fontSize: '24px' }}>{insight.icon}</span>
+                    <span style={{ fontSize: '14px', color: '#374151', fontWeight: 500 }}>
+                      {insight.message}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* 📥 EXPORTAR */}
+            <section className="ig-growth-clean" style={{ marginTop: '24px' }}>
+              <header className="ig-card-header">
+                <div>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '20px' }}>📥</span>
+                    EXPORTAR
+                  </h3>
+                  <p className="ig-card-subtitle">Última atualização: 10/11/2025 às 03:00</p>
+                </div>
+              </header>
+
+              <div style={{ marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <button
+                  style={{
+                    padding: '12px 24px',
+                    background: 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 8px rgba(220, 38, 38, 0.25)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(220, 38, 38, 0.35)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(220, 38, 38, 0.25)';
+                  }}
+                >
+                  <FileText size={16} />
+                  Exportar PDF
+                </button>
+
+                <button
+                  style={{
+                    padding: '12px 24px',
+                    background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 8px rgba(5, 150, 105, 0.25)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(5, 150, 105, 0.35)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(5, 150, 105, 0.25)';
+                  }}
+                >
+                  <BarChart3 size={16} />
+                  Exportar CSV
+                </button>
               </div>
             </section>
           </div>
