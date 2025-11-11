@@ -229,11 +229,12 @@ export default function Reports() {
   };
 
   return (
-    <div className="reports-page">
-      {/* Navigation Hero - mantém o hero de navegação */}
-      <NavigationHero title="Relatórios" icon={FileText} />
+    <div className="instagram-dashboard--clean">
+      <div className="ig-clean-container">
+        {/* Navigation Hero - mantém o hero de navegação */}
+        <NavigationHero title="Relatórios" icon={FileText} />
 
-      <div className="reports-container">
+        <div className="reports-container">
         {/* Header */}
         <div className="reports-header">
           <div className="reports-title-section">
@@ -319,6 +320,7 @@ export default function Reports() {
 
         {/* Preview invisível para PDF */}
         <div ref={previewRef} style={{ position: "absolute", left: -99999, top: -99999 }} />
+        </div>
       </div>
     </div>
   );
