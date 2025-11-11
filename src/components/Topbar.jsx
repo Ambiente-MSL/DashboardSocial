@@ -124,8 +124,6 @@ export default function Topbar({
   }, [isLoggingOut, navigate, signOut]);
 
   const logoutLabel = isLoggingOut ? "Saindo..." : "Sair";
-  const accountLabel = userName || user?.user_metadata?.nome || user?.email || "Conta";
-
   return (
     <header className={`topbar topbar--dark ${className}`.trim()}>
       <div className="topbar__inner">
@@ -164,7 +162,6 @@ export default function Topbar({
 
           <div className="topbar__account">
             <AccountSelect />
-            <span className="topbar__account-name">{accountLabel}</span>
           </div>
           <button
             type="button"

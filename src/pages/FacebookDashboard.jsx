@@ -221,6 +221,17 @@ useEffect(() => {
     return { since, until };
   }, [defaultEnd, sinceDate, untilDate]);
 
+  useEffect(() => {
+    if (sinceParam && untilParam) return;
+    const defaultPreset = FB_TOPBAR_PRESETS.find((preset) => preset.id === "7d") || FB_TOPBAR_PRESETS[0];
+    const endDate = defaultEnd;
+    const startDate = startOfDay(subDays(endDate, (defaultPreset?.days ?? DEFAULT_FACEBOOK_RANGE_DAYS) - 1));
+    setQuery({
+      since: toUnixSeconds(startDate),
+      until: toUnixSeconds(endDate),
+    });
+  }, [defaultEnd, setQuery, sinceParam, untilParam]);
+
   const handleDateChange = useCallback(
     (start, end) => {
       if (!start || !end) return;
@@ -284,6 +295,12 @@ useEffect(() => {
       return () => {};
     }
 
+    if (!sinceParam || !untilParam) {
+      setOverviewSource(null);
+      setOverviewLoading(true);
+      return () => {};
+    }
+
     const controller = new AbortController();
     let cancelled = false;
 
@@ -293,8 +310,8 @@ useEffect(() => {
       try {
         const params = new URLSearchParams();
         params.set("pageId", accountConfig.facebookPageId);
-        if (sinceParam) params.set("since", sinceParam);
-        if (untilParam) params.set("until", untilParam);
+        params.set("since", sinceParam);
+        params.set("until", untilParam);
         const url = `${API_BASE_URL}/api/facebook/metrics?${params.toString()}`;
         const response = await fetch(url, { signal: controller.signal });
         const raw = await response.text();
