@@ -10205,19 +10205,23 @@ body:has(.facebook-dashboard--clean) .app-main__content {
 }
 
 .ig-calendar__day--level-1 {
-  background: #e9d5ff;
+  background: #f3e8ff;
 }
 
 .ig-calendar__day--level-2 {
-  background: #d8b4fe;
+  background: #e9d5ff;
 }
 
 .ig-calendar__day--level-3 {
-  background: #c084fc;
+  background: #d8b4fe;
 }
 
 .ig-calendar__day--level-4 {
-  background: #a855f7;
+  background: #c084fc;
+}
+
+.ig-calendar__day--level-5 {
+  background: #9333ea;
 }
 
 /* Tooltip */

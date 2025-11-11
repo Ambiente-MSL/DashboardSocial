@@ -122,10 +122,11 @@ const FOLLOWER_GROWTH_SERIES = [
   { label: "Dez", value: 52000 },
 ];
 
-const CALENDAR_MONTH_OPTIONS = [
+const FALLBACK_CALENDAR_MONTH_OPTIONS = [
   { value: "2025-08", label: "Agosto 2025", year: 2025, month: 7 },
   { value: "2025-09", label: "Setembro 2025", year: 2025, month: 8 },
   { value: "2025-10", label: "Outubro 2025", year: 2025, month: 9 },
+  { value: "2025-11", label: "Novembro 2025", year: 2025, month: 10 },
 ];
 
 const HERO_TABS = [
@@ -613,22 +614,6 @@ export default function InstagramDashboard() {
   const sinceIso = useMemo(() => toUtcDateString(sinceDate), [sinceDate]);
   const untilIso = useMemo(() => toUtcDateString(untilDate), [untilDate]);
 
-  const defaultCalendarValue = useMemo(() => {
-    if (untilDate) {
-      const candidate = `${untilDate.getFullYear()}-${String(untilDate.getMonth() + 1).padStart(2, "0")}`;
-      if (CALENDAR_MONTH_OPTIONS.some((option) => option.value === candidate)) {
-        return candidate;
-      }
-    }
-    return CALENDAR_MONTH_OPTIONS[0]?.value ?? `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
-  }, [untilDate]);
-
-  const [calendarMonth, setCalendarMonth] = useState(defaultCalendarValue);
-
-  useEffect(() => {
-    setCalendarMonth((current) => (current === defaultCalendarValue ? current : defaultCalendarValue));
-  }, [defaultCalendarValue]);
-
   const now = useMemo(() => new Date(), []);
   const defaultEnd = useMemo(() => endOfDay(subDays(startOfDay(now), 1)), [now]);
 
@@ -701,6 +686,52 @@ export default function InstagramDashboard() {
   const [posts, setPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [postsError, setPostsError] = useState("");
+
+  const calendarMonthOptions = useMemo(() => {
+    const monthMap = new Map();
+    posts.forEach((post) => {
+      if (!post?.timestamp) return;
+      const dateObj = new Date(post.timestamp);
+      if (Number.isNaN(dateObj.getTime())) return;
+      const key = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
+      if (monthMap.has(key)) return;
+      monthMap.set(key, {
+        value: key,
+        label: dateObj.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
+        year: dateObj.getFullYear(),
+        month: dateObj.getMonth(),
+      });
+    });
+
+    if (!monthMap.size) {
+      return FALLBACK_CALENDAR_MONTH_OPTIONS;
+    }
+
+    return Array.from(monthMap.values()).sort((a, b) => {
+      if (a.year === b.year) return b.month - a.month;
+      return b.year - a.year;
+    });
+  }, [posts]);
+
+  const defaultCalendarValue = useMemo(() => {
+    const fallbackValue = calendarMonthOptions[0]?.value
+      || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+
+    if (untilDate) {
+      const candidate = `${untilDate.getFullYear()}-${String(untilDate.getMonth() + 1).padStart(2, "0")}`;
+      if (calendarMonthOptions.some((option) => option.value === candidate)) {
+        return candidate;
+      }
+    }
+
+    return fallbackValue;
+  }, [calendarMonthOptions, untilDate]);
+
+  const [calendarMonth, setCalendarMonth] = useState(defaultCalendarValue);
+
+  useEffect(() => {
+    setCalendarMonth((current) => (current === defaultCalendarValue ? current : defaultCalendarValue));
+  }, [defaultCalendarValue]);
 
   const [accountInfo, setAccountInfo] = useState(null);
   const [followerSeries, setFollowerSeries] = useState([]);
@@ -1355,7 +1386,7 @@ export default function InstagramDashboard() {
     const monthEnd = endOfMonth(baseDate);
 
     const postsPerDay = new Map();
-    filteredPosts.forEach((post) => {
+    posts.forEach((post) => {
       if (!post?.timestamp) return;
       const dateObj = new Date(post.timestamp);
       if (Number.isNaN(dateObj.getTime())) return;
@@ -1364,21 +1395,23 @@ export default function InstagramDashboard() {
       postsPerDay.set(key, (postsPerDay.get(key) || 0) + 1);
     });
 
-    const maxCount = Array.from(postsPerDay.values()).reduce(
-      (max, count) => Math.max(max, count),
-      0,
-    );
-
     const days = eachDayOfInterval({ start: monthStart, end: monthEnd }).map((date) => {
       const key = date.toISOString().slice(0, 10);
       const count = postsPerDay.get(key) || 0;
-      const level = count === 0 || maxCount === 0 ? 0 : Math.min(4, Math.ceil((count / Math.max(maxCount, 1)) * 4));
+      let level = 0;
+      if (count > 0) {
+        if (count === 1) level = 1;
+        else if (count === 2) level = 2;
+        else if (count === 3) level = 3;
+        else if (count === 4) level = 4;
+        else level = 5;
+      }
       return {
         key,
         date,
         count,
         level,
-        tooltip: `${count} ${count === 1 ? "publicacao" : "publicacoes"}`,
+        tooltip: `${count} ${count === 1 ? "publicação" : "publicações"}`,
       };
     });
 
@@ -1391,7 +1424,7 @@ export default function InstagramDashboard() {
       days,
       title: monthStart.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
     };
-  }, [calendarMonth, filteredPosts]);
+  }, [calendarMonth, posts]);
 
   const bestTimes = useMemo(() => analyzeBestTimes(filteredPosts), [filteredPosts]);
 
@@ -2217,7 +2250,7 @@ export default function InstagramDashboard() {
                 value={calendarMonth}
                 onChange={(event) => setCalendarMonth(event.target.value)}
               >
-                {CALENDAR_MONTH_OPTIONS.map((option) => (
+                {calendarMonthOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
