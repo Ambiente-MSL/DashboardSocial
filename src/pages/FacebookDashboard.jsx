@@ -509,8 +509,12 @@ export default function FacebookDashboard() {
       reach: activeSnapshot?.reach ?? reachMetricValue ?? 0,
       followersDaily: activeSnapshot?.followersDaily ?? avgFollowersPerDay ?? 0,
       posts: activeSnapshot?.posts ?? postsCount ?? 0,
+      engagement: extractNumber(pageMetricsByKey.post_engagement_total?.value, 0),
+      impressions: extractNumber(pageMetricsByKey.page_impressions?.value, 0),
+      pageViews: extractNumber(pageMetricsByKey.page_views_total?.value, 0),
+      clicks: extractNumber(pageMetricsByKey.page_total_actions?.value, 0),
     }),
-    [activeSnapshot, avgFollowersPerDay, postsCount, reachMetricValue, followersMetricValue],
+    [activeSnapshot, avgFollowersPerDay, postsCount, reachMetricValue, followersMetricValue, pageMetricsByKey],
   );
 
   const reachPeriodLabel = useMemo(() => {
@@ -711,56 +715,35 @@ export default function FacebookDashboard() {
                   </div>
                 </div>
 
-                <div className="ig-overview-activity">
-                  <div className="ig-overview-metric">
-                    <div className="ig-overview-metric__row">
-                      <div className="ig-overview-metric__info">
-                        <div className="ig-overview-metric__value">{followersDailyDisplay}</div>
-                        <div className="ig-overview-metric__label">Seguidores diários</div>
-                      </div>
-                      <div className="ig-weekly-chart">
-                        {weeklyFollowersPattern.map((day) => (
-                          <div
-                            key={`followers-${day.label}`}
-                            className={`fb-weekly-chart__item${day.active ? " fb-weekly-chart__item--active" : ""}`}
-                          >
-                            <div
-                              className="ig-weekly-chart__bar"
-                              style={{ height: `${Math.max(day.percentage, 12)}%` }}
-                            />
-                            <span className="ig-weekly-chart__label">{day.label}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                <div className="ig-overview-activity" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                  <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{followersDailyDisplay}</div>
+                    <div className="ig-overview-stat__label">Seguidores diários</div>
                   </div>
 
-                  <div className="ig-overview-metric">
-                    <div className="ig-overview-metric__row">
-                      <div className="ig-overview-metric__info">
-                        <div className="ig-overview-metric__value">{formatNumber(overviewMetrics.posts)}</div>
-                        <div className="ig-overview-metric__label">Posts criados</div>
-                        <select className="ig-overview-metric__select">
-                          <option>Esta semana</option>
-                          <option>Últimas 4 semanas</option>
-                          <option>Último trimestre</option>
-                        </select>
-                      </div>
-                      <div className="ig-weekly-chart fb-weekly-chart--compact">
-                        {weeklyPostsPattern.map((day) => (
-                          <div
-                            key={`posts-${day.label}`}
-                            className={`fb-weekly-chart__item${day.active ? " fb-weekly-chart__item--active" : ""}`}
-                          >
-                            <div
-                              className="ig-weekly-chart__bar"
-                              style={{ height: `${Math.max(day.percentage, 12)}%` }}
-                            />
-                            <span className="ig-weekly-chart__label">{day.label}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                  <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.posts)}</div>
+                    <div className="ig-overview-stat__label">Posts criados</div>
+                  </div>
+
+                  <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.engagement || 0)}</div>
+                    <div className="ig-overview-stat__label">Engajamento total</div>
+                  </div>
+
+                  <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.impressions || 0)}</div>
+                    <div className="ig-overview-stat__label">Impressões</div>
+                  </div>
+
+                  <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.pageViews || 0)}</div>
+                    <div className="ig-overview-stat__label">Visualizações de página</div>
+                  </div>
+
+                  <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.clicks || 0)}</div>
+                    <div className="ig-overview-stat__label">Cliques no link</div>
                   </div>
                 </div>
 
