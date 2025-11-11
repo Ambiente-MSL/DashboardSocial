@@ -17,14 +17,14 @@ const HERO_TABS = [
   { id: 'settings', label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
 
-export default function NavigationHero({ title, icon: TitleIcon, gradient = 'default' }) {
+export default function NavigationHero({ title, icon: TitleIcon, gradient = 'default', showGradient = true }) {
   const location = useLocation();
 
   const gradientClass = gradient === 'facebook' ? 'facebook-dashboard--clean' : '';
 
   return (
     <>
-      <div className={`ig-hero-gradient ${gradientClass}`} aria-hidden="true" />
+      {showGradient && <div className={`ig-hero-gradient ${gradientClass}`} aria-hidden="true" />}
 
       <div className="ig-clean-header">
         <div className="ig-clean-header__brand">

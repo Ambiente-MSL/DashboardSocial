@@ -232,7 +232,7 @@ export default function Reports() {
     <div className="instagram-dashboard--clean">
       <div className="ig-clean-container">
         {/* Navigation Hero - mantém o hero de navegação */}
-        <NavigationHero title="Relatórios" icon={FileText} />
+        <NavigationHero title="Relatórios" icon={FileText} showGradient={false} />
 
         <div className="reports-container">
         {/* Header */}

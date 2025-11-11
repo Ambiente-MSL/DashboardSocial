@@ -309,7 +309,7 @@ export default function Settings() {
   return (
     <div className="instagram-dashboard--clean">
       <div className="ig-clean-container">
-        <NavigationHero title="Configurações" icon={SettingsIcon} />
+        <NavigationHero title="Configurações" icon={SettingsIcon} showGradient={false} />
 
         <h2 className="ig-clean-title">Configurações</h2>
 
