@@ -2,12 +2,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { FileText } from "lucide-react";
-import Section from "../components/Section";
-import ExportButtons from "../components/ExportButtons";
 import NavigationHero from "../components/NavigationHero";
 import useQueryState from "../hooks/useQueryState";
 import { supabase } from "../lib/supabaseClient";
-import ReportGrid from "../components/ReportGrid";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import Papa from "papaparse";
@@ -32,7 +29,33 @@ export default function Reports() {
 
   const [scope, setScope] = useState("facebook"); // facebook | instagram | ambos
   const [templates, setTemplates] = useState([]);
-  const [reports, setReports] = useState([]);
+  const [reports, setReports] = useState([
+    // Dados de exemplo para visualização
+    {
+      id: 1,
+      name: "relatório mensal",
+      platform: "instagram",
+      created_at: "2023-08-15T10:30:00Z"
+    },
+    {
+      id: 2,
+      name: "MODELO RELATÓRIO",
+      platform: "instagram",
+      created_at: "2023-04-25T14:20:00Z"
+    },
+    {
+      id: 3,
+      name: "MODELO RELATÓRIO",
+      platform: "instagram",
+      created_at: "2023-04-25T09:15:00Z"
+    },
+    {
+      id: 4,
+      name: "Relatório Personalizado",
+      platform: "ambos",
+      created_at: "2023-05-14T16:45:00Z"
+    }
+  ]);
   const [loading, setLoading] = useState(false);
   const previewRef = useRef();
 
@@ -206,60 +229,96 @@ export default function Reports() {
   };
 
   return (
-    <div className="instagram-dashboard--clean">
-      <div className="ig-clean-container">
-        <NavigationHero title="Relatórios" icon={FileText} />
+    <div className="reports-page">
+      {/* Navigation Hero - mantém o hero de navegação */}
+      <NavigationHero title="Relatórios" icon={FileText} />
 
-        <h2 className="ig-clean-title">Relatórios</h2>
-
-        <div className="page-content">
-        <Section title="Origem dos dados">
-          <div className="report-filters">
-            <label className={`btn ${scope === "facebook" ? "btn--active" : ""}`}>
-              <input
-                type="radio"
-                name="scope"
-                checked={scope === "facebook"}
-                onChange={() => setScope("facebook")}
-              />
-              Facebook
-            </label>
-            <label className={`btn ${scope === "instagram" ? "btn--active" : ""}`}>
-              <input
-                type="radio"
-                name="scope"
-                checked={scope === "instagram"}
-                onChange={() => setScope("instagram")}
-              />
-              Instagram
-            </label>
-            <label className={`btn ${scope === "ambos" ? "btn--active" : ""}`}>
-              <input
-                type="radio"
-                name="scope"
-                checked={scope === "ambos"}
-                onChange={() => setScope("ambos")}
-              />
-              Ambos
-            </label>
+      <div className="reports-container">
+        {/* Header */}
+        <div className="reports-header">
+          <div className="reports-title-section">
+            <FileText size={32} className="reports-icon" />
+            <h1 className="reports-title">MEUS RELATÓRIOS</h1>
+            <p className="reports-subtitle">aqui você pode verificar os relatórios que você já gerou e exportou</p>
           </div>
-        </Section>
 
-        <Section title="ExportaAAes" description="Gere o arquivo diretamente com os filtros atuais.">
-          <ExportButtons onExport={onExport} disabled={loading || reports.length === 0} />
-          {/* Area invisAvel para renderizaAAo do preview do PDF */}
-          <div ref={previewRef} style={{ position: "absolute", left: -99999, top: -99999 }} />
-        </Section>
-
-        <Section title="Meus RelatA3rios">
-          <ReportGrid
-            reports={reports}
-            templates={templates}
-            onRefresh={fetchReports}
-            onExport={onExport}
-          />
-        </Section>
+          <button className="btn-new-report">
+            <FileText size={20} />
+            NOVO MODELO DE RELATÓRIO
+          </button>
         </div>
+
+        {/* Instruções */}
+        <div className="reports-instructions">
+          <div className="instruction-item">
+            <span className="instruction-icon">📝</span>
+            Alterar logo nos relatórios
+          </div>
+        </div>
+
+        {/* Tabela de Relatórios */}
+        <div className="reports-table-container">
+          <table className="reports-table">
+            <thead>
+              <tr>
+                <th className="col-tipo">TIPO</th>
+                <th className="col-nome">NOME</th>
+                <th className="col-canais">CANAIS</th>
+                <th className="col-data">
+                  DATA
+                  <span className="sort-icon">▲</span>
+                </th>
+                <th className="col-acoes"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {reports.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="empty-state">
+                    Nenhum relatório encontrado. Crie seu primeiro relatório!
+                  </td>
+                </tr>
+              ) : (
+                reports.map((report, idx) => (
+                  <tr key={report.id || idx}>
+                    <td className="col-tipo">
+                      <FileText size={24} className="report-type-icon" />
+                    </td>
+                    <td className="col-nome">{report.name || report.title || "Relatório sem nome"}</td>
+                    <td className="col-canais">
+                      <div className="channel-icons">
+                        {(report.platform === "instagram" || report.platform === "ambos") && (
+                          <div className="channel-icon instagram">
+                            <span>📷</span>
+                          </div>
+                        )}
+                        {(report.platform === "facebook" || report.platform === "ambos") && (
+                          <div className="channel-icon facebook">
+                            <span>f</span>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="col-data">
+                      {report.created_at
+                        ? new Date(report.created_at).toLocaleDateString("pt-BR")
+                        : "-"}
+                    </td>
+                    <td className="col-acoes">
+                      <button className="btn-action" title="Configurações">
+                        ⚙️
+                      </button>
+                      <button className="btn-action-more">▼</button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Preview invisível para PDF */}
+        <div ref={previewRef} style={{ position: "absolute", left: -99999, top: -99999 }} />
       </div>
     </div>
   );

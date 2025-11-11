@@ -10332,4 +10332,335 @@ body:has(.facebook-dashboard--clean) .app-main__content {
   }
 }
 
+/* ========================================================================
+   REPORTS PAGE STYLES - Professional table layout
+   ======================================================================== */
+
+.reports-page {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  padding: 0;
+}
+
+.reports-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+/* Header Section */
+.reports-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.reports-title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reports-icon {
+  color: var(--color-accent);
+  margin-bottom: 8px;
+}
+
+.reports-title {
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  color: var(--text-primary);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.reports-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reports-subtitle::before {
+  content: "▶";
+  color: var(--color-accent);
+  font-size: 12px;
+}
+
+.btn-new-report {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-new-report:hover {
+  background: var(--surface-100);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Instructions Section */
+.reports-instructions {
+  margin-bottom: 24px;
+  display: flex;
+  gap: 12px;
+}
+
+.instruction-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  background: var(--surface-50);
+  border-radius: 8px;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.instruction-item:hover {
+  background: var(--surface-100);
+  color: var(--text-primary);
+}
+
+.instruction-icon {
+  font-size: 16px;
+}
+
+/* Table Container */
+.reports-table-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Table Styles */
+.reports-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.reports-table thead {
+  background: var(--surface-50);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.reports-table thead th {
+  padding: 18px 24px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.reports-table thead th.col-data {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sort-icon {
+  font-size: 10px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.reports-table tbody tr {
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.15s ease;
+}
+
+.reports-table tbody tr:hover {
+  background: var(--surface-50);
+}
+
+.reports-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.reports-table tbody td {
+  padding: 20px 24px;
+  color: var(--text-primary);
+}
+
+/* Column Specific Styles */
+.col-tipo {
+  width: 80px;
+}
+
+.col-nome {
+  min-width: 250px;
+  font-weight: 500;
+}
+
+.col-canais {
+  width: 150px;
+}
+
+.col-data {
+  width: 180px;
+  color: var(--text-secondary);
+}
+
+.col-acoes {
+  width: 120px;
+  text-align: right;
+}
+
+/* Report Type Icon */
+.report-type-icon {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+/* Channel Icons */
+.channel-icons {
+  display: flex;
+  gap: 8px;
+}
+
+.channel-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  transition: transform 0.2s ease;
+}
+
+.channel-icon:hover {
+  transform: scale(1.1);
+}
+
+.channel-icon.instagram {
+  background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
+  color: white;
+}
+
+.channel-icon.facebook {
+  background: #1877f2;
+  color: white;
+  font-family: sans-serif;
+}
+
+/* Action Buttons */
+.btn-action,
+.btn-action-more {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.btn-action:hover,
+.btn-action-more:hover {
+  background: var(--surface-100);
+  color: var(--text-primary);
+}
+
+.btn-action-more {
+  margin-left: 4px;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px !important;
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .reports-container {
+    padding: 24px 16px;
+  }
+
+  .reports-header {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .btn-new-report {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .reports-table-container {
+    overflow-x: auto;
+  }
+
+  .reports-table {
+    min-width: 800px;
+  }
+}
+
+@media (max-width: 768px) {
+  .reports-title {
+    font-size: 24px;
+  }
+
+  .reports-subtitle {
+    font-size: 13px;
+  }
+
+  .reports-table thead th,
+  .reports-table tbody td {
+    padding: 14px 16px;
+    font-size: 13px;
+  }
+
+  .channel-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+}
+
+/* Dark Mode Adjustments */
+:root[data-theme="dark"] .btn-new-report {
+  background: var(--surface-100);
+  border-color: var(--border-color);
+}
+
+:root[data-theme="dark"] .reports-table thead {
+  background: var(--surface-100);
+}
+
+:root[data-theme="dark"] .reports-table tbody tr:hover {
+  background: var(--surface-100);
+}
+
 /* FACEBOOK DASHBOARD STYLES - Based on Instagram layout with Facebook blue theme */
