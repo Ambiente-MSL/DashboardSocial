@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useLocation, useOutletContext } from "react-router-dom";
 import { differenceInCalendarDays, endOfDay, startOfDay, subDays } from "date-fns";
 import {
@@ -29,11 +29,8 @@ import {
 import useQueryState from "../hooks/useQueryState";
 import { useAccounts } from "../context/AccountsContext";
 import { DEFAULT_ACCOUNTS } from "../data/accounts";
-import { supabase } from "../lib/supabaseClient";
-
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const FALLBACK_ACCOUNT_ID = DEFAULT_ACCOUNTS[0]?.id || "";
-const COVER_BUCKET = "fotos_capa";
 
 const FB_TOPBAR_PRESETS = [
   { id: "7d", label: "7 dias", days: 7 },
@@ -166,7 +163,7 @@ export default function FacebookDashboard() {
   const [getQuery, setQuery] = useQueryState({ account: FALLBACK_ACCOUNT_ID });
   const queryAccountId = getQuery("account");
 
-  useEffect(() => {
+useEffect(() => {
     if (!availableAccounts.length) return;
     if (!queryAccountId || !availableAccounts.some((account) => account.id === queryAccountId)) {
       setQuery({ account: availableAccounts[0].id });
@@ -187,11 +184,6 @@ export default function FacebookDashboard() {
     () => accountConfig?.facebookPageId || accountConfig?.id || "",
     [accountConfig?.id, accountConfig?.facebookPageId],
   );
-
-  const coverStoragePath = useMemo(() => {
-    if (!accountSnapshotKey) return null;
-    return `facebook/${accountSnapshotKey}/cover`;
-  }, [accountSnapshotKey]);
 
   const sinceParam = getQuery("since");
   const untilParam = getQuery("until");
@@ -264,15 +256,9 @@ export default function FacebookDashboard() {
   const [pageError, setPageError] = useState("");
   const [netFollowersSeries, setNetFollowersSeries] = useState([]);
 
-  const coverInputRef = useRef(null);
-  const [coverImageUrl, setCoverImageUrl] = useState("");
-  const [coverError, setCoverError] = useState("");
-  const [coverUploading, setCoverUploading] = useState(false);
   const [overviewSnapshot, setOverviewSnapshot] = useState(null);
-  const [reachApiValue, setReachApiValue] = useState(null);
-  const [reachLoading, setReachLoading] = useState(false);
-  const [followersApiValue, setFollowersApiValue] = useState(null);
-  const [followersLoading, setFollowersLoading] = useState(false);
+  const [overviewLoading, setOverviewLoading] = useState(false);
+  const [overviewSource, setOverviewSource] = useState(null);
 
   const activeSnapshot = useMemo(
     () => (overviewSnapshot?.accountId === accountSnapshotKey && accountSnapshotKey ? overviewSnapshot : null),
@@ -282,55 +268,18 @@ export default function FacebookDashboard() {
   useEffect(() => {
     setPageMetrics([]);
     setNetFollowersSeries([]);
-    setCoverImageUrl("");
-    setCoverError("");
     setOverviewSnapshot(null);
-    setReachApiValue(null);
-    setFollowersApiValue(null);
+    setOverviewSource(null);
+    setOverviewLoading(false);
     setPageError("");
   }, [accountSnapshotKey]);
 
   useEffect(() => {
-    const path = coverStoragePath;
-    if (!path) {
-      setCoverImageUrl("");
-      setCoverError("");
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data, error } = await supabase.storage
-          .from(COVER_BUCKET)
-          .createSignedUrl(path, 3600);
-        if (error) throw error;
-        if (!cancelled) {
-          const signedUrl = data?.signedUrl ? `${data.signedUrl}&cb=${Date.now()}` : "";
-          setCoverImageUrl(signedUrl);
-          setCoverError("");
-        }
-      } catch (err) {
-        if (cancelled) return;
-        const message = err?.message || String(err || "");
-        const notFound = /not\s+found|no such/gim.test(message);
-        if (!notFound) {
-          console.warn("Falha ao carregar capa do perfil", err);
-          setCoverError("Não foi possível carregar a capa.");
-        } else {
-          setCoverError("");
-        }
-        setCoverImageUrl("");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [coverStoragePath]);
-
-  useEffect(() => {
     if (!accountConfig?.facebookPageId) {
-      setReachApiValue(null);
-      setReachLoading(false);
+      setPageMetrics([]);
+      setNetFollowersSeries([]);
+      setOverviewSource(null);
+      setOverviewLoading(false);
       setPageError("Página do Facebook não configurada.");
       return () => {};
     }
@@ -338,141 +287,52 @@ export default function FacebookDashboard() {
     const controller = new AbortController();
     let cancelled = false;
 
-    const loadReachFromApi = async () => {
-      setReachLoading(true);
+    const loadOverviewMetrics = async () => {
+      setOverviewLoading(true);
       setPageError("");
       try {
         const params = new URLSearchParams();
         params.set("pageId", accountConfig.facebookPageId);
         if (sinceParam) params.set("since", sinceParam);
         if (untilParam) params.set("until", untilParam);
-        const url = `${API_BASE_URL}/api/facebook/reach?${params.toString()}`;
+        const url = `${API_BASE_URL}/api/facebook/metrics?${params.toString()}`;
         const response = await fetch(url, { signal: controller.signal });
         const raw = await response.text();
         const json = safeParseJson(raw) || {};
         if (!response.ok) {
-          throw new Error(describeApiError(json, "Falha ao carregar alcance do Facebook."));
+          throw new Error(describeApiError(json, "Falha ao carregar métricas do Facebook."));
         }
         if (cancelled) return;
-        const metricValue = extractNumber(json?.reach?.value, null);
-        setReachApiValue(metricValue != null ? metricValue : null);
+        setPageMetrics(Array.isArray(json.metrics) ? json.metrics : []);
+        setNetFollowersSeries(Array.isArray(json.net_followers_series) ? json.net_followers_series : []);
+        setOverviewSource(json);
       } catch (err) {
-        if (cancelled || err.name === "AbortError") return;
+        if (controller.signal.aborted || cancelled) return;
         console.error(err);
-        setReachApiValue(null);
-        setPageError(err.message || "Não foi possível carregar o alcance do Facebook.");
+        setPageMetrics([]);
+        setNetFollowersSeries([]);
+        setOverviewSource(null);
+        setPageError(err.message || "Não foi possível carregar as métricas do Facebook.");
       } finally {
         if (!cancelled) {
-          setReachLoading(false);
+          setOverviewLoading(false);
         }
       }
     };
 
-    loadReachFromApi();
+    loadOverviewMetrics();
     return () => {
       cancelled = true;
       controller.abort();
     };
   }, [accountConfig?.facebookPageId, sinceParam, untilParam]);
-
-  useEffect(() => {
-    if (!accountConfig?.facebookPageId) {
-      setFollowersApiValue(null);
-      setFollowersLoading(false);
-      return () => {};
-    }
-
-    const controller = new AbortController();
-    let cancelled = false;
-
-    const loadFollowersFromApi = async () => {
-      setFollowersLoading(true);
-      try {
-        const params = new URLSearchParams();
-        params.set("pageId", accountConfig.facebookPageId);
-        if (sinceParam) params.set("since", sinceParam);
-        if (untilParam) params.set("until", untilParam);
-        const url = `${API_BASE_URL}/api/facebook/followers?${params.toString()}`;
-        const response = await fetch(url, { signal: controller.signal });
-        const raw = await response.text();
-        const json = safeParseJson(raw) || {};
-        if (!response.ok) {
-          throw new Error(describeApiError(json, "Falha ao carregar seguidores do Facebook."));
-        }
-        if (cancelled) return;
-        const metricValue = extractNumber(json?.followers?.value, null);
-        setFollowersApiValue(metricValue != null ? metricValue : null);
-      } catch (err) {
-        if (cancelled || err.name === "AbortError") return;
-        console.error(err);
-        setFollowersApiValue(null);
-        setPageError(err.message || "Não foi possível carregar seguidores do Facebook.");
-      } finally {
-        if (!cancelled) {
-          setFollowersLoading(false);
-        }
-      }
-    };
-
-    loadFollowersFromApi();
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [accountConfig?.facebookPageId, sinceParam, untilParam]);
-
-  const handleCoverButtonClick = useCallback(() => {
-    setCoverError("");
-    coverInputRef.current?.click();
-  }, []);
-
-  const handleCoverUpload = useCallback(
-    async (event) => {
-      const file = event.target?.files?.[0];
-      if (!file || !coverStoragePath) {
-        if (event.target) event.target.value = "";
-        return;
-      }
-      setCoverUploading(true);
-      setCoverError("");
-      try {
-        const { error: uploadError } = await supabase.storage
-          .from(COVER_BUCKET)
-          .upload(coverStoragePath, file, {
-            cacheControl: "3600",
-            upsert: true,
-            contentType: file.type || "image/jpeg",
-          });
-        if (uploadError) throw uploadError;
-        const { data, error: signedError } = await supabase.storage
-          .from(COVER_BUCKET)
-          .createSignedUrl(coverStoragePath, 3600);
-        if (signedError) throw signedError;
-        const signedUrl = data?.signedUrl ? `${data.signedUrl}&cb=${Date.now()}` : "";
-        setCoverImageUrl(signedUrl);
-      } catch (err) {
-        console.error("Falha ao enviar capa do perfil", err);
-        setCoverError(err?.message || "Não foi possível salvar a capa.");
-      } finally {
-        setCoverUploading(false);
-        if (event.target) {
-          event.target.value = "";
-        }
-      }
-    },
-    [coverStoragePath],
-  );
-
   const avatarUrl = useMemo(() => (
     accountConfig?.profilePictureUrl || accountConfig?.pagePictureUrl || ""
   ), [accountConfig?.pagePictureUrl, accountConfig?.profilePictureUrl]);
 
-  const coverStyle = useMemo(() => {
-    if (!coverImageUrl) return undefined;
-    return {
-      backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.25) 0%, rgba(15, 23, 42, 0.55) 100%), url(${coverImageUrl})`,
-    };
-  }, [coverImageUrl]);
+  const heroCoverStyle = useMemo(() => ({
+    backgroundImage: "linear-gradient(180deg, rgba(15, 23, 42, 0.25) 0%, rgba(15, 23, 42, 0.65) 100%)",
+  }), []);
 
   // Facebook metrics no longer trigger full API calls; only reach uses the backend.
 
@@ -485,12 +345,35 @@ export default function FacebookDashboard() {
   }, [pageMetrics]);
 
   // Calculate overview metrics
-  const totalFollowers = extractNumber(pageMetricsByKey.followers_total?.value, 0);
-  const reachValue = extractNumber(pageMetricsByKey.reach?.value, 0);
-  const newFollowers = extractNumber(pageMetricsByKey.followers_gained?.value, 0);
-  const postsCount = extractNumber(pageMetricsByKey.posts_count?.value, 3); // Mock value
-  const reachMetricValue = reachApiValue != null ? reachApiValue : reachValue;
-  const followersMetricValue = followersApiValue != null ? followersApiValue : totalFollowers;
+  const followersFallback = extractNumber(overviewSource?.page_overview?.followers_total, 0);
+  const totalFollowers = extractNumber(pageMetricsByKey.followers_total?.value, followersFallback);
+  const reachValue = extractNumber(
+    pageMetricsByKey.reach?.value,
+    extractNumber(overviewSource?.reach, 0),
+  );
+  const newFollowers = extractNumber(
+    pageMetricsByKey.followers_gained?.value,
+    extractNumber(overviewSource?.page_overview?.followers_gained, 0),
+  );
+  const postsCount = extractNumber(
+    pageMetricsByKey.content_activity?.value,
+    extractNumber(overviewSource?.page_overview?.content_activity, 0),
+  );
+  const engagementValue = extractNumber(
+    pageMetricsByKey.post_engagement_total?.value,
+    extractNumber(overviewSource?.engagement?.total, 0),
+  );
+  const impressionsValue = extractNumber(overviewSource?.impressions, 0);
+  const pageViewsValue = extractNumber(
+    pageMetricsByKey.page_views?.value,
+    extractNumber(overviewSource?.page_overview?.page_views, 0),
+  );
+  const clicksValue = extractNumber(
+    pageMetricsByKey.cta_clicks?.value ?? pageMetricsByKey.post_clicks?.value,
+    extractNumber(overviewSource?.page_overview?.cta_clicks, 0),
+  );
+  const reachMetricValue = reachValue;
+  const followersMetricValue = totalFollowers;
 
   const avgFollowersPerDay = useMemo(() => {
     if (netFollowersSeries.length >= 2) {
@@ -509,12 +392,22 @@ export default function FacebookDashboard() {
       reach: activeSnapshot?.reach ?? reachMetricValue ?? 0,
       followersDaily: activeSnapshot?.followersDaily ?? avgFollowersPerDay ?? 0,
       posts: activeSnapshot?.posts ?? postsCount ?? 0,
-      engagement: extractNumber(pageMetricsByKey.post_engagement_total?.value, 0),
-      impressions: extractNumber(pageMetricsByKey.page_impressions?.value, 0),
-      pageViews: extractNumber(pageMetricsByKey.page_views_total?.value, 0),
-      clicks: extractNumber(pageMetricsByKey.page_total_actions?.value, 0),
+      engagement: engagementValue ?? 0,
+      impressions: impressionsValue ?? 0,
+      pageViews: pageViewsValue ?? 0,
+      clicks: clicksValue ?? 0,
     }),
-    [activeSnapshot, avgFollowersPerDay, postsCount, reachMetricValue, followersMetricValue, pageMetricsByKey],
+    [
+      activeSnapshot,
+      avgFollowersPerDay,
+      clicksValue,
+      engagementValue,
+      followersMetricValue,
+      impressionsValue,
+      pageViewsValue,
+      postsCount,
+      reachMetricValue,
+    ],
   );
 
   const reachPeriodLabel = useMemo(() => {
@@ -533,7 +426,11 @@ export default function FacebookDashboard() {
       : "--"
   ), [overviewMetrics.followersDaily]);
 
-  const engagementRateValue = extractNumber(pageMetricsByKey.engagement_rate?.value, null);
+  const engagementRateValue = useMemo(() => {
+    if (!Number.isFinite(engagementValue) || engagementValue <= 0) return null;
+    if (!Number.isFinite(reachMetricValue) || reachMetricValue <= 0) return null;
+    return (engagementValue / reachMetricValue) * 100;
+  }, [engagementValue, reachMetricValue]);
   const engagementRateDisplay = useMemo(() => (
     engagementRateValue != null
       ? `${engagementRateValue.toLocaleString("pt-BR", {
@@ -546,7 +443,7 @@ export default function FacebookDashboard() {
   // Engagement breakdown
   const engagementBreakdown = useMemo(() => {
     const metric = pageMetricsByKey.post_engagement_total;
-    const breakdown = metric?.breakdown || {};
+    const breakdown = metric?.breakdown || overviewSource?.engagement || {};
 
     return [
       {
@@ -562,7 +459,7 @@ export default function FacebookDashboard() {
         value: extractNumber(breakdown.shares, 0),
       },
     ].filter(item => item.value > 0);
-  }, [pageMetricsByKey]);
+  }, [overviewSource, pageMetricsByKey]);
 
   // Gender distribution (placeholder since Facebook API calls were removed)
   const genderStatsSeries = DEFAULT_GENDER_STATS;
@@ -610,6 +507,7 @@ export default function FacebookDashboard() {
   }), []);
 
   const accountInitial = (accountConfig?.label || accountConfig?.name || "FB").charAt(0).toUpperCase();
+  const overviewIsLoading = overviewLoading;
 
   return (
     <div className="facebook-dashboard facebook-dashboard--clean">
@@ -664,25 +562,7 @@ export default function FacebookDashboard() {
         <div className="ig-clean-grid">
           <div className="ig-clean-grid__left">
             <section className="ig-profile-vertical">
-              <div className="ig-profile-vertical__cover" style={coverStyle}>
-                <div className="ig-profile-vertical__cover-actions">
-                  <button
-                    type="button"
-                    className="ig-profile-vertical__cover-button"
-                    onClick={handleCoverButtonClick}
-                    disabled={coverUploading}
-                  >
-                    {coverUploading ? "Salvando..." : "Mudar imagem"}
-                  </button>
-                </div>
-                <input
-                  ref={coverInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg,image/webp"
-                  className="ig-profile-vertical__file-input"
-                  onChange={handleCoverUpload}
-                />
-              </div>
+              <div className="ig-profile-vertical__cover" style={heroCoverStyle} />
 
               <div className="ig-profile-vertical__avatar-wrapper">
                 <div className="ig-profile-vertical__avatar">
@@ -691,9 +571,6 @@ export default function FacebookDashboard() {
               </div>
 
               <div className="ig-profile-vertical__body">
-                {coverError ? (
-                  <p className="ig-profile-vertical__cover-error">{coverError}</p>
-                ) : null}
                 <h3 className="ig-profile-vertical__username">
                   {accountConfig?.label || accountConfig?.name || "Página Facebook"}
                 </h3>
@@ -701,16 +578,16 @@ export default function FacebookDashboard() {
                 <div className="ig-profile-vertical__stats-grid">
                   <div className="ig-overview-stat">
                     <div className="ig-overview-stat__value">
-                      {followersLoading ? "..." : formatNumber(overviewMetrics.followers)}
+                      {overviewIsLoading ? "..." : formatNumber(overviewMetrics.followers)}
                     </div>
                     <div className="ig-overview-stat__label">Total de seguidores</div>
                   </div>
                   <div className="ig-overview-stat">
                     <div className="ig-overview-stat__value">
-                      {reachLoading ? "..." : formatNumber(overviewMetrics.reach)}
+                      {overviewIsLoading ? "..." : formatNumber(overviewMetrics.reach)}
                     </div>
                     <div className="ig-overview-stat__label">
-                      {reachLoading ? "Alcance (carregando)" : reachPeriodLabel}
+                      {overviewIsLoading ? "Alcance (carregando)" : reachPeriodLabel}
                     </div>
                   </div>
                 </div>
