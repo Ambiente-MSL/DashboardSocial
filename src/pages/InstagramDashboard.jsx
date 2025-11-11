@@ -41,6 +41,7 @@ import {
   Settings,
   Shield,
   TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import useQueryState from "../hooks/useQueryState";
 import { useAccounts } from "../context/AccountsContext";
@@ -1355,6 +1356,18 @@ export default function InstagramDashboard() {
     [activeSnapshot, avgFollowersPerDay, followersDelta, postsCount, reachValue, totalFollowers],
   );
 
+  const followerDeltaValue = useMemo(() => {
+    const numeric = Number(overviewMetrics.followersDelta);
+    return Number.isFinite(numeric) ? numeric : 0;
+  }, [overviewMetrics.followersDelta]);
+
+  const FollowerDeltaIcon = followerDeltaValue < 0 ? TrendingDown : TrendingUp;
+  const followerDeltaColor = followerDeltaValue < 0
+    ? "#ef4444"
+    : followerDeltaValue > 0
+      ? "#10b981"
+      : "#9ca3af";
+
   const engagementRateDisplay = useMemo(() => (
     engagementRateValue != null
       ? `${engagementRateValue.toLocaleString("pt-BR", {
@@ -1718,8 +1731,8 @@ export default function InstagramDashboard() {
                   </div>
                   <div className="ig-overview-stat" style={{ paddingTop: '8px' }}>
                     <div className="ig-overview-stat__value" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                      {formatNumber(overviewMetrics.followersDelta || 0)}
-                      <TrendingUp size={20} style={{ color: '#10b981' }} />
+                      {formatNumber(followerDeltaValue)}
+                      <FollowerDeltaIcon size={20} style={{ color: followerDeltaColor }} />
                     </div>
                     <div className="ig-overview-stat__label">Seguidores ganhos</div>
                   </div>
