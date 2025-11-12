@@ -348,19 +348,19 @@ export default function AdsDashboard() {
     <div className="instagram-dashboard instagram-dashboard--clean">
       {/* Container Limpo */}
       <div className="ig-clean-container">
-        {/* Hero Gradient - Dark Blue */}
+        {/* Hero Gradient - Oxford Blue */}
         <div
           className="ig-hero-gradient"
           aria-hidden="true"
           style={{
-            background: 'linear-gradient(180deg, rgba(30, 58, 138, 0.40) 0%, rgba(29, 78, 216, 0.30) 50%, rgba(37, 99, 235, 0.15) 100%)'
+            background: 'linear-gradient(180deg, rgba(0, 33, 71, 0.85) 0%, rgba(0, 33, 71, 0.70) 50%, rgba(0, 33, 71, 0.55) 100%)'
           }}
         />
 
         {/* Header com Logo e Tabs */}
         <div className="ig-clean-header">
           <div className="ig-clean-header__brand">
-            <div className="ig-clean-header__logo" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%)' }}>
+            <div className="ig-clean-header__logo" style={{ background: 'linear-gradient(135deg, #002147 0%, #002d52 100%)' }}>
               <TrendingUp size={32} color="white" />
             </div>
             <h1>Anúncios</h1>
