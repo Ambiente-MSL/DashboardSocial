@@ -791,7 +791,7 @@ export default function AdsDashboard() {
 
           {/* Right Column - Charts */}
           <div className="ig-clean-grid__right">
-            {/* Investimento Chart */}
+            {/* 1. Investimento Chart - PRIORIDADE MÁXIMA */}
             <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
@@ -888,7 +888,7 @@ export default function AdsDashboard() {
               </div>
             </section>
 
-            {/* Performance Metrics Chart */}
+            {/* 2. Performance Metrics Chart - KPIs PRINCIPAIS */}
             <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
@@ -955,118 +955,7 @@ export default function AdsDashboard() {
               </div>
             </section>
 
-            {/* Age Distribution */}
-            <section className="ig-growth-clean">
-              <header className="ig-card-header">
-                <div>
-                  <h3>Distribuição por Idade</h3>
-                  <p className="ig-card-subtitle">Alcance por faixa etária</p>
-                </div>
-              </header>
-
-              <div className="ig-chart-area">
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={MOCK_AGE_DISTRIBUTION} margin={{ top: 16, right: 16, bottom: 16, left: 0 }}>
-                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
-                    <XAxis
-                      dataKey="range"
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(value) => `${value}%`}
-                    />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        return (
-                          <div className="ig-follower-tooltip">
-                            <div className="ig-follower-tooltip__label">
-                              {payload[0].payload.range} anos
-                            </div>
-                            <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
-                          </div>
-                        );
-                      }}
-                    />
-                    <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={48}>
-                      {MOCK_AGE_DISTRIBUTION.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-
-            {/* Campaign Performance by Objective */}
-            <section className="ig-growth-clean">
-              <header className="ig-card-header">
-                <div>
-                  <h3>Performance por Objetivo</h3>
-                  <p className="ig-card-subtitle">Distribuição de investimento</p>
-                </div>
-              </header>
-
-              <div className="ig-chart-area">
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart
-                    data={MOCK_CAMPAIGN_PERFORMANCE}
-                    margin={{ top: 16, right: 16, bottom: 16, left: 80 }}
-                    layout="vertical"
-                  >
-                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" horizontal={false} />
-                    <XAxis
-                      type="number"
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(value) => `${value}%`}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={80}
-                    />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        return (
-                          <div className="ig-follower-tooltip">
-                            <div className="ig-follower-tooltip__label">{payload[0].payload.name}</div>
-                            <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
-                          </div>
-                        );
-                      }}
-                    />
-                    <Bar
-                      dataKey="value"
-                      radius={[0, 8, 8, 0]}
-                      barSize={32}
-                      onMouseEnter={(_, index) => setActiveCampaignIndex(index)}
-                      onMouseLeave={() => setActiveCampaignIndex(-1)}
-                    >
-                      {MOCK_CAMPAIGN_PERFORMANCE.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={entry.color}
-                          opacity={activeCampaignIndex === -1 || activeCampaignIndex === index ? 1 : 0.5}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-
-            {/* Top Campaigns Table */}
+            {/* 3. Top Campaigns Table - IDENTIFICAR O QUE FUNCIONA */}
             <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
@@ -1109,8 +998,8 @@ export default function AdsDashboard() {
               </div>
             </section>
 
-            {/* 📋 CAMPANHAS DETALHADAS */}
-            <section className="ig-growth-clean" style={{ marginTop: '24px' }}>
+            {/* 4. CAMPANHAS DETALHADAS - ANÁLISE PROFUNDA */}
+            <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1219,8 +1108,8 @@ export default function AdsDashboard() {
               </div>
             </section>
 
-            {/* 🎨 CRIATIVOS */}
-            <section className="ig-growth-clean" style={{ marginTop: '24px' }}>
+            {/* 5. CRIATIVOS - PERFORMANCE DE ANÚNCIOS */}
+            <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1289,8 +1178,119 @@ export default function AdsDashboard() {
               </div>
             </section>
 
-            {/* 🧭 SEGMENTAÇÃO E PÚBLICO */}
-            <section className="ig-growth-clean" style={{ marginTop: '24px' }}>
+            {/* 6. Age Distribution - ENTENDER PÚBLICO */}
+            <section className="ig-growth-clean">
+              <header className="ig-card-header">
+                <div>
+                  <h3>Distribuição por Idade</h3>
+                  <p className="ig-card-subtitle">Alcance por faixa etária</p>
+                </div>
+              </header>
+
+              <div className="ig-chart-area">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={MOCK_AGE_DISTRIBUTION} margin={{ top: 16, right: 16, bottom: 16, left: 0 }}>
+                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
+                    <XAxis
+                      dataKey="range"
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        return (
+                          <div className="ig-follower-tooltip">
+                            <div className="ig-follower-tooltip__label">
+                              {payload[0].payload.range} anos
+                            </div>
+                            <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={48}>
+                      {MOCK_AGE_DISTRIBUTION.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+            {/* 7. Campaign Performance by Objective - VISÃO ESTRATÉGICA */}
+            <section className="ig-growth-clean">
+              <header className="ig-card-header">
+                <div>
+                  <h3>Performance por Objetivo</h3>
+                  <p className="ig-card-subtitle">Distribuição de investimento</p>
+                </div>
+              </header>
+
+              <div className="ig-chart-area">
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart
+                    data={MOCK_CAMPAIGN_PERFORMANCE}
+                    margin={{ top: 16, right: 16, bottom: 16, left: 80 }}
+                    layout="vertical"
+                  >
+                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" horizontal={false} />
+                    <XAxis
+                      type="number"
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={80}
+                    />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        return (
+                          <div className="ig-follower-tooltip">
+                            <div className="ig-follower-tooltip__label">{payload[0].payload.name}</div>
+                            <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Bar
+                      dataKey="value"
+                      radius={[0, 8, 8, 0]}
+                      barSize={32}
+                      onMouseEnter={(_, index) => setActiveCampaignIndex(index)}
+                      onMouseLeave={() => setActiveCampaignIndex(-1)}
+                    >
+                      {MOCK_CAMPAIGN_PERFORMANCE.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.color}
+                          opacity={activeCampaignIndex === -1 || activeCampaignIndex === index ? 1 : 0.5}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+            {/* 8. SEGMENTAÇÃO E PÚBLICO - DEMOGRAFIA COMPLETA */}
+            <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1461,8 +1461,8 @@ export default function AdsDashboard() {
               </div>
             </section>
 
-            {/* 💡 INSIGHTS AUTOMÁTICOS */}
-            <section className="ig-growth-clean" style={{ marginTop: '24px' }}>
+            {/* 9. INSIGHTS AUTOMÁTICOS - ALERTAS IMPORTANTES */}
+            <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1506,8 +1506,8 @@ export default function AdsDashboard() {
               </div>
             </section>
 
-            {/* 📥 EXPORTAR */}
-            <section className="ig-growth-clean" style={{ marginTop: '24px' }}>
+            {/* 10. EXPORTAR - AÇÃO FINAL */}
+            <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
