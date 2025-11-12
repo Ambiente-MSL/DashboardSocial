@@ -7,9 +7,9 @@ import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from supabase import Client
-
 from supabase_client import get_supabase_client
+
+SupabaseClient = Any
 
 logger = logging.getLogger(__name__)
 
@@ -120,11 +120,11 @@ def _clone_payload(payload: Any) -> Any:
         return payload
 
 
-def _get_supabase() -> Optional[Client]:
+def _get_supabase() -> Optional[SupabaseClient]:
     return get_supabase_client()
 
 
-def _select_entry(client: Client, table_name: str, cache_key: str) -> Optional[Dict[str, Any]]:
+def _select_entry(client: SupabaseClient, table_name: str, cache_key: str) -> Optional[Dict[str, Any]]:
     try:
         response = client.table(table_name).select("*").eq("cache_key", cache_key).limit(1).execute()
     except Exception as err:  # noqa: BLE001
@@ -135,7 +135,7 @@ def _select_entry(client: Client, table_name: str, cache_key: str) -> Optional[D
     return data[0] if data else None
 
 
-def _persist_entry(client: Client, table_name: str, record: Dict[str, Any]) -> None:
+def _persist_entry(client: SupabaseClient, table_name: str, record: Dict[str, Any]) -> None:
     try:
         client.table(table_name).upsert(record, on_conflict="cache_key").execute()
     except Exception as err:  # noqa: BLE001
@@ -211,7 +211,7 @@ def _build_metadata(record: Dict[str, Any], stale: bool, source: str) -> Dict[st
 
 
 def _refresh_cache_entry(
-    supabase: Client,
+    supabase: SupabaseClient,
     table_name: str,
     cache_key: str,
     resource: str,
@@ -257,7 +257,7 @@ def _refresh_cache_entry(
 
 def _schedule_background_refresh(
     cache_key: str,
-    supabase: Client,
+    supabase: SupabaseClient,
     table_name: str,
     resource: str,
     owner_id: str,
