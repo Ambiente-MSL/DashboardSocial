@@ -7,7 +7,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from cache import get_cached_payload
 from meta import MetaAPIError, ig_window, gget
-from supabase_client import get_supabase_client
+from postgres_client import get_postgres_client
 
 logger = logging.getLogger(__name__)
 
@@ -213,9 +213,9 @@ def snapshot_to_rows(
 def upsert_metrics(rows: Sequence[Dict[str, object]]) -> Tuple[int, int]:
     if not rows:
         return 0, 0
-    client = get_supabase_client()
+    client = get_postgres_client()
     if client is None:
-        raise RuntimeError("Supabase n\u00e3o configurado para ingest\u00e3o.")
+        raise RuntimeError("Banco não configurado para ingestão.")
 
     account_ids = {str(row.get("account_id")) for row in rows if row.get("account_id")}
     metric_keys = {str(row.get("metric_key")) for row in rows if row.get("metric_key")}
@@ -288,7 +288,7 @@ def build_rollup_payload(
 ) -> Dict[str, object]:
     numeric_values = [float(row["value"]) for row in values if row.get("value") is not None]
     if not numeric_values:
-        raise ValueError("Nenhum valor num\u00e9rico encontrado para rollup.")
+        raise ValueError("Nenhum valor numérico encontrado para rollup.")
     value_sum = sum(numeric_values)
     value_avg = value_sum / len(numeric_values)
     payload = {
@@ -320,9 +320,9 @@ def refresh_rollups(
     metric_date: date,
     buckets: Sequence[int] = DEFAULT_BUCKETS,
 ) -> None:
-    client = get_supabase_client()
+    client = get_postgres_client()
     if client is None:
-        raise RuntimeError("Supabase n\u00e3o configurado para rollups.")
+        raise RuntimeError("Banco não configurado para rollups.")
 
     for days in buckets:
         start_date = metric_date - timedelta(days=days - 1)
@@ -384,7 +384,7 @@ def ingest_account_range(
     refresh_rollup: bool = True,
     warm_posts: bool = True,
 ) -> None:
-    log_client = get_supabase_client()
+    log_client = get_postgres_client()
     log_id: Optional[str] = None
     started_at_iso = _now_utc_iso()
     if log_client is not None:

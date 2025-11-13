@@ -7,9 +7,9 @@ import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from supabase_client import get_supabase_client
+from postgres_client import get_postgres_client
 
-SupabaseClient = Any
+PostgresClient = Any
 
 logger = logging.getLogger(__name__)
 
@@ -120,26 +120,26 @@ def _clone_payload(payload: Any) -> Any:
         return payload
 
 
-def _get_supabase() -> Optional[SupabaseClient]:
-    return get_supabase_client()
+def _get_postgres_client() -> Optional[PostgresClient]:
+    return get_postgres_client()
 
 
-def _select_entry(client: SupabaseClient, table_name: str, cache_key: str) -> Optional[Dict[str, Any]]:
+def _select_entry(client: PostgresClient, table_name: str, cache_key: str) -> Optional[Dict[str, Any]]:
     try:
         response = client.table(table_name).select("*").eq("cache_key", cache_key).limit(1).execute()
     except Exception as err:  # noqa: BLE001
-        logger.error("Falha ao consultar cache Supabase: %s", err)
+        logger.error("Falha ao consultar cache no Postgres: %s", err)
         return None
 
     data = getattr(response, "data", None) or []
     return data[0] if data else None
 
 
-def _persist_entry(client: SupabaseClient, table_name: str, record: Dict[str, Any]) -> None:
+def _persist_entry(client: PostgresClient, table_name: str, record: Dict[str, Any]) -> None:
     try:
         client.table(table_name).upsert(record, on_conflict="cache_key").execute()
     except Exception as err:  # noqa: BLE001
-        logger.error("Falha ao persistir cache Supabase: %s", err)
+        logger.error("Falha ao persistir cache no Postgres: %s", err)
         raise
 
 
@@ -160,7 +160,7 @@ def get_latest_cached_payload(
     Returns:
         Tuple contendo (payload, metadata) ou None caso não exista cache disponível.
     """
-    supabase = _get_supabase()
+    supabase = _get_postgres_client()
     if supabase is None:
         return None
 
@@ -211,7 +211,7 @@ def _build_metadata(record: Dict[str, Any], stale: bool, source: str) -> Dict[st
 
 
 def _refresh_cache_entry(
-    supabase: SupabaseClient,
+    supabase: PostgresClient,
     table_name: str,
     cache_key: str,
     resource: str,
@@ -257,7 +257,7 @@ def _refresh_cache_entry(
 
 def _schedule_background_refresh(
     cache_key: str,
-    supabase: SupabaseClient,
+    supabase: PostgresClient,
     table_name: str,
     resource: str,
     owner_id: str,
@@ -314,15 +314,15 @@ def get_cached_payload(
     platform: str = "instagram",
 ) -> Tuple[Any, Dict[str, Any]]:
     """
-    Recupera dados do cache Supabase, buscando na Graph API se necessário.
+    Recupera dados do cache armazenado no Postgres, buscando na Graph API se necessário.
     """
-    supabase = _get_supabase()
+    supabase = _get_postgres_client()
     fetcher = fetcher or FETCHERS.get(resource)
 
     if not fetcher:
         raise RuntimeError(f"Nenhum fetcher definido para '{resource}'")
 
-    # Caso Supabase não esteja configurado, sempre buscar e retornar
+    # Caso o banco não esteja configurado, sempre buscar e retornar
     if supabase is None:
         payload = fetcher(owner_id, since_ts, until_ts, extra)
         now = datetime.now(timezone.utc).isoformat()
@@ -405,7 +405,7 @@ def mark_cache_error(
     error_message: str,
     platform: str = "instagram",
 ) -> None:
-    supabase = _get_supabase()
+    supabase = _get_postgres_client()
     if supabase is None:
         return
 
@@ -433,7 +433,7 @@ def mark_cache_error(
 
 
 def list_due_entries(limit: int = 10, platform: Optional[str] = None) -> List[Dict[str, Any]]:
-    supabase = _get_supabase()
+    supabase = _get_postgres_client()
     if supabase is None:
         return []
     now_iso = datetime.now(timezone.utc).isoformat()

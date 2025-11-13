@@ -8,7 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from cache import get_cached_payload, list_due_entries, mark_cache_error
 from jobs.instagram_ingest import ingest_account_range, resolve_ingest_accounts
-from supabase_client import get_supabase_client
+from postgres_client import get_postgres_client
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +22,9 @@ DEFAULT_INGEST_LOOKBACK_DAYS = int(os.getenv("INSTAGRAM_INGEST_LOOKBACK_DAYS", "
 
 
 def cleanup_old_cache_job() -> None:
-    client = get_supabase_client()
+    client = get_postgres_client()
     if client is None:
-        print("[cleanup-cache] Supabase não configurado; ignorando limpeza.")
+        print("[cleanup-cache] Banco não configurado; ignorando limpeza.")
         return
     try:
         response = client.rpc("cleanup_old_cache", params={}).execute()
@@ -51,8 +51,8 @@ class MetaSyncScheduler:
         if self._started:
             return
 
-        if get_supabase_client() is None:
-            logger.warning("Supabase não configurado. Scheduler de sincronização não iniciado.")
+        if get_postgres_client() is None:
+            logger.warning("Banco não configurado. Scheduler de sincronização não iniciado.")
             return
 
         self._scheduler.add_job(

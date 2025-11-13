@@ -1,6 +1,10 @@
 # backend/server.py
+import base64
+import hashlib
+import hmac
 import os
 import re
+import secrets
 import time
 import logging
 import math
@@ -11,6 +15,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from cache import (
     get_cached_payload,
@@ -33,7 +38,8 @@ from meta import (
 from jobs.instagram_ingest import ingest_account_range, daterange
 from jobs.instagram_comments_ingest import ingest_account_comments
 from scheduler import MetaSyncScheduler
-from supabase_client import get_supabase_client
+from postgres_client import get_postgres_client
+from db import fetch_one
 
 # Configurar logging
 logging.basicConfig(
@@ -44,6 +50,20 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
+
+AUTH_SECRET_KEY = (
+    os.getenv("AUTH_SECRET_KEY")
+    or os.getenv("APP_SECRET_KEY")
+    or os.getenv("META_APP_SECRET")
+)
+if not AUTH_SECRET_KEY:
+    AUTH_SECRET_KEY = "change-me"
+    logger.warning("AUTH_SECRET_KEY not set; using insecure fallback token secret.")
+
+AUTH_SERIALIZER = URLSafeTimedSerializer(AUTH_SECRET_KEY, salt="dashboardsocial-auth")
+AUTH_TOKEN_TTL_SECONDS = int(os.getenv("AUTH_TOKEN_TTL_SECONDS", "86400"))
+PASSWORD_HASH_ITERATIONS = int(os.getenv("AUTH_PBKDF2_ITERATIONS", "260000"))
+PASSWORD_HASH_SCHEME = "pbkdf2_sha256"
 
 PAGE_ID = os.getenv("META_PAGE_ID")
 IG_ID = os.getenv("META_IG_USER_ID")
@@ -70,6 +90,7 @@ IG_ROLLUP_BUCKETS = ("7d", "30d", "90d")
 DEFAULT_CACHE_PLATFORM = "instagram"
 IG_COMMENTS_TABLE = "ig_comments"
 IG_COMMENTS_DAILY_TABLE = "ig_comments_daily"
+APP_USERS_TABLE = "app_users"
 WORDCLOUD_DEFAULT_TOP = 120
 WORDCLOUD_MAX_TOP = 250
 WORDCLOUD_MAX_RANGE_DAYS = 365
@@ -734,10 +755,108 @@ def _unix_to_date(value: int) -> date:
     return datetime.fromtimestamp(value, tz=timezone.utc).date()
 
 
+def _hash_password(password: str) -> str:
+    salt = secrets.token_bytes(16)
+    derived = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        PASSWORD_HASH_ITERATIONS,
+    )
+    return (
+        f"{PASSWORD_HASH_SCHEME}${PASSWORD_HASH_ITERATIONS}$"
+        f"{base64.b64encode(salt).decode()}$"
+        f"{base64.b64encode(derived).decode()}"
+    )
+
+
+def _verify_password(password: str, encoded: Optional[str]) -> bool:
+    if not encoded:
+        return False
+    try:
+        scheme, iter_str, salt_b64, hash_b64 = encoded.split("$", 3)
+        if scheme != PASSWORD_HASH_SCHEME:
+            return False
+        iterations = int(iter_str)
+        salt = base64.b64decode(salt_b64.encode())
+        expected = base64.b64decode(hash_b64.encode())
+        candidate = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            salt,
+            iterations,
+        )
+        return hmac.compare_digest(candidate, expected)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _issue_auth_token(user_id: str) -> str:
+    return AUTH_SERIALIZER.dumps({"sub": user_id})
+
+
+def _decode_auth_token(token: str) -> Optional[str]:
+    try:
+        data = AUTH_SERIALIZER.loads(token, max_age=AUTH_TOKEN_TTL_SECONDS)
+        return data.get("sub")
+    except (BadSignature, SignatureExpired):
+        return None
+
+
+def _extract_bearer_token(req) -> Optional[str]:
+    header = req.headers.get("Authorization", "").strip()
+    if header.lower().startswith("bearer "):
+        candidate = header[7:].strip()
+        if candidate:
+            return candidate
+    token = req.args.get("token")
+    if token:
+        return token.strip()
+    return None
+
+
+def _serialize_user_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "id": row.get("id"),
+        "email": row.get("email"),
+        "role": row.get("role"),
+        "nome": row.get("nome"),
+    }
+
+
+def _fetch_user_by_email(email: str) -> Optional[Dict[str, Any]]:
+    normalized = email.strip().lower()
+    if not normalized:
+        return None
+    return fetch_one(
+        f"""
+        SELECT id, email, role, nome, password_hash
+        FROM {APP_USERS_TABLE}
+        WHERE lower(email) = %(email)s
+        LIMIT 1
+        """,
+        {"email": normalized},
+    )
+
+
+def _fetch_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
+    if not user_id:
+        return None
+    return fetch_one(
+        f"""
+        SELECT id, email, role, nome, password_hash
+        FROM {APP_USERS_TABLE}
+        WHERE id = %(user_id)s
+        LIMIT 1
+        """,
+        {"user_id": user_id},
+    )
+
+
 def _ensure_instagram_daily_metrics(ig_id: str, start_date: date, end_date: date) -> None:
-    client = get_supabase_client()
+    client = get_postgres_client()
     if client is None:
-        logger.debug("Supabase n\u00e3o configurado; pulando _ensure_instagram_daily_metrics.")
+        logger.debug("Banco n\u00e3o configurado; pulando _ensure_instagram_daily_metrics.")
         return
 
     response = (
@@ -780,7 +899,7 @@ def _ensure_instagram_daily_metrics(ig_id: str, start_date: date, end_date: date
 
 
 def _load_metrics_map(ig_id: str, start_date: date, end_date: date) -> Dict[str, List[Dict[str, Any]]]:
-    client = get_supabase_client()
+    client = get_postgres_client()
     if client is None:
         return {}
 
@@ -819,7 +938,7 @@ def _load_metrics_map(ig_id: str, start_date: date, end_date: date) -> Dict[str,
 
 
 def _load_instagram_rollups(ig_id: str, end_date: date) -> Dict[str, Dict[str, Any]]:
-    client = get_supabase_client()
+    client = get_postgres_client()
     if client is None:
         return {}
 
@@ -923,7 +1042,7 @@ def _to_float(value: Optional[Any]) -> Optional[float]:
 
 
 def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) -> Optional[Dict[str, Any]]:
-    client = get_supabase_client()
+    client = get_postgres_client()
     if client is None:
         return None
 
@@ -1149,6 +1268,40 @@ def meta_error_response(err: MetaAPIError):
     return jsonify(payload), 502
 
 
+@app.post("/api/auth/login")
+def auth_login() -> Any:
+    payload = request.get_json(silent=True) or {}
+    email = str(payload.get("email") or "").strip().lower()
+    password = str(payload.get("password") or "")
+
+    if not email or not password:
+        return jsonify({"error": "email and password are required"}), 400
+
+    user_row = _fetch_user_by_email(email)
+    if not user_row or not _verify_password(password, user_row.get("password_hash")):
+        return jsonify({"error": "invalid credentials"}), 401
+
+    token = _issue_auth_token(user_row["id"])
+    return jsonify({"token": token, "user": _serialize_user_row(user_row)})
+
+
+@app.get("/api/auth/session")
+def auth_session() -> Any:
+    token = _extract_bearer_token(request)
+    if not token:
+        return jsonify({"error": "missing token"}), 401
+
+    user_id = _decode_auth_token(token)
+    if not user_id:
+        return jsonify({"error": "invalid or expired token"}), 401
+
+    user_row = _fetch_user_by_id(user_id)
+    if not user_row:
+        return jsonify({"error": "user not found"}), 404
+
+    return jsonify({"token": token, "user": _serialize_user_row(user_row)})
+
+
 @app.get("/api/facebook/metrics")
 def facebook_metrics():
     page_id = request.args.get("pageId", PAGE_ID)
@@ -1181,7 +1334,7 @@ def facebook_metrics():
 def facebook_followers():
     """
     Retorna apenas o total de seguidores da página do Facebook para o período solicitado.
-    Consulta diretamente a Meta API sem usar o cache Supabase.
+    Consulta diretamente a Meta API sem usar o cache mantido no Postgres.
     """
     page_id = request.args.get("pageId", PAGE_ID)
     if not page_id:
@@ -1225,7 +1378,7 @@ def facebook_followers():
 def facebook_reach():
     """
     Retorna apenas a métrica de alcance da página do Facebook para o período solicitado.
-    Consulta diretamente a Meta API sem usar o cache Supabase.
+    Consulta diretamente a Meta API sem usar o cache mantido no Postgres.
     """
     page_id = request.args.get("pageId", PAGE_ID)
     if not page_id:
@@ -1286,7 +1439,7 @@ def facebook_posts():
 def facebook_audience():
     """
     Retorna dados demográficos do Facebook (cidades, países, idade, gênero).
-    Usa cache Supabase e fallback em caso de erro da API.
+    Usa o cache armazenado no Postgres e fallback em caso de erro da API.
     """
     page_id = request.args.get("pageId", PAGE_ID)
     if not page_id:
@@ -1337,7 +1490,7 @@ def facebook_audience():
 @app.get("/api/instagram/metrics")
 def instagram_metrics():
     """
-    Cards orgânicos (conta) — usa cache Supabase antes de acessar a Graph API.
+    Cards orgânicos (conta) — usa cache do Postgres antes de acessar a Graph API.
     """
     ig = request.args.get("igUserId", IG_ID)
     if not ig:
@@ -1590,9 +1743,9 @@ def instagram_comments_wordcloud():
     since_iso = datetime.combine(since_date, datetime.min.time()).replace(tzinfo=timezone.utc).isoformat()
     until_iso = datetime.combine(until_date, datetime.max.time()).replace(tzinfo=timezone.utc).isoformat()
 
-    client = get_supabase_client()
+    client = get_postgres_client()
     if client is None:
-        return jsonify({"error": "Supabase client is not configured"}), 500
+        return jsonify({"error": "Database client is not configured"}), 500
 
     try:
         rows = fetch_comments_for_wordcloud(client, ig_user_id, since_iso, until_iso)

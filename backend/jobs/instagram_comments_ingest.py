@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
 
 from meta import MetaAPIError, gget
-from supabase_client import get_supabase_client
+from postgres_client import get_postgres_client
 
 logger = logging.getLogger(__name__)
 
@@ -210,7 +210,7 @@ def normalize_comment_record(
     fetched_at: datetime,
 ) -> Optional[Dict[str, object]]:
     """
-    Build Supabase row for a comment or reply.
+    Build a Postgres row for a comment or reply.
     """
     comment_id = str(comment.get("id") or "").strip()
     text = (comment.get("text") or "").strip()
@@ -269,9 +269,9 @@ def fetch_existing_comment_ids(client, comment_ids: Sequence[str]) -> set[str]:
 def upsert_comments(rows: Sequence[Dict[str, object]]) -> Tuple[int, int]:
     if not rows:
         return 0, 0
-    client = get_supabase_client()
+    client = get_postgres_client()
     if client is None:
-        raise RuntimeError("Supabase client is not configured.")
+        raise RuntimeError("Database client is not configured.")
 
     deduplicated: Dict[str, Dict[str, object]] = {}
     for row in rows:
@@ -301,9 +301,9 @@ def upsert_comments(rows: Sequence[Dict[str, object]]) -> Tuple[int, int]:
 def refresh_daily_rollup(account_id: str, comments: Sequence[Dict[str, object]]) -> None:
     if not comments:
         return
-    client = get_supabase_client()
+    client = get_postgres_client()
     if client is None:
-        raise RuntimeError("Supabase client is not configured.")
+        raise RuntimeError("Database client is not configured.")
 
     counts: Dict[str, int] = defaultdict(int)
     for comment in comments:

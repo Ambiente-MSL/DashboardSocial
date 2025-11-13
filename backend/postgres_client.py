@@ -14,13 +14,13 @@ from db import get_pool, is_configured
 logger = logging.getLogger(__name__)
 
 _instance_lock = threading.Lock()
-_client: Optional["SupabaseLikeClient"] = None
+_client: Optional["PostgresLikeClient"] = None
 
 _COLUMN_RE = re.compile(r"^[A-Za-z0-9_]+$")
 _SELECT_SPLITTER = re.compile(r"\s*,\s*")
 
 
-class SupabaseLikeClient:
+class PostgresLikeClient:
     def table(self, name: str) -> "TableQuery":
         return TableQuery(name)
 
@@ -338,7 +338,7 @@ class RpcQuery:
         return SimpleNamespace(data=rows, error=None)
 
 
-def get_supabase_client() -> Optional[SupabaseLikeClient]:
+def get_postgres_client() -> Optional[PostgresLikeClient]:
     global _client
 
     if _client is not None:
@@ -349,5 +349,5 @@ def get_supabase_client() -> Optional[SupabaseLikeClient]:
 
     with _instance_lock:
         if _client is None:
-            _client = SupabaseLikeClient()
+            _client = PostgresLikeClient()
     return _client

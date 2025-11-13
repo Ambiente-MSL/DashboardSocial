@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Iterable, List, Optional, Sequence, Tuple
 
 from meta import ig_window
-from supabase_client import get_supabase_client
+from postgres_client import get_postgres_client
 from jobs.instagram_ingest import (
     snapshot_to_rows,
     daterange,
@@ -24,9 +24,9 @@ def _now_iso() -> str:
 
 
 def _insert_log(account_id: str) -> Tuple[Optional[object], Optional[object]]:
-    client = get_supabase_client()
+    client = get_postgres_client()
     if client is None:
-        print("[backfill] Supabase não configurado; logs desabilitados.")
+        print("[backfill] Banco não configurado; logs desabilitados.")
         return None, None
     record = {
         "platform": PLATFORM,
