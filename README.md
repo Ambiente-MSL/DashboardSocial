@@ -64,6 +64,24 @@ META_IG_USER_ID=123456789
 META_AD_ACCOUNT_ID=act_123456
 
 
+Banco de dados PostgreSQL:
+
+1. Configure as variáveis `DATABASE_*` e `AUTH_SECRET_KEY` no arquivo `backend/.env` para apontar para o seu servidor Postgres (ou defina `DATABASE_URL` diretamente).
+2. Execute o script `backend/sql/app_tables.sql` em seu banco para criar as tabelas `app_users`, `report_templates` e `reports` utilizadas pelo backend:
+   ```
+   psql "postgresql://usuario:senha@host:5432/monitor_db" -f backend/sql/app_tables.sql
+   ```
+3. Crie o primeiro usuário diretamente na tabela `app_users` ou usando o endpoint `/api/auth/register`. O backend utiliza o campo `role` para liberar o painel de administração (`analista` ou `admin`).
+4. Para redefinir senhas existentes (ou criar usuários rapidamente) use o utilitário `backend/scripts/update_user_password.py`:
+   ```
+   cd backend
+   python scripts/update_user_password.py usuario@empresa.com "NovaSenhaForte123"
+   # ou crie um usuário admin caso ele ainda não exista
+   python scripts/update_user_password.py admin@empresa.com "SenhaSecreta!" --nome "Administrador" --role admin --create
+   ```
+   O script aplica o mesmo algoritmo PBKDF2 usado pela API e atualiza o registro no Postgres automaticamente.
+
+
 Rodar backend:
 
 python server.py
@@ -74,6 +92,7 @@ Disponível em http://localhost:3001
 3. Configurar o Frontend
 cd my-app
 npm install
+cp .env.example .env # defina REACT_APP_API_URL=http://localhost:3001 (ou URL do backend)
 npm run dev
 
 

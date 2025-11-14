@@ -6,8 +6,8 @@ import threading
 from types import SimpleNamespace
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
-from psycopg import sql
-from psycopg.rows import dict_row
+from psycopg2 import sql
+from psycopg2.extras import RealDictCursor
 
 from db import get_pool, is_configured
 
@@ -126,7 +126,7 @@ class TableQuery:
             raise RuntimeError("Database connection is not configured.")
 
         with pool.connection() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 if self._action == "select":
                     query, params = self._build_select()
                     cur.execute(query, params)
@@ -321,7 +321,7 @@ class RpcQuery:
             raise RuntimeError("Database connection is not configured.")
 
         with pool.connection() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 if self.params:
                     placeholders = sql.SQL(", ").join(
                         sql.Placeholder(key) for key in self.params.keys()

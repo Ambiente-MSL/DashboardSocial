@@ -1,22 +1,21 @@
 # backend/server.py
-import base64
-import hashlib
-import hmac
 import os
 import re
-import secrets
 import time
 import logging
 import math
 import unicodedata
+import uuid
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from psycopg2.extras import Json
 
+from auth_utils import hash_password as _hash_password, verify_password as _verify_password
 from cache import (
     get_cached_payload,
     get_latest_cached_payload,
@@ -39,7 +38,7 @@ from jobs.instagram_ingest import ingest_account_range, daterange
 from jobs.instagram_comments_ingest import ingest_account_comments
 from scheduler import MetaSyncScheduler
 from postgres_client import get_postgres_client
-from db import fetch_one
+from db import execute, fetch_all, fetch_one
 
 # Configurar logging
 logging.basicConfig(
@@ -48,8 +47,44 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+DEFAULT_DEV_ORIGINS = [
+    "http://localhost:3010",
+    "http://127.0.0.1:3010",
+]
+
+
+def _resolve_allowed_origins() -> Union[str, List[str]]:
+    raw_values = []
+    env_multiple = os.getenv("FRONTEND_ORIGINS")
+    env_single = os.getenv("FRONTEND_ORIGIN")
+    if env_multiple:
+        raw_values.append(env_multiple)
+    if env_single:
+        raw_values.append(env_single)
+
+    if raw_values:
+        normalized: List[str] = []
+        for chunk in raw_values:
+            pieces = [item.strip() for item in chunk.split(",")]
+            for item in pieces:
+                if item and item not in normalized:
+                    normalized.append(item)
+        if not normalized:
+            return DEFAULT_DEV_ORIGINS
+        if len(normalized) == 1:
+            return normalized[0]
+        return normalized
+
+    return DEFAULT_DEV_ORIGINS
+
+
 app = Flask(__name__)
-CORS(app)
+CORS(
+    app,
+    resources={r"/api/*": {"origins": _resolve_allowed_origins()}},
+    supports_credentials=True,
+)
 
 AUTH_SECRET_KEY = (
     os.getenv("AUTH_SECRET_KEY")
@@ -62,8 +97,6 @@ if not AUTH_SECRET_KEY:
 
 AUTH_SERIALIZER = URLSafeTimedSerializer(AUTH_SECRET_KEY, salt="dashboardsocial-auth")
 AUTH_TOKEN_TTL_SECONDS = int(os.getenv("AUTH_TOKEN_TTL_SECONDS", "86400"))
-PASSWORD_HASH_ITERATIONS = int(os.getenv("AUTH_PBKDF2_ITERATIONS", "260000"))
-PASSWORD_HASH_SCHEME = "pbkdf2_sha256"
 
 PAGE_ID = os.getenv("META_PAGE_ID")
 IG_ID = os.getenv("META_IG_USER_ID")
@@ -91,6 +124,9 @@ DEFAULT_CACHE_PLATFORM = "instagram"
 IG_COMMENTS_TABLE = "ig_comments"
 IG_COMMENTS_DAILY_TABLE = "ig_comments_daily"
 APP_USERS_TABLE = "app_users"
+REPORT_TEMPLATES_TABLE = "report_templates"
+REPORTS_TABLE = "reports"
+DEFAULT_USER_ROLE = os.getenv("DEFAULT_USER_ROLE", "analista")
 WORDCLOUD_DEFAULT_TOP = 120
 WORDCLOUD_MAX_TOP = 250
 WORDCLOUD_MAX_RANGE_DAYS = 365
@@ -111,6 +147,8 @@ WORDCLOUD_STOPWORDS = {
     "to", "of", "in", "on", "at", "by", "or", "an", "is", "be", "it", "its", "we", "us", "our", "ours", "they", "them", "their", "theirs",
     "https", "http", "www"
 }
+EMAIL_VALIDATION_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+VALID_USER_ROLES = {"analista", "admin"}
 
 
 def validate_timestamp(ts: int, param_name: str = "timestamp") -> int:
@@ -755,42 +793,6 @@ def _unix_to_date(value: int) -> date:
     return datetime.fromtimestamp(value, tz=timezone.utc).date()
 
 
-def _hash_password(password: str) -> str:
-    salt = secrets.token_bytes(16)
-    derived = hashlib.pbkdf2_hmac(
-        "sha256",
-        password.encode("utf-8"),
-        salt,
-        PASSWORD_HASH_ITERATIONS,
-    )
-    return (
-        f"{PASSWORD_HASH_SCHEME}${PASSWORD_HASH_ITERATIONS}$"
-        f"{base64.b64encode(salt).decode()}$"
-        f"{base64.b64encode(derived).decode()}"
-    )
-
-
-def _verify_password(password: str, encoded: Optional[str]) -> bool:
-    if not encoded:
-        return False
-    try:
-        scheme, iter_str, salt_b64, hash_b64 = encoded.split("$", 3)
-        if scheme != PASSWORD_HASH_SCHEME:
-            return False
-        iterations = int(iter_str)
-        salt = base64.b64decode(salt_b64.encode())
-        expected = base64.b64decode(hash_b64.encode())
-        candidate = hashlib.pbkdf2_hmac(
-            "sha256",
-            password.encode("utf-8"),
-            salt,
-            iterations,
-        )
-        return hmac.compare_digest(candidate, expected)
-    except Exception:  # noqa: BLE001
-        return False
-
-
 def _issue_auth_token(user_id: str) -> str:
     return AUTH_SERIALIZER.dumps({"sub": user_id})
 
@@ -850,6 +852,63 @@ def _fetch_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
         LIMIT 1
         """,
         {"user_id": user_id},
+    )
+
+
+def _authenticate_request(req):
+    token = _extract_bearer_token(req)
+    if not token:
+        return None, (jsonify({"error": "missing token"}), 401)
+    user_id = _decode_auth_token(token)
+    if not user_id:
+        return None, (jsonify({"error": "invalid or expired token"}), 401)
+    user_row = _fetch_user_by_id(user_id)
+    if not user_row:
+        return None, (jsonify({"error": "user not found"}), 404)
+    return user_row, None
+
+
+def _create_app_user(email: str, password: str, nome: str, role: Optional[str] = None) -> str:
+    user_id = str(uuid.uuid4())
+    hashed = _hash_password(password)
+    normalized_role = role or DEFAULT_USER_ROLE or "analista"
+    execute(
+        f"""
+        INSERT INTO {APP_USERS_TABLE} (id, email, password_hash, role, nome)
+        VALUES (%(id)s, %(email)s, %(password_hash)s, %(role)s, %(nome)s)
+        """,
+        {
+            "id": user_id,
+            "email": email,
+            "password_hash": hashed,
+            "role": normalized_role,
+            "nome": nome,
+        },
+    )
+    return user_id
+
+
+def _list_app_users() -> List[Dict[str, Any]]:
+    return (
+        fetch_all(
+            f"""
+            SELECT id, email, role, nome, created_at, updated_at
+            FROM {APP_USERS_TABLE}
+            ORDER BY created_at DESC NULLS LAST
+            """
+        )
+        or []
+    )
+
+
+def _update_app_user_role(user_id: str, role: str) -> None:
+    execute(
+        f"""
+        UPDATE {APP_USERS_TABLE}
+        SET role = %(role)s, updated_at = NOW()
+        WHERE id = %(user_id)s
+        """,
+        {"role": role, "user_id": user_id},
     )
 
 
@@ -1268,6 +1327,34 @@ def meta_error_response(err: MetaAPIError):
     return jsonify(payload), 502
 
 
+@app.post("/api/auth/register")
+def auth_register() -> Any:
+    payload = request.get_json(silent=True) or {}
+    email = str(payload.get("email") or "").strip().lower()
+    password = str(payload.get("password") or "")
+    nome = str(payload.get("nome") or "").strip()
+
+    if not email or not EMAIL_VALIDATION_RE.match(email):
+        return jsonify({"error": "invalid email"}), 400
+    if len(password) < 6:
+        return jsonify({"error": "password must be at least 6 characters"}), 400
+    if not nome:
+        return jsonify({"error": "nome is required"}), 400
+
+    if _fetch_user_by_email(email):
+        return jsonify({"error": "email already registered"}), 409
+
+    try:
+        user_id = _create_app_user(email, password, nome)
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Failed to register user")
+        return jsonify({"error": "could not register user"}), 500
+
+    user_row = _fetch_user_by_id(user_id)
+    token = _issue_auth_token(user_id)
+    return jsonify({"token": token, "user": _serialize_user_row(user_row)}), 201
+
+
 @app.post("/api/auth/login")
 def auth_login() -> Any:
     payload = request.get_json(silent=True) or {}
@@ -1300,6 +1387,155 @@ def auth_session() -> Any:
         return jsonify({"error": "user not found"}), 404
 
     return jsonify({"token": token, "user": _serialize_user_row(user_row)})
+
+
+@app.get("/api/admin/users")
+def admin_list_users() -> Any:
+    user, error = _authenticate_request(request)
+    if error:
+        return error
+    if user.get("role") != "admin":
+        return jsonify({"error": "forbidden"}), 403
+    try:
+        rows = _list_app_users()
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Failed to fetch user list")
+        return jsonify({"error": "could not load users"}), 500
+    return jsonify({"users": rows})
+
+
+@app.patch("/api/admin/users/<user_id>")
+def admin_update_user(user_id: str) -> Any:
+    user, error = _authenticate_request(request)
+    if error:
+        return error
+    if user.get("role") != "admin":
+        return jsonify({"error": "forbidden"}), 403
+
+    payload = request.get_json(silent=True) or {}
+    next_role = str(payload.get("role") or "").strip().lower()
+    if next_role not in VALID_USER_ROLES:
+        return jsonify({"error": "invalid role"}), 400
+    if user_id == user.get("id"):
+        return jsonify({"error": "cannot update own role"}), 400
+    if not _fetch_user_by_id(user_id):
+        return jsonify({"error": "user not found"}), 404
+
+    try:
+        _update_app_user_role(user_id, next_role)
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Failed to update role for %s", user_id)
+        return jsonify({"error": "could not update role"}), 500
+    return jsonify({"success": True})
+
+
+@app.get("/api/report-templates")
+def list_report_templates() -> Any:
+    user, error = _authenticate_request(request)
+    if error:
+        return error
+    try:
+        rows = fetch_all(
+            f"""
+            SELECT id, name, description, default_params, created_at
+            FROM {REPORT_TEMPLATES_TABLE}
+            ORDER BY created_at DESC NULLS LAST
+            """
+        ) or []
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Failed to load report templates")
+        return jsonify({"error": "could not load templates"}), 500
+    return jsonify({"templates": rows})
+
+
+@app.get("/api/reports")
+def list_reports() -> Any:
+    user, error = _authenticate_request(request)
+    if error:
+        return error
+    try:
+        rows = fetch_all(
+            f"""
+            SELECT id, name, template_id, params, created_by, created_at
+            FROM {REPORTS_TABLE}
+            ORDER BY created_at DESC NULLS LAST
+            """
+        ) or []
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Failed to load reports")
+        return jsonify({"error": "could not load reports"}), 500
+    return jsonify({"reports": rows})
+
+
+@app.post("/api/reports")
+def create_report() -> Any:
+    user, error = _authenticate_request(request)
+    if error:
+        return error
+
+    payload = request.get_json(silent=True) or {}
+    name = str(payload.get("name") or "").strip()
+    template_id = str(
+        payload.get("template_id") or payload.get("templateId") or ""
+    ).strip()
+    params_payload = payload.get("params") or {}
+
+    if not name:
+        return jsonify({"error": "name is required"}), 400
+    if not template_id:
+        return jsonify({"error": "template_id is required"}), 400
+    if not isinstance(params_payload, dict):
+        params_payload = {}
+
+    report_id = str(uuid.uuid4())
+    try:
+        execute(
+            f"""
+            INSERT INTO {REPORTS_TABLE} (id, name, template_id, params, created_by)
+            VALUES (%(id)s, %(name)s, %(template_id)s, %(params)s, %(created_by)s)
+            """,
+            {
+                "id": report_id,
+                "name": name,
+                "template_id": template_id,
+                "params": Json(params_payload),
+                "created_by": user.get("id"),
+            },
+        )
+        created = fetch_one(
+            f"""
+            SELECT id, name, template_id, params, created_by, created_at
+            FROM {REPORTS_TABLE}
+            WHERE id = %(id)s
+            """,
+            {"id": report_id},
+        )
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Failed to create report")
+        return jsonify({"error": "could not create report"}), 500
+
+    return jsonify({"report": created}), 201
+
+
+@app.delete("/api/reports/<report_id>")
+def delete_report(report_id: str) -> Any:
+    user, error = _authenticate_request(request)
+    if error:
+        return error
+
+    params = {"id": report_id}
+    query = f"DELETE FROM {REPORTS_TABLE} WHERE id = %(id)s"
+    if user.get("role") != "admin":
+        query += " AND created_by = %(created_by)s"
+        params["created_by"] = user.get("id")
+
+    try:
+        execute(query, params)
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Failed to delete report %s", report_id)
+        return jsonify({"error": "could not delete report"}), 500
+
+    return jsonify({"success": True})
 
 
 @app.get("/api/facebook/metrics")
@@ -2093,4 +2329,10 @@ if os.getenv("META_SYNC_AUTOSTART", "1") != "0":
 
 
 if __name__ == "__main__":
-    app.run(port=3001, debug=True)
+    debug_env = os.getenv("FLASK_DEBUG")
+    debug_mode = True
+    if debug_env is not None:
+        debug_mode = debug_env.lower() not in {"0", "false", "no"}
+    run_host = os.getenv("FLASK_RUN_HOST") or os.getenv("HOST") or "0.0.0.0"
+    run_port = int(os.getenv("PORT", "3001"))
+    app.run(host=run_host, port=run_port, debug=debug_mode)

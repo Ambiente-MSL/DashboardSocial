@@ -8,20 +8,20 @@ const translateError = (rawMessage) => {
     return 'Nao foi possivel criar sua conta. Tente novamente em instantes.';
   }
   const normalized = String(rawMessage).toLowerCase();
-  if (normalized.includes('password')) {
+  if (normalized.includes('password must')) {
     return 'Senha invalida. Use ao menos 6 caracteres.';
   }
   if (normalized.includes('already registered') || normalized.includes('user already registered')) {
     return 'E-mail ja cadastrado. Tente fazer login ou use outro e-mail.';
   }
-  if (normalized.includes('email') && normalized.includes('invalid')) {
+  if (normalized.includes('invalid email')) {
     return 'E-mail invalido. Verifique o formato.';
   }
-  if (normalized.includes('insert') || normalized.includes('user_profiles')) {
-    return 'Erro ao criar perfil. Verifique se a tabela user_profiles existe no Supabase.';
+  if (normalized.includes('nome is required')) {
+    return 'Informe seu nome completo para finalizar o cadastro.';
   }
-  if (normalized.includes('policy') || normalized.includes('permission')) {
-    return 'Erro de permissao. Verifique as policies RLS no Supabase.';
+  if (normalized.includes('could not register')) {
+    return 'Falha ao criar conta. Tente novamente em seguida.';
   }
   return rawMessage;
 };

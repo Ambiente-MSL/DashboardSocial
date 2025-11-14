@@ -1,15 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Shield, UserCog, AlertCircle, CheckCircle } from 'lucide-react';
 import Section from '../components/Section';
 import NavigationHero from '../components/NavigationHero';
-import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 
 export default function Admin() {
   const outletContext = useOutletContext() || {};
   const { setTopbarConfig, resetTopbarConfig } = outletContext;
-  const { user, role } = useAuth();
+  const { user, role, apiFetch } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,50 +21,42 @@ export default function Admin() {
     return () => resetTopbarConfig?.();
   }, [setTopbarConfig, resetTopbarConfig]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-
-      // Buscar da view que combina user_profiles + auth.users
-      const { data, error: fetchError } = await supabase
-        .from('user_profiles_with_email')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-      setUsers(data || []);
+      const payload = await apiFetch('/api/admin/users');
+      setUsers(Array.isArray(payload?.users) ? payload.users : []);
     } catch (err) {
       console.error('Erro ao buscar usuarios:', err);
-      setError('Erro ao carregar lista de usuarios: ' + err.message);
+      setError('Erro ao carregar lista de usuarios: ' + (err?.message || 'falha desconhecida'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiFetch]);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   const handleRoleChange = async (userId, newRole) => {
+    if (!newRole) return;
     try {
       setUpdating(userId);
       setError('');
       setSuccess('');
 
-      const { error: updateError } = await supabase
-        .from('user_profiles')
-        .update({ role: newRole, updated_at: new Date().toISOString() })
-        .eq('id', userId);
-
-      if (updateError) throw updateError;
+      await apiFetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        body: { role: newRole },
+      });
 
       setSuccess(`Role atualizada para ${newRole} com sucesso!`);
       await fetchUsers();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Erro ao atualizar role:', err);
-      setError('Erro ao atualizar role: ' + err.message);
+      setError('Erro ao atualizar role: ' + (err?.message || 'falha desconhecida'));
     } finally {
       setUpdating(null);
     }

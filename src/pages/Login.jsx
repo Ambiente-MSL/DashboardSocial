@@ -8,8 +8,11 @@ const translateError = (rawMessage) => {
     return 'Não foi possível acessar sua conta. Verifique as credenciais.';
   }
   const normalized = String(rawMessage).toLowerCase();
-  if (normalized.includes('invalid login')) {
+  if (normalized.includes('invalid credentials')) {
     return 'Credenciais inválidas. Verifique os dados informados.';
+  }
+  if (normalized.includes('email') && normalized.includes('required')) {
+    return 'Informe e-mail e senha para continuar.';
   }
   if (normalized.includes('network')) {
     return 'Falha de rede ao conectar. Tente novamente em instantes.';
@@ -83,7 +86,9 @@ export default function Login() {
             disabled={submitting}
           />
           {formError && <p className="auth-error">{formError}</p>}
-          <a className="auth-link" href="https://app.supabase.com/" target="_blank" rel="noreferrer">Esqueceu a senha?</a>
+          <p className="auth-footnote" style={{ marginTop: '0.5rem' }}>
+            Esqueceu a senha? Entre em contato com um administrador do sistema.
+          </p>
           <button type="submit" className="auth-submit" disabled={submitting}>
             <LogIn size={16} />
             {submitting ? 'Entrando...' : 'Entrar'}

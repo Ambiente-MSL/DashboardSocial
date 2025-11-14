@@ -5,13 +5,33 @@ import threading
 from contextlib import contextmanager
 from typing import Any, Iterable, Mapping, Optional, Sequence, Union
 
-from psycopg import sql
-from psycopg.rows import dict_row
-from psycopg_pool import ConnectionPool
+import psycopg2
+from psycopg2 import sql
+from psycopg2 import pool as pg_pool
+from psycopg2.extras import RealDictCursor
 
 PoolQuery = Union[str, sql.Composable]
 
-_pool: Optional[ConnectionPool] = None
+
+class _ConnectionPoolWrapper:
+    """
+    Pequeno adaptador para expor uma API compatível com psycopg_pool.ConnectionPool
+    usando psycopg2.pool.SimpleConnectionPool sob o capô.
+    """
+
+    def __init__(self, min_size: int, max_size: int, conninfo: str):
+        self._pool = pg_pool.SimpleConnectionPool(min_size, max_size, conninfo)
+
+    @contextmanager
+    def connection(self):
+        conn = self._pool.getconn()
+        try:
+            yield conn
+        finally:
+            self._pool.putconn(conn)
+
+
+_pool: Optional[_ConnectionPoolWrapper] = None
 _lock = threading.Lock()
 
 
@@ -35,7 +55,7 @@ def _build_conninfo() -> Optional[str]:
     return f"postgresql://{user}:{password}@{host}:{port}/{name}"
 
 
-def get_pool() -> Optional[ConnectionPool]:
+def get_pool() -> Optional[_ConnectionPoolWrapper]:
     global _pool
     if _pool is not None:
         return _pool
@@ -48,12 +68,10 @@ def get_pool() -> Optional[ConnectionPool]:
         if _pool is None:
             max_size = int(os.getenv("DATABASE_POOL_MAX", "10") or "10")
             min_size = int(os.getenv("DATABASE_POOL_MIN", "1") or "1")
-            _pool = ConnectionPool(
-                conninfo=conninfo,
-                open=True,
+            _pool = _ConnectionPoolWrapper(
                 min_size=min_size,
                 max_size=max_size,
-                kwargs={"autocommit": False},
+                conninfo=conninfo,
             )
     return _pool
 
@@ -76,7 +94,7 @@ def fetch_all(query: PoolQuery, params: Optional[Mapping[str, Any]] = None) -> l
     if pool is None:
         return []
     with pool.connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(query, params or {})
             return cur.fetchall()
 
@@ -86,7 +104,7 @@ def fetch_one(query: PoolQuery, params: Optional[Mapping[str, Any]] = None) -> O
     if pool is None:
         return None
     with pool.connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(query, params or {})
             return cur.fetchone()
 

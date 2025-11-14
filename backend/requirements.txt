@@ -5,4 +5,4 @@ python-dotenv
 apscheduler>=3.10.4
 facebook-business==23.0.2
 gunicorn
-psycopg[binary]>=3.1.18
+psycopg2-binary>=2.9.9

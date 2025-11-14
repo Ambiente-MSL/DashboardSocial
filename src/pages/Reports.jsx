@@ -4,7 +4,7 @@ import { useOutletContext } from "react-router-dom";
 import { FileText } from "lucide-react";
 import NavigationHero from "../components/NavigationHero";
 import useQueryState from "../hooks/useQueryState";
-import { supabase } from "../lib/supabaseClient";
+import { useAuth } from "../context/AuthContext";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import Papa from "papaparse";
@@ -23,62 +23,49 @@ export default function Reports() {
     return () => resetTopbarConfig?.();
   }, [setTopbarConfig, resetTopbarConfig]);
 
+  const { apiFetch } = useAuth();
   const account = get("account");
   const since = get("since");
   const until = get("until");
 
-  const [scope, setScope] = useState("facebook"); // facebook | instagram | ambos
   const [templates, setTemplates] = useState([]);
-  const [reports, setReports] = useState([
-    // Dados de exemplo para visualização
-    {
-      id: 1,
-      name: "relatório mensal",
-      platform: "instagram",
-      created_at: "2023-08-15T10:30:00Z"
-    },
-    {
-      id: 2,
-      name: "MODELO RELATÓRIO",
-      platform: "instagram",
-      created_at: "2023-04-25T14:20:00Z"
-    },
-    {
-      id: 3,
-      name: "MODELO RELATÓRIO",
-      platform: "instagram",
-      created_at: "2023-04-25T09:15:00Z"
-    },
-    {
-      id: 4,
-      name: "Relatório Personalizado",
-      platform: "ambos",
-      created_at: "2023-05-14T16:45:00Z"
-    }
-  ]);
-  const [loading, setLoading] = useState(false);
+  const [reports, setReports] = useState([]);
+  const [exporting, setExporting] = useState(false);
+  const [fetchingData, setFetchingData] = useState(false);
+  const [dataError, setDataError] = useState("");
   const previewRef = useRef();
 
   useEffect(() => {
-    fetchTemplates();
-    fetchReports();
-  }, []);
+    let active = true;
 
-  async function fetchTemplates() {
-    const { data, error } = await supabase
-      .from("report_templates")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (!error) setTemplates(data || []);
-  }
+    const loadData = async () => {
+      setFetchingData(true);
+      setDataError("");
+      try {
+        const [templatesPayload, reportsPayload] = await Promise.all([
+          apiFetch("/api/report-templates"),
+          apiFetch("/api/reports"),
+        ]);
+        if (!active) return;
+        setTemplates(Array.isArray(templatesPayload?.templates) ? templatesPayload.templates : []);
+        setReports(Array.isArray(reportsPayload?.reports) ? reportsPayload.reports : []);
+      } catch (err) {
+        if (!active) return;
+        console.error("Erro ao carregar relatórios do Postgres.", err);
+        setDataError(err?.message || "Erro ao carregar dados de relatórios.");
+      } finally {
+        if (active) {
+          setFetchingData(false);
+        }
+      }
+    };
 
-  async function fetchReports() {
-    const { data, error } = await supabase
-      .from("reports")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (!error) setReports(data || []);
-  }
+    loadData();
+
+    return () => {
+      active = false;
+    };
+  }, [apiFetch]);
 
   // ---------------------
   // DATA PIPELINE
@@ -116,12 +103,6 @@ export default function Reports() {
   };
 
   const getDataForScope = async () => {
-    if (scope === "facebook") {
-      return { facebook: await getFacebookData() };
-    }
-    if (scope === "instagram") {
-      return { instagram: await getInstagramData() };
-    }
     const [fb, ig] = await Promise.all([getFacebookData(), getInstagramData()]);
     return { facebook: fb, instagram: ig };
   };
@@ -133,11 +114,31 @@ export default function Reports() {
     return new Date(ms).toISOString().slice(0, 10);
   };
 
+  const resolveScope = (report) => {
+    const source =
+      (report?.params && (report.params.scope || report.params.platform)) ||
+      report?.platform ||
+      "";
+    const normalized = String(source || "").toLowerCase();
+    if (normalized.includes("facebook") && normalized.includes("instagram")) return "ambos";
+    if (normalized.includes("facebook")) return "facebook";
+    if (normalized.includes("instagram")) return "instagram";
+    if (normalized.includes("ambos") || normalized.includes("both")) return "ambos";
+    return "ambos";
+  };
+
+  const resolveChannels = (report) => {
+    const scopeLabel = resolveScope(report);
+    if (scopeLabel === "facebook") return ["facebook"];
+    if (scopeLabel === "instagram") return ["instagram"];
+    return ["facebook", "instagram"];
+  };
+
   // ---------------------
   // EXPORTS
   // ---------------------
   const onExport = async (format, report = reports[0]) => {
-    setLoading(true);
+    setExporting(true);
     try {
       const data = await getDataForScope();
       if (format === "csv") {
@@ -150,7 +151,7 @@ export default function Reports() {
         window.print();
       }
     } finally {
-      setLoading(false);
+      setExporting(false);
     }
   };
 
@@ -240,7 +241,10 @@ export default function Reports() {
           <div className="reports-title-section">
             <FileText size={32} className="reports-icon" />
             <h1 className="reports-title">MEUS RELATÓRIOS</h1>
-            <p className="reports-subtitle">aqui você pode verificar os relatórios que você já gerou e exportou</p>
+            <p className="reports-subtitle">
+              aqui você pode verificar os relatórios que você já gerou e exportou
+              <span style={{ marginLeft: 8, fontWeight: 500 }}>Modelos ativos: {templates.length}</span>
+            </p>
           </div>
 
           <button className="btn-new-report">
@@ -273,46 +277,73 @@ export default function Reports() {
               </tr>
             </thead>
             <tbody>
-              {reports.length === 0 ? (
+              {fetchingData ? (
+                <tr>
+                  <td colSpan="5" className="empty-state">
+                    Carregando relatórios...
+                  </td>
+                </tr>
+              ) : dataError ? (
+                <tr>
+                  <td colSpan="5" className="empty-state">
+                    {dataError}
+                  </td>
+                </tr>
+              ) : reports.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="empty-state">
                     Nenhum relatório encontrado. Crie seu primeiro relatório!
                   </td>
                 </tr>
               ) : (
-                reports.map((report, idx) => (
-                  <tr key={report.id || idx}>
-                    <td className="col-tipo">
-                      <FileText size={24} className="report-type-icon" />
-                    </td>
-                    <td className="col-nome">{report.name || report.title || "Relatório sem nome"}</td>
-                    <td className="col-canais">
-                      <div className="channel-icons">
-                        {(report.platform === "instagram" || report.platform === "ambos") && (
-                          <div className="channel-icon instagram">
-                            <span>📷</span>
-                          </div>
-                        )}
-                        {(report.platform === "facebook" || report.platform === "ambos") && (
-                          <div className="channel-icon facebook">
-                            <span>f</span>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="col-data">
-                      {report.created_at
-                        ? new Date(report.created_at).toLocaleDateString("pt-BR")
-                        : "-"}
-                    </td>
-                    <td className="col-acoes">
-                      <button className="btn-action" title="Configurações">
-                        ⚙️
-                      </button>
-                      <button className="btn-action-more">▼</button>
-                    </td>
-                  </tr>
-                ))
+                reports.map((report, idx) => {
+                  const channels = resolveChannels(report);
+                  return (
+                    <tr key={report.id || idx}>
+                      <td className="col-tipo">
+                        <FileText size={24} className="report-type-icon" />
+                      </td>
+                      <td className="col-nome">{report.name || report.title || "Relatório sem nome"}</td>
+                      <td className="col-canais">
+                        <div className="channel-icons">
+                          {channels.includes("instagram") && (
+                            <div className="channel-icon instagram">
+                              <span>📷</span>
+                            </div>
+                          )}
+                          {channels.includes("facebook") && (
+                            <div className="channel-icon facebook">
+                              <span>f</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="col-data">
+                        {report.created_at
+                          ? new Date(report.created_at).toLocaleDateString("pt-BR")
+                          : "-"}
+                      </td>
+                      <td className="col-acoes">
+                        <button
+                          className="btn-action"
+                          title="Exportar PDF"
+                          onClick={() => onExport("pdf", report)}
+                          disabled={exporting}
+                        >
+                          PDF
+                        </button>
+                        <button
+                          className="btn-action"
+                          title="Exportar CSV"
+                          onClick={() => onExport("csv", report)}
+                          disabled={exporting}
+                        >
+                          CSV
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
