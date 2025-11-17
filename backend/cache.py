@@ -5,7 +5,10 @@ import logging
 import os
 import threading
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
+from psycopg2.extras import Json
 
 from postgres_client import get_postgres_client
 
@@ -82,6 +85,19 @@ def _make_extra(extra: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     return json.loads(json.dumps(extra, sort_keys=True))
 
 
+def _sanitize_json(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+    if isinstance(value, dict):
+        return {key: _sanitize_json(val) for key, val in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_json(item) for item in value]
+    return value
+
+
 def _compute_cache_key(
     resource: str,
     owner_id: str,
@@ -136,8 +152,15 @@ def _select_entry(client: PostgresClient, table_name: str, cache_key: str) -> Op
 
 
 def _persist_entry(client: PostgresClient, table_name: str, record: Dict[str, Any]) -> None:
+    serialized = dict(record)
+    extra_value = serialized.get("extra")
+    if extra_value is not None:
+        serialized["extra"] = Json(_sanitize_json(extra_value))
+    payload_value = serialized.get("payload")
+    if payload_value is not None:
+        serialized["payload"] = Json(_sanitize_json(payload_value))
     try:
-        client.table(table_name).upsert(record, on_conflict="cache_key").execute()
+        client.table(table_name).upsert(serialized, on_conflict="cache_key").execute()
     except Exception as err:  # noqa: BLE001
         logger.error("Falha ao persistir cache no Postgres: %s", err)
         raise

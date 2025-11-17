@@ -804,7 +804,7 @@ def ig_window(ig_user_id: str, since: int, until: int):
                     "since": since,
                     "until": until,
                     "metric_type": "total_value",
-                    "breakdown": "follower_status",
+                    "breakdown": "follow_type",
                 },
             )
             breakdown = aggregate_dimension_values(payload, metric_name)

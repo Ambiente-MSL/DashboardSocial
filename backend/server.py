@@ -553,20 +553,8 @@ def fetch_instagram_metrics(
         "reach": 0,
     }
 
-    posts_in_period = []
     posts_details = cur.get("posts_detailed") or []
-    for post in posts_details:
-        timestamp_unix = post.get("timestamp_unix")
-        if timestamp_unix is None:
-            timestamp_iso = post.get("timestamp")
-            if timestamp_iso:
-                try:
-                    timestamp_dt = datetime.fromisoformat(timestamp_iso.replace("Z", "+00:00"))
-                    timestamp_unix = int(timestamp_dt.timestamp())
-                except ValueError:
-                    timestamp_unix = None
-        if timestamp_unix is not None and since_ts <= timestamp_unix <= until_ts:
-            posts_in_period.append(post)
+    posts_in_period = _extract_posts_in_period(posts_details, since_ts, until_ts)
 
     if posts_in_period:
         total_interactions = 0
@@ -684,30 +672,7 @@ def fetch_instagram_metrics(
         "unfollows": cur.get("unfollows"),
     }
 
-    top_posts: Dict[str, List[Dict[str, Any]]] = {"reach": [], "engagement": [], "saves": []}
-    if posts_in_period:
-        sorted_by_reach = sorted(posts_in_period, key=lambda p: p.get("reach") or 0, reverse=True)
-        sorted_by_engagement = sorted(posts_in_period, key=lambda p: p.get("interactions") or 0, reverse=True)
-        sorted_by_saves = sorted(posts_in_period, key=lambda p: p.get("saves") or 0, reverse=True)
-
-        def serialize_post(post: Dict[str, Any]) -> Dict[str, Any]:
-            return {
-                "id": post.get("id"),
-                "timestamp": post.get("timestamp"),
-                "permalink": post.get("permalink"),
-                "mediaType": post.get("media_type"),
-                "previewUrl": post.get("preview_url"),
-                "reach": int(post.get("reach") or 0),
-                "likes": int(post.get("likes") or post.get("like_count") or 0),
-                "comments": int(post.get("comments") or post.get("comments_count") or 0),
-                "shares": int(post.get("shares") or 0),
-                "saves": int(post.get("saves") or 0),
-                "interactions": int(post.get("interactions") or 0),
-            }
-
-        top_posts["reach"] = [serialize_post(post) for post in sorted_by_reach[:3]]
-        top_posts["engagement"] = [serialize_post(post) for post in sorted_by_engagement[:3]]
-        top_posts["saves"] = [serialize_post(post) for post in sorted_by_saves[:3]]
+    top_posts = _build_top_posts_payload(posts_in_period)
 
     return {
         "since": since_ts,
@@ -757,6 +722,72 @@ def fetch_instagram_posts(
             limit = None
     limit = limit or 6
     return ig_recent_posts(ig_id, limit)
+
+
+def _extract_posts_in_period(
+    posts_details: Sequence[Dict[str, Any]],
+    since_ts: int,
+    until_ts: int,
+) -> List[Dict[str, Any]]:
+    posts_in_period: List[Dict[str, Any]] = []
+    for post in posts_details:
+        timestamp_unix = post.get("timestamp_unix")
+        if timestamp_unix is None:
+            timestamp_iso = post.get("timestamp")
+            if timestamp_iso:
+                try:
+                    timestamp_dt = datetime.fromisoformat(timestamp_iso.replace("Z", "+00:00"))
+                    timestamp_unix = int(timestamp_dt.timestamp())
+                except ValueError:
+                    timestamp_unix = None
+        if timestamp_unix is not None and since_ts <= timestamp_unix <= until_ts:
+            posts_in_period.append(post)
+    return posts_in_period
+
+
+def _serialize_top_post(post: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "id": post.get("id"),
+        "timestamp": post.get("timestamp"),
+        "permalink": post.get("permalink"),
+        "mediaType": post.get("media_type"),
+        "previewUrl": post.get("preview_url"),
+        "reach": int(post.get("reach") or 0),
+        "likes": int(post.get("likes") or post.get("like_count") or 0),
+        "comments": int(post.get("comments") or post.get("comments_count") or 0),
+        "shares": int(post.get("shares") or 0),
+        "saves": int(post.get("saves") or 0),
+        "interactions": int(post.get("interactions") or 0),
+    }
+
+
+def _build_top_posts_payload(posts_in_period: Sequence[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    top_posts: Dict[str, List[Dict[str, Any]]] = {"reach": [], "engagement": [], "saves": []}
+    if not posts_in_period:
+        return top_posts
+
+    sorted_by_reach = sorted(posts_in_period, key=lambda p: int(p.get("reach") or 0), reverse=True)
+    sorted_by_engagement = sorted(posts_in_period, key=lambda p: int(p.get("interactions") or 0), reverse=True)
+    sorted_by_saves = sorted(posts_in_period, key=lambda p: int(p.get("saves") or 0), reverse=True)
+
+    top_posts["reach"] = [_serialize_top_post(post) for post in sorted_by_reach[:3]]
+    top_posts["engagement"] = [_serialize_top_post(post) for post in sorted_by_engagement[:3]]
+    top_posts["saves"] = [_serialize_top_post(post) for post in sorted_by_saves[:3]]
+    return top_posts
+
+
+def _fetch_top_posts_live(ig_id: str, since_ts: int, until_ts: int) -> Dict[str, List[Dict[str, Any]]]:
+    try:
+        snapshot = ig_window(ig_id, since_ts, until_ts)
+    except MetaAPIError as err:
+        logger.warning("Falha ao buscar posts da API para %s: %s", ig_id, err)
+        return {"reach": [], "engagement": [], "saves": []}
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Erro inesperado ao buscar posts para %s", ig_id, exc_info=err)
+        return {"reach": [], "engagement": [], "saves": []}
+    posts_details = snapshot.get("posts_detailed") or []
+    posts_in_period = _extract_posts_in_period(posts_details, since_ts, until_ts)
+    return _build_top_posts_payload(posts_in_period)
 
 
 def _ts_to_iso_date(ts: Optional[int]) -> Optional[str]:
@@ -1272,6 +1303,8 @@ def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) ->
         },
     ]
 
+    top_posts_payload = _fetch_top_posts_live(ig_id, since_ts, until_ts)
+
     response = {
         "since": since_ts,
         "until": until_ts,
@@ -1279,7 +1312,7 @@ def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) ->
         "profile_visitors_breakdown": profile_visitors_breakdown,
         "follower_counts": follower_counts,
         "follower_series": follower_series,
-        "top_posts": {"reach": [], "engagement": [], "saves": []},
+        "top_posts": top_posts_payload,
         "reach_timeseries": reach_timeseries,
     }
     rollups = _load_instagram_rollups(ig_id, until_date)

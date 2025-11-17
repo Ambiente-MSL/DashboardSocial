@@ -3,11 +3,12 @@ import logging
 import os
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from cache import get_cached_payload
-from meta import MetaAPIError, ig_window, gget
+from cache import get_cached_payload, get_fetcher, register_fetcher
+from meta import MetaAPIError, ig_window, ig_recent_posts, gget
 from postgres_client import get_postgres_client
+from psycopg2.extras import Json
 
 logger = logging.getLogger(__name__)
 
@@ -210,6 +211,35 @@ def snapshot_to_rows(
     return rows
 
 
+def _parse_metric_date(value: object) -> Optional[date]:
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value).date()
+        except ValueError:
+            return None
+    return None
+
+
+def _format_metric_date_value(value: object) -> str:
+    parsed = _parse_metric_date(value)
+    if parsed is not None:
+        return parsed.isoformat()
+    return str(value)
+
+
+def _parse_metric_date(value: object) -> Optional[date]:
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value).date()
+        except ValueError:
+            return None
+    return None
+
+
 def upsert_metrics(rows: Sequence[Dict[str, object]]) -> Tuple[int, int]:
     if not rows:
         return 0, 0
@@ -219,7 +249,12 @@ def upsert_metrics(rows: Sequence[Dict[str, object]]) -> Tuple[int, int]:
 
     account_ids = {str(row.get("account_id")) for row in rows if row.get("account_id")}
     metric_keys = {str(row.get("metric_key")) for row in rows if row.get("metric_key")}
-    metric_dates = {str(row.get("metric_date")) for row in rows if row.get("metric_date")}
+    metric_dates = {
+        parsed
+        for row in rows
+        for parsed in [_parse_metric_date(row.get("metric_date"))]
+        if parsed is not None
+    }
 
     existing_keys: set[Tuple[str, str, str]] = set()
     try:
@@ -256,8 +291,12 @@ def upsert_metrics(rows: Sequence[Dict[str, object]]) -> Tuple[int, int]:
     for row in rows:
         account_id = str(row.get("account_id"))
         metric_key = str(row.get("metric_key"))
-        metric_date = str(row.get("metric_date"))
+        metric_date = _format_metric_date_value(row.get("metric_date"))
+        row["metric_date"] = metric_date
         row["platform"] = PLATFORM
+        metadata_value = row.get("metadata")
+        if isinstance(metadata_value, (dict, list)):
+            row["metadata"] = Json(metadata_value)
         key = (account_id, metric_key, metric_date)
         if key in existing_keys:
             updated += 1
@@ -291,6 +330,14 @@ def build_rollup_payload(
         raise ValueError("Nenhum valor numérico encontrado para rollup.")
     value_sum = sum(numeric_values)
     value_avg = value_sum / len(numeric_values)
+    def _numeric(value: object) -> Optional[float]:
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
     payload = {
         "account_id": values[0]["account_id"],
         "platform": PLATFORM,
@@ -301,15 +348,15 @@ def build_rollup_payload(
         "value_sum": value_sum,
         "value_avg": value_avg,
         "samples": len(numeric_values),
-        "payload": {
+        "payload": Json({
             "values": [
                 {
-                    "metric_date": row["metric_date"],
-                    "value": row["value"],
+                    "metric_date": _format_metric_date_value(row.get("metric_date")),
+                    "value": _numeric(row.get("value")),
                 }
                 for row in values
             ]
-        },
+        }),
     }
     return payload
 
@@ -360,7 +407,30 @@ def refresh_rollups(
                 raise RuntimeError(f"Falha ao atualizar rollup {metric_key}/{days}d: {result.error}")
 
 
+def _ensure_instagram_posts_fetcher() -> None:
+    try:
+        get_fetcher("instagram_posts")
+    except KeyError:
+
+        def _posts_fetcher(
+            owner_id: str,
+            _since_ts: Optional[int],
+            _until_ts: Optional[int],
+            extra: Optional[Dict[str, Any]],
+        ):
+            requested_limit = DEFAULT_POSTS_LIMIT
+            if extra and "limit" in extra:
+                try:
+                    requested_limit = int(extra["limit"])
+                except (TypeError, ValueError):
+                    requested_limit = DEFAULT_POSTS_LIMIT
+            return ig_recent_posts(owner_id, requested_limit)
+
+        register_fetcher("instagram_posts", _posts_fetcher)
+
+
 def warm_instagram_posts_cache(ig_id: str, limit: int = DEFAULT_POSTS_LIMIT) -> None:
+    _ensure_instagram_posts_fetcher()
     try:
         get_cached_payload(
             "instagram_posts",
