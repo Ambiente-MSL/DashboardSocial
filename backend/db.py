@@ -19,8 +19,8 @@ class _ConnectionPoolWrapper:
     usando psycopg2.pool.SimpleConnectionPool sob o capô.
     """
 
-    def __init__(self, min_size: int, max_size: int, conninfo: str):
-        self._pool = pg_pool.SimpleConnectionPool(min_size, max_size, conninfo)
+    def __init__(self, min_size: int, max_size: int, conninfo: Mapping[str, Any]):
+        self._pool = pg_pool.SimpleConnectionPool(min_size, max_size, **conninfo)
 
     @contextmanager
     def connection(self):
@@ -35,10 +35,16 @@ _pool: Optional[_ConnectionPoolWrapper] = None
 _lock = threading.Lock()
 
 
-def _build_conninfo() -> Optional[str]:
+def _build_conninfo() -> Optional[Mapping[str, str]]:
     dsn = os.getenv("DATABASE_URL")
     if dsn:
-        return dsn
+        try:
+            from psycopg2.extensions import parse_dsn
+
+            return parse_dsn(dsn)
+        except Exception:
+            # Se o parse falhar, ainda tentamos passar como dsn direto
+            return {"dsn": dsn}
 
     host = os.getenv("DATABASE_HOST")
     if not host:
@@ -52,7 +58,21 @@ def _build_conninfo() -> Optional[str]:
     if not all([user, password, name]):
         return None
 
-    return f"postgresql://{user}:{password}@{host}:{port}/{name}"
+    # Retorna parâmetros separados em vez de uma string DSN para evitar
+    # problemas de encoding ou caracteres especiais.
+    conn_params = {
+        "host": host,
+        "port": port,
+        "dbname": name,
+        "user": user,
+        "password": password,
+    }
+
+    sslmode = os.getenv("DATABASE_SSLMODE")
+    if sslmode:
+        conn_params["sslmode"] = sslmode
+
+    return conn_params
 
 
 def get_pool() -> Optional[_ConnectionPoolWrapper]:
