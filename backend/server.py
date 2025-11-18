@@ -943,6 +943,33 @@ def _update_app_user_role(user_id: str, role: str) -> None:
     )
 
 
+def _normalize_metric_date(value: Optional[Any]) -> Optional[date]:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        candidate = value.strip()
+        if not candidate:
+            return None
+        if candidate.endswith("Z"):
+            candidate = candidate[:-1] + "+00:00"
+        try:
+            if "T" in candidate:
+                return datetime.fromisoformat(candidate).date()
+            return date.fromisoformat(candidate)
+        except ValueError:
+            return None
+    return None
+
+
+def _isoformat_metric_date(value: Optional[Any]) -> Optional[str]:
+    metric_date = _normalize_metric_date(value)
+    return metric_date.isoformat() if metric_date else None
+
+
 def _ensure_instagram_daily_metrics(ig_id: str, start_date: date, end_date: date) -> None:
     client = get_postgres_client()
     if client is None:
@@ -962,11 +989,15 @@ def _ensure_instagram_daily_metrics(ig_id: str, start_date: date, end_date: date
         logger.warning("Falha ao consultar %s: %s", IG_METRICS_TABLE, response.error)
         return
 
-    existing_dates = {row["metric_date"] for row in (response.data or [])}
+    existing_dates: set[date] = set()
+    for row in response.data or []:
+        normalized = _normalize_metric_date(row.get("metric_date"))
+        if normalized is not None:
+            existing_dates.add(normalized)
     missing_dates = [
         day
         for day in daterange(start_date, end_date)
-        if day.isoformat() not in existing_dates
+        if day not in existing_dates
     ]
     if not missing_dates:
         return
@@ -1008,10 +1039,8 @@ def _load_metrics_map(ig_id: str, start_date: date, end_date: date) -> Dict[str,
 
     grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for row in response.data or []:
-        metric_date = row.get("metric_date")
-        try:
-            metric_dt = datetime.fromisoformat(metric_date).date()
-        except (TypeError, ValueError):
+        metric_dt = _normalize_metric_date(row.get("metric_date"))
+        if metric_dt is None:
             continue
         grouped[row["metric_key"]].append(
             {
@@ -1052,8 +1081,8 @@ def _load_instagram_rollups(ig_id: str, end_date: date) -> Dict[str, Dict[str, A
         if not bucket or not metric_key:
             continue
         entry: Dict[str, Any] = {
-            "start_date": row.get("start_date"),
-            "end_date": row.get("end_date"),
+            "start_date": _isoformat_metric_date(row.get("start_date")),
+            "end_date": _isoformat_metric_date(row.get("end_date")),
             "sum": _to_float(row.get("value_sum")),
             "avg": _to_float(row.get("value_avg")),
         }
@@ -1069,12 +1098,46 @@ def _load_instagram_rollups(ig_id: str, end_date: date) -> Dict[str, Dict[str, A
     return rollups
 
 
-def _sum_metric(data: Dict[str, List[Dict[str, Any]]], metric_key: str) -> float:
-    return sum(
+def _coverage_summary(
+    data: Dict[str, List[Dict[str, Any]]],
+    requested_start: date,
+    requested_end: date,
+) -> Dict[str, Any]:
+    requested_days = max(0, (requested_end - requested_start).days + 1)
+    available_dates: set[date] = set()
+    for entries in data.values():
+        for entry in entries:
+            metric_date = entry.get("metric_date")
+            if isinstance(metric_date, date):
+                available_dates.add(metric_date)
+
+    covered_days = sum(1 for day in daterange(requested_start, requested_end) if day in available_dates)
+    coverage_ratio = covered_days / requested_days if requested_days else 1.0
+    first_available = min(available_dates) if available_dates else None
+    last_available = max(available_dates) if available_dates else None
+
+    return {
+        "requested_since": requested_start.isoformat(),
+        "requested_until": requested_end.isoformat(),
+        "requested_days": requested_days,
+        "covered_days": covered_days,
+        "missing_days": max(0, requested_days - covered_days),
+        "coverage_ratio": round(coverage_ratio, 4),
+        "first_available_date": first_available.isoformat() if first_available else None,
+        "last_available_date": last_available.isoformat() if last_available else None,
+        "has_full_coverage": requested_days > 0 and covered_days == requested_days,
+    }
+
+
+def _sum_metric(data: Dict[str, List[Dict[str, Any]]], metric_key: str) -> Optional[float]:
+    values = [
         float(entry["value"])
         for entry in data.get(metric_key, [])
         if entry.get("value") is not None
-    )
+    ]
+    if not values:
+        return None
+    return sum(values)
 
 
 def _latest_metric(data: Dict[str, List[Dict[str, Any]]], metric_key: str) -> Optional[float]:
@@ -1151,6 +1214,9 @@ def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) ->
     if not current_data:
         return None
     previous_data = _load_metrics_map(ig_id, previous_since, previous_until) if previous_since <= previous_until else {}
+    coverage = _coverage_summary(current_data, since_date, until_date)
+    if coverage["covered_days"] == 0:
+        return None
 
     reach_total = _sum_metric(current_data, "reach")
     reach_previous = _sum_metric(previous_data, "reach") if previous_data else None
@@ -1196,18 +1262,15 @@ def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) ->
     if net_followers_growth is None:
         if followers_start is not None and followers_end is not None:
             net_followers_growth = followers_end - followers_start
-        elif follows_total or unfollows_total:
+        elif follows_total is not None or unfollows_total is not None:
             net_followers_growth = (follows_total or 0.0) - (unfollows_total or 0.0)
-        else:
-            net_followers_growth = 0.0
-
-    if net_followers_growth is None:
-        net_followers_growth = 0.0
 
     if follows_total is not None:
         followers_gained_total: Optional[float] = follows_total
+    elif net_followers_growth is not None and net_followers_growth > 0:
+        followers_gained_total = net_followers_growth
     else:
-        followers_gained_total = net_followers_growth if net_followers_growth > 0 else None
+        followers_gained_total = None
 
     engagement_rate = None
     if reach_total:
@@ -1221,8 +1284,8 @@ def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) ->
     follower_counts = {
         "start": _as_int(followers_start),
         "end": _as_int(followers_end),
-        "follows": _as_int(follows_total) or 0,
-        "unfollows": _as_int(unfollows_total) or 0,
+        "follows": _as_int(follows_total),
+        "unfollows": _as_int(unfollows_total),
     }
 
     follower_series = [
@@ -1314,6 +1377,7 @@ def build_instagram_metrics_from_db(ig_id: str, since_ts: int, until_ts: int) ->
         "follower_series": follower_series,
         "top_posts": top_posts_payload,
         "reach_timeseries": reach_timeseries,
+        "coverage": coverage,
     }
     rollups = _load_instagram_rollups(ig_id, until_date)
     if rollups:

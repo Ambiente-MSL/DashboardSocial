@@ -1,10 +1,17 @@
 import argparse
 import logging
+import os
 import random
+import sys
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
+
+CURRENT_DIR = os.path.dirname(__file__)
+BACKEND_ROOT = os.path.dirname(CURRENT_DIR)
+if BACKEND_ROOT not in sys.path:
+    sys.path.insert(0, BACKEND_ROOT)
 
 from meta import MetaAPIError, gget
 from postgres_client import get_postgres_client

@@ -1,6 +1,13 @@
 import argparse
+import os
+import sys
 from datetime import date, datetime, timedelta, timezone
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+
+CURRENT_DIR = os.path.dirname(__file__)
+BACKEND_ROOT = os.path.dirname(CURRENT_DIR)
+if BACKEND_ROOT not in sys.path:
+    sys.path.insert(0, BACKEND_ROOT)
 
 from meta import ig_window
 from postgres_client import get_postgres_client
@@ -13,10 +20,12 @@ from jobs.instagram_ingest import (
 )
 
 INGEST_LOGS_TABLE = "ingest_logs"
+METRICS_TABLE = "metrics_daily"
 JOB_TYPE = "instagram_backfill"
 PLATFORM = "instagram"
 DEFAULT_LOOKBACK_DAYS = 90
 DEFAULT_BATCH_DAYS = 7
+STANDARD_LOOKBACKS = (7, 30, 90, 180, 365)
 
 
 def _now_iso() -> str:
@@ -81,6 +90,121 @@ def _chunk_ranges(start: date, end: date, span_days: int) -> Iterable[Tuple[date
         current = chunk_end + timedelta(days=1)
 
 
+def _normalize_metric_date(value: object) -> Optional[date]:
+    if value is None:
+        return None
+    if isinstance(value, date):
+        return value
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, str):
+        candidate = value.strip()
+        if not candidate:
+            return None
+        if candidate.endswith("Z"):
+            candidate = candidate[:-1] + "+00:00"
+        try:
+            if "T" in candidate:
+                return datetime.fromisoformat(candidate).date()
+            return date.fromisoformat(candidate)
+        except ValueError:
+            return None
+    return None
+
+
+def _collect_metric_dates(client, ig_id: str, start: date, end: date) -> set[date]:
+    response = (
+        client.table(METRICS_TABLE)
+        .select("metric_date")
+        .eq("account_id", ig_id)
+        .eq("platform", PLATFORM)
+        .gte("metric_date", start.isoformat())
+        .lte("metric_date", end.isoformat())
+        .execute()
+    )
+    if getattr(response, "error", None):
+        print(f"[ensure] Falha ao consultar {METRICS_TABLE}: {response.error}")
+        return set()
+
+    existing: set[date] = set()
+    for row in response.data or []:
+        normalized = _normalize_metric_date(row.get("metric_date"))
+        if normalized is not None:
+            existing.add(normalized)
+    return existing
+
+
+def _find_missing_dates(client, ig_id: str, start: date, end: date) -> List[date]:
+    if start > end:
+        return []
+    existing = _collect_metric_dates(client, ig_id, start, end)
+    return [day for day in daterange(start, end) if day not in existing]
+
+
+def ensure_lookbacks(
+    account_ids: Sequence[str],
+    lookbacks: Sequence[int],
+    *,
+    fill_missing: bool = True,
+    batch_days: int = DEFAULT_BATCH_DAYS,
+) -> None:
+    if not account_ids:
+        return
+
+    client = get_postgres_client()
+    if client is None:
+        print("[ensure] Banco não configurado; não é possível verificar cobertura.")
+        return
+
+    normalized_ranges = sorted({max(1, int(value)) for value in lookbacks if value})
+    if not normalized_ranges:
+        print("[ensure] Nenhuma janela válida informada.")
+        return
+
+    target_end = datetime.now(timezone.utc).date() - timedelta(days=1)
+
+    for ig_id in account_ids:
+        print(f"[ensure] Conta {ig_id}: verificando janelas {normalized_ranges} dia(s).")
+        largest_missing_window = 0
+        coverage: Dict[int, Dict[str, object]] = {}
+
+        for window in normalized_ranges:
+            start = target_end - timedelta(days=window - 1)
+            missing = _find_missing_dates(client, ig_id, start, target_end)
+            coverage[window] = {
+                "missing": len(missing),
+                "start": start,
+                "end": target_end,
+            }
+            if missing:
+                largest_missing_window = max(largest_missing_window, window)
+                sample = ", ".join(day.isoformat() for day in missing[:5])
+                extra = "..." if len(missing) > 5 else ""
+                print(
+                    f"[ensure]  - {window}d incompleto: faltam {len(missing)} dia(s) entre {start} e {target_end}. {sample}{extra}"
+                )
+            else:
+                print(f"[ensure]  - {window}d OK ({start} -> {target_end}).")
+
+        if largest_missing_window and fill_missing:
+            print(
+                f"[ensure]  -> Executando backfill de {largest_missing_window} dia(s) para {ig_id}."
+            )
+            backfill_account(ig_id, largest_missing_window, batch_days)
+            print(f"[ensure]  -> Revalidando janelas após backfill para {ig_id}.")
+            for window in normalized_ranges:
+                start = target_end - timedelta(days=window - 1)
+                missing = _find_missing_dates(client, ig_id, start, target_end)
+                status = "OK" if not missing else f"faltam {len(missing)} dia(s)"
+                print(f"[ensure]     {window}d -> {status}.")
+        elif largest_missing_window and not fill_missing:
+            print(
+                f"[ensure]  -> {ig_id} possui lacunas, mas --verify-only está ativo; nenhum backfill foi executado."
+            )
+        else:
+            print(f"[ensure]  -> Todas as janelas solicitadas estão completas para {ig_id}.")
+
+
 def backfill_account(ig_id: str, lookback_days: int, batch_days: int) -> None:
     if lookback_days <= 0:
         print(f"[backfill] {ig_id}: lookback inválido ({lookback_days}). Ignorando.")
@@ -124,6 +248,25 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--days", type=int, default=DEFAULT_LOOKBACK_DAYS, help="Quantidade de dias a recuperar (default: 90).")
     parser.add_argument("--batch", type=int, default=DEFAULT_BATCH_DAYS, help="Tamanho do lote em dias (default: 7).")
     parser.add_argument("--no-discover", dest="no_discover", action="store_true", help="Não descobrir contas automaticamente.")
+    parser.add_argument(
+        "--ensure-standard",
+        dest="ensure_standard",
+        action="store_true",
+        help="Verifica e preenche automaticamente as janelas padrão (7/30/90/180/365 dias).",
+    )
+    parser.add_argument(
+        "--ensure",
+        dest="ensure_ranges",
+        nargs="+",
+        type=int,
+        help="Lista personalizada de janelas (em dias) para verificar e preencher.",
+    )
+    parser.add_argument(
+        "--verify-only",
+        dest="verify_only",
+        action="store_true",
+        help="Apenas verifica cobertura quando usado com --ensure/--ensure-standard, sem executar backfill.",
+    )
     return parser.parse_args(argv)
 
 
@@ -132,10 +275,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     lookback_days = max(1, args.days)
     batch_days = max(1, args.batch)
 
+    ensure_ranges: List[int] = []
+    if args.ensure_standard:
+        ensure_ranges.extend(STANDARD_LOOKBACKS)
+    if args.ensure_ranges:
+        ensure_ranges.extend(args.ensure_ranges)
+
     account_ids = resolve_ingest_accounts(args.ig_ids, auto_discover=not args.no_discover)
     if not account_ids:
         print("[backfill] Nenhuma conta encontrada. Informe via --ig ou configure META_IG_USER_ID.")
         return 1
+
+    if ensure_ranges:
+        ensure_lookbacks(
+            account_ids,
+            ensure_ranges,
+            fill_missing=not args.verify_only,
+            batch_days=batch_days,
+        )
+        return 0
 
     for ig_id in account_ids:
         backfill_account(ig_id, lookback_days, batch_days)

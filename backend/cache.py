@@ -118,15 +118,32 @@ def _compute_cache_key(
     return "|".join(parts)
 
 
-def _parse_dt(value: Optional[str]) -> Optional[datetime]:
+def _parse_dt(value: Optional[Any]) -> Optional[datetime]:
     if not value:
         return None
-    try:
-        if value.endswith("Z"):
-            value = value.replace("Z", "+00:00")
-        return datetime.fromisoformat(value)
-    except ValueError:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip()
+        if not normalized:
+            return None
+        if normalized.endswith("Z"):
+            normalized = normalized[:-1] + "+00:00"
+        try:
+            return datetime.fromisoformat(normalized)
+        except ValueError:
+            return None
+    return None
+
+
+def _format_timestamp(value: Optional[Any]) -> Optional[str]:
+    if value is None:
         return None
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, str):
+        return value
+    return str(value)
 
 
 def _clone_payload(payload: Any) -> Any:
@@ -221,8 +238,8 @@ def get_latest_cached_payload(
 def _build_metadata(record: Dict[str, Any], stale: bool, source: str) -> Dict[str, Any]:
     return {
         "cache_key": record.get("cache_key"),
-        "fetched_at": record.get("fetched_at"),
-        "next_refresh_at": record.get("next_refresh_at"),
+        "fetched_at": _format_timestamp(record.get("fetched_at")),
+        "next_refresh_at": _format_timestamp(record.get("next_refresh_at")),
         "stale": stale,
         "source": source,
         "reason": record.get("last_refresh_reason"),
