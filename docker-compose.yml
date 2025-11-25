@@ -36,7 +36,7 @@ services:
     depends_on:
       - db
     ports:
-      - "2025:3001"  # Caddy externo -> backend
+      - "2025:3001"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -45,7 +45,9 @@ services:
   worker:
     build:
       context: ./backend
+      dockerfile: Dockerfile
     image: dashboardsocial-backend:latest
+    container_name: monitor_worker
     env_file:
       - ./deploy/backend.env
     command: python scheduler_runner.py
@@ -69,7 +71,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "2024:80"  # Caddy externo -> frontend
+      - "2024:80"
     networks:
       - internal
 
