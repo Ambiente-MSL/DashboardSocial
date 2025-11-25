@@ -1,20 +1,46 @@
+version: "3.9"
+
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: msl_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: monitor_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Mslestrategia.2025@
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     image: dashboardsocial-backend:latest
+    container_name: msl_backend
     env_file:
       - ./deploy/backend.env
+    environment:
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - FRONTEND_ORIGIN=https://monitor.mslestrategia.com.br
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3001/api/instagram/posts?limit=1"]
       interval: 30s
       timeout: 5s
       retries: 5
-    # Conecta a rede do Traefik
+      start_period: 120s
+    depends_on:
+      - db
+    ports:
+      - "2025:3001"  # Caddy externo -> backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
-      - root_default
+      - internal
 
   worker:
     build:
@@ -34,7 +60,7 @@ services:
     depends_on:
       - backend
     networks:
-      - root_default
+      - internal
 
   frontend:
     build:
@@ -43,35 +69,19 @@ services:
       args:
         REACT_APP_SUPABASE_URL: ${REACT_APP_SUPABASE_URL}
         REACT_APP_SUPABASE_ANON_KEY: ${REACT_APP_SUPABASE_ANON_KEY}
-        REACT_APP_API_URL: ""
+        REACT_APP_API_URL: https://monitor.mslestrategia.com.br
+    image: dashboardsocial-frontend:latest
+    container_name: msl_frontend
     restart: unless-stopped
-    networks:
-      - root_default
-  caddy:
-    image: caddy:2
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
     depends_on:
-      - frontend
       - backend
-    restart: unless-stopped
-    # Labels para o Traefik gerenciar este container
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.monitor.rule=Host(`monitor.mslestrategia.com.br`)"
-      - "traefik.http.routers.monitor.entrypoints=web,websecure"
-      - "traefik.http.routers.monitor.tls=true"
-      - "traefik.http.routers.monitor.tls.certresolver=mytlschallenge"
-      - "traefik.http.services.monitor.loadbalancer.server.port=80"
+    ports:
+      - "2024:80"  # Caddy externo -> frontend
     networks:
-      - root_default
-
-volumes:
-  caddy_data:
-  caddy_config:
+      - internal
 
 networks:
-  root_default:
-    external: true
+  internal:
+
+volumes:
+  postgres_data:
