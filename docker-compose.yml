@@ -3,12 +3,12 @@ version: "3.9"
 services:
   db:
     image: postgres:15-alpine
-    container_name: msl_db
+    container_name: monitor_db
     restart: unless-stopped
     environment:
       POSTGRES_DB: monitor_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Mslestrategia.2025@
+      POSTGRES_PASSWORD: Mslestra@2025db
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -19,7 +19,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     image: dashboardsocial-backend:latest
-    container_name: msl_backend
+    container_name: monitor_backend
     env_file:
       - ./deploy/backend.env
     environment:
@@ -45,17 +45,10 @@ services:
   worker:
     build:
       context: ./backend
+    image: dashboardsocial-backend:latest
     env_file:
       - ./deploy/backend.env
-    command: >
-      sh -c "python - << 'PY'
-      from scheduler import MetaSyncScheduler
-      import time
-      s = MetaSyncScheduler()
-      s.start()
-      while True:
-        time.sleep(3600)
-      PY"
+    command: python scheduler_runner.py
     restart: unless-stopped
     depends_on:
       - backend
@@ -71,7 +64,7 @@ services:
         REACT_APP_SUPABASE_ANON_KEY: ${REACT_APP_SUPABASE_ANON_KEY}
         REACT_APP_API_URL: https://monitor.mslestrategia.com.br
     image: dashboardsocial-frontend:latest
-    container_name: msl_frontend
+    container_name: monitor_frontend
     restart: unless-stopped
     depends_on:
       - backend
