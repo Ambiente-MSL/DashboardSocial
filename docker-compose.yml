@@ -23,9 +23,9 @@ services:
     env_file:
       - ./deploy/backend.env
     environment:
-      - DATABASE_HOST=db
-      - DATABASE_PORT=5432
-      - FRONTEND_ORIGIN=https://monitor.mslestrategia.com.br
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      FRONTEND_ORIGIN: https://monitor.mslestrategia.com.br
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3001/api/instagram/posts?limit=1"]
