@@ -1746,7 +1746,7 @@ export default function InstagramDashboard() {
             <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
-                  <h2 className="ig-clean-title2">Crescimento do perfil il</h2>
+                  <h2 className="ig-clean-title2">Crescimento do perfil ill</h2>
                   <h3>Alcance</h3>
                 </div>
               </header>
