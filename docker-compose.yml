@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   backend:
     build:
@@ -8,13 +10,16 @@ services:
     env_file:
       - ./deploy/backend.env
     environment:
-      DATABASE_HOST: localhost
+      DATABASE_HOST: 172.17.0.1
       DATABASE_PORT: "5432"
       FRONTEND_ORIGIN: https://monitor.mslestrategia.com.br
     restart: unless-stopped
-    network_mode: host
+    ports:
+      - "2025:3001"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - internal
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3001/api/instagram/posts?limit=1"]
       interval: 30s
@@ -32,9 +37,10 @@ services:
       - ./deploy/backend.env
     command: python scheduler_runner.py
     restart: unless-stopped
-    network_mode: host
     depends_on:
       - backend
+    networks:
+      - internal
 
   frontend:
     build:
