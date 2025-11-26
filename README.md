@@ -1,4 +1,4 @@
-# 📊 MSL Monitor – Dashboard de Insights Sociais
+# 📊 MSL Monitor – Dashboard de Insights Sociais/rs
 
 - Um dashboard profissional para monitorar métricas orgânicas e pagas do Facebook e Instagram, com exportação de relatórios e visual moderno.
 
