@@ -62,8 +62,6 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        REACT_APP_SUPABASE_URL: ${REACT_APP_SUPABASE_URL}
-        REACT_APP_SUPABASE_ANON_KEY: ${REACT_APP_SUPABASE_ANON_KEY}
         REACT_APP_API_URL: https://monitor.mslestrategia.com.br
     image: dashboardsocial-frontend:latest
     container_name: monitor_frontend
