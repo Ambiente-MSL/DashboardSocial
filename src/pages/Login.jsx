@@ -87,7 +87,7 @@ export default function Login() {
           />
           {formError && <p className="auth-error">{formError}</p>}
           <p className="auth-footnote" style={{ marginTop: '0.5rem'}}>
-            Esqueceu a senha? Entre em contato com um administrador do sistema.
+            Esqueceu a senha? Entre em contato com um administrador.
           </p>
           <button type="submit" className="auth-submit" disabled={submitting}>
             <LogIn size={16} />
