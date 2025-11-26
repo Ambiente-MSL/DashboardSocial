@@ -1,19 +1,4 @@
-version: "3.9"
-
 services:
-  db:
-    image: postgres:15-alpine
-    container_name: monitor_db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: monitor_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Mslestra@2025db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - internal
-
   backend:
     build:
       context: ./backend
@@ -23,24 +8,19 @@ services:
     env_file:
       - ./deploy/backend.env
     environment:
-      DATABASE_HOST: db
+      DATABASE_HOST: localhost
       DATABASE_PORT: "5432"
       FRONTEND_ORIGIN: https://monitor.mslestrategia.com.br
     restart: unless-stopped
+    network_mode: host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3001/api/instagram/posts?limit=1"]
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 120s
-    depends_on:
-      - db
-    ports:
-      - "2025:3001"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - internal
 
   worker:
     build:
@@ -52,10 +32,9 @@ services:
       - ./deploy/backend.env
     command: python scheduler_runner.py
     restart: unless-stopped
+    network_mode: host
     depends_on:
       - backend
-    networks:
-      - internal
 
   frontend:
     build:
@@ -75,6 +54,3 @@ services:
 
 networks:
   internal:
-
-volumes:
-  postgres_data:
