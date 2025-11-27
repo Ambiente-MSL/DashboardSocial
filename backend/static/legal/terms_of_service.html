@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Termos de Uso | MSL Monitor</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #0b1224;
+      --card: #10182d;
+      --accent: #f5b561;
+      --muted: #9fb3c8;
+      --text: #e7edf5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", "Segoe UI", -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 0%, rgba(245,181,97,0.12), transparent 30%),
+                  radial-gradient(circle at 80% 10%, rgba(245,181,97,0.08), transparent 26%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 48px 20px 64px;
+    }
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, rgba(16,24,45,0.95), rgba(14,21,38,0.92));
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 18px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.28);
+      overflow: hidden;
+    }
+    header {
+      padding: 36px 36px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: linear-gradient(135deg, rgba(245,181,97,0.12), rgba(16,24,45,0.65));
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: -0.02em; }
+    .tagline { margin: 0; color: var(--muted); font-size: 15px; }
+    .section { padding: 26px 36px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .section:last-of-type { border-bottom: none; }
+    h2 { margin: 0 0 12px; font-size: 18px; color: var(--accent); letter-spacing: -0.01em; }
+    p { margin: 0 0 12px; color: var(--text); }
+    ul { margin: 0 0 12px 18px; padding: 0; color: var(--muted); }
+    li { margin-bottom: 8px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(245,181,97,0.12);
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.01em;
+    }
+    .muted { color: var(--muted); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    @media (max-width: 720px) {
+      .page { border-radius: 12px; }
+      header, .section { padding: 22px 20px; }
+      body { padding: 20px 12px 40px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="pill">MSL Monitor · Termos de Uso</div>
+      <h1>Condições para uso do painel</h1>
+      <p class="tagline">Acesso destinado a times internos autorizados e ao processo de Facebook App Review.</p>
+    </header>
+
+    <section class="section">
+      <h2>1. Objeto</h2>
+      <p>O MSL Monitor permite que equipes autorizadas acompanhem métricas do Facebook e Instagram de páginas e contas de anúncios vinculadas. O login via Facebook está disponível para que revisores comprovem o fluxo de autorização exigido pela Meta.</p>
+    </section>
+
+    <section class="section">
+      <h2>2. Elegibilidade e acesso</h2>
+      <ul>
+        <li>O acesso é restrito a usuários indicados pela organização controladora.</li>
+        <li>Credenciais de e-mail/senha são individuais e intransferíveis. O titular deve mantê-las em sigilo.</li>
+        <li>O login com Facebook é opcional e só é usado para comprovar autorização de acesso às métricas das contas conectadas.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>3. Obrigações do usuário</h2>
+      <ul>
+        <li>Respeitar os Termos de Serviço e Políticas da Meta ao conectar páginas, perfis ou contas de anúncio.</li>
+        <li>Usar o dashboard apenas para fins internos da organização, sem revenda ou disponibilização pública de relatórios.</li>
+        <li>Não tentar acessar dados de terceiros sem consentimento ou burlar mecanismos de segurança.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>4. Uso aceitável</h2>
+      <ul>
+        <li>É proibido inserir conteúdo malicioso, automatizar scraping fora dos limites da API ou explorar vulnerabilidades.</li>
+        <li>Logs de auditoria podem ser usados para investigar uso indevido e proteger a infraestrutura.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>5. Disponibilidade</h2>
+      <p>Empregamos melhores práticas para manter o serviço disponível, mas interrupções planejadas ou incidentes podem ocorrer. Avisaremos sempre que possível.</p>
+    </section>
+
+    <section class="section">
+      <h2>6. Cancelamento e exclusão</h2>
+      <ul>
+        <li>O controlador pode solicitar a remoção de usuários ou desconexão de contas da Meta a qualquer momento.</li>
+        <li>Ao término do contrato ou mediante solicitação, contas podem ser desativadas e dados de login removidos.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>7. Limitação de responsabilidade</h2>
+      <p>O dashboard exibe dados fornecidos pela Graph API da Meta. Não nos responsabilizamos por indisponibilidades ou variações de dados oriundas da plataforma de terceiros.</p>
+    </section>
+
+    <section class="section">
+      <h2>8. Contato</h2>
+      <p>Dúvidas ou solicitações: <a href="mailto:privacidade@mslestrategia.com.br">privacidade@mslestrategia.com.br</a>.</p>
+      <p class="muted">Última atualização: 20 janeiro 2025.</p>
+    </section>
+  </main>
+</body>
+</html>

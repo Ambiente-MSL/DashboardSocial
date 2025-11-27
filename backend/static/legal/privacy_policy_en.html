@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy | MSL Monitor</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #0b1224;
+      --card: #111a31;
+      --accent: #7cc4ff;
+      --muted: #9fb3c8;
+      --text: #e7edf5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", "Segoe UI", -apple-system, sans-serif;
+      background: radial-gradient(circle at 15% 10%, rgba(124,196,255,0.12), transparent 34%),
+                  radial-gradient(circle at 85% 8%, rgba(124,196,255,0.08), transparent 30%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 48px 20px 64px;
+    }
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, rgba(17,26,49,0.95), rgba(15,21,37,0.92));
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 18px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.28);
+      overflow: hidden;
+    }
+    header {
+      padding: 36px 36px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: linear-gradient(135deg, rgba(124,196,255,0.12), rgba(17,26,49,0.65));
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: -0.02em;
+    }
+    .tagline {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .section {
+      padding: 26px 36px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .section:last-of-type { border-bottom: none; }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
+    p { margin: 0 0 12px; color: var(--text); }
+    ul { margin: 0 0 12px 18px; padding: 0; color: var(--muted); }
+    li { margin-bottom: 8px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(124,196,255,0.12);
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.01em;
+    }
+    .muted { color: var(--muted); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    @media (max-width: 720px) {
+      .page { border-radius: 12px; }
+      header, .section { padding: 22px 20px; }
+      body { padding: 20px 12px 40px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="pill">MSL Monitor · Privacy Policy</div>
+      <h1>How we handle your data</h1>
+      <p class="tagline">Public URL required by Facebook App Review and available to every user.</p>
+    </header>
+
+    <section class="section">
+      <h2>1. Who we are and scope</h2>
+      <p>MSL Monitor is a product by <strong>MSL Estratégia</strong> that helps internal teams analyze Facebook and Instagram performance. This notice describes how we collect, use, and protect personal data and connected account data.</p>
+      <p class="muted">Data controller contact: <a href="mailto:privacidade@mslestrategia.com.br">privacidade@mslestrategia.com.br</a></p>
+    </section>
+
+    <section class="section">
+      <h2>2. Data we collect</h2>
+      <ul>
+        <li><strong>Internal account credentials:</strong> name, corporate e-mail, and password (stored with PBKDF2 hash). Only authorized users can access the dashboard.</li>
+        <li><strong>Meta data (after Facebook login consent):</strong> Page/Ad Account ID, Instagram Business ID, aggregated metrics (reach, engagement, followers) and public posts required for reporting.</li>
+        <li><strong>Usage data:</strong> access records, timestamps, and request parameters for security and support.</li>
+      </ul>
+      <p class="muted">We do not collect sensitive data or private content. Access tokens are used only to read authorized metrics.</p>
+    </section>
+
+    <section class="section">
+      <h2>3. How we use data</h2>
+      <ul>
+        <li>Authenticate users and provide secure dashboard access.</li>
+        <li>Generate performance indicators, charts, and reports for connected accounts.</li>
+        <li>Monitor stability, prevent abuse, and provide support.</li>
+        <li>Meet Facebook App Review requirements, including showing the authentication flow.</li>
+      </ul>
+      <p class="muted">We do not sell, rent, or use data for third-party advertising.</p>
+    </section>
+
+    <section class="section">
+      <h2>4. Legal basis and B2B model</h2>
+      <p>Processing is based on <strong>legitimate interest</strong> and <strong>contract performance</strong> to serve the controller's authorized team. Facebook Login is optional and allows reviewers or managers to verify consent to access metrics.</p>
+    </section>
+
+    <section class="section">
+      <h2>5. Sharing and third parties</h2>
+      <ul>
+        <li><strong>Infrastructure:</strong> cloud hosting, database, and monitoring providers that support MSL Monitor.</li>
+        <li><strong>Facebook/Instagram:</strong> only to read authorized data via the Graph API.</li>
+      </ul>
+      <p class="muted">We do not share data with advertisers or commercial partners.</p>
+    </section>
+
+    <section class="section">
+      <h2>6. Retention and deletion</h2>
+      <ul>
+        <li>Account data and audit logs are kept while the organization uses the service or until a deletion request.</li>
+        <li>Historical metrics are stored for comparisons; they can be removed upon controller request.</li>
+        <li>Tokens and sessions expire periodically and can be revoked at any time by the user in Meta settings.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>7. Security</h2>
+      <ul>
+        <li>All traffic is protected by HTTPS.</li>
+        <li>Passwords use strong hashing (PBKDF2) and tokens are stored securely.</li>
+        <li>Role-based access control (analyst/admin) and audit logs are in place.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>8. Your rights</h2>
+      <ul>
+        <li>Access, correct, or request deletion of account data.</li>
+        <li>Revoke the app's access in Facebook/Instagram settings at any time.</li>
+        <li>Ask questions via <a href="mailto:privacidade@mslestrategia.com.br">privacidade@mslestrategia.com.br</a>.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>9. Changes</h2>
+      <p>We may update this notice to reflect product or regulatory changes. The most recent version will always be available at this URL.</p>
+      <p class="muted">Last updated: 20 January 2025.</p>
+    </section>
+  </main>
+</body>
+</html>

@@ -10,7 +10,7 @@ from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Sequence, Union
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from psycopg2.extras import Json
@@ -85,6 +85,7 @@ CORS(
     resources={r"/api/*": {"origins": _resolve_allowed_origins()}},
     supports_credentials=True,
 )
+LEGAL_DOCS_DIR = os.path.join(app.root_path, "static", "legal")
 
 AUTH_SECRET_KEY = (
     os.getenv("AUTH_SECRET_KEY")
@@ -1422,6 +1423,31 @@ def meta_error_response(err: MetaAPIError):
         },
     }
     return jsonify(payload), 502
+
+
+def _serve_legal_document(filename: str):
+    """
+    Serve static legal documents without exigir autenticação.
+    """
+    file_path = os.path.join(LEGAL_DOCS_DIR, filename)
+    if not os.path.isfile(file_path):
+        return jsonify({"error": "document not found"}), 404
+    return send_from_directory(LEGAL_DOCS_DIR, filename)
+
+
+@app.get("/privacy-policy")
+def privacy_policy_page():
+    return _serve_legal_document("privacy_policy.html")
+
+
+@app.get("/privacy-policy-en")
+def privacy_policy_en_page():
+    return _serve_legal_document("privacy_policy_en.html")
+
+
+@app.get("/terms-of-service")
+def terms_of_service_page():
+    return _serve_legal_document("terms_of_service.html")
 
 
 @app.post("/api/auth/register")
