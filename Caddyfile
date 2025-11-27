@@ -1,17 +1,11 @@
 :80 {
-  redir https://monitor.mslestrategia.com.br{uri}
-}
-
-monitor.mslestrategia.com.br {
   encode zstd gzip
 
   @api path /api/*
   @legal path /privacy-policy* /privacy-policy-en* /terms-of-service*
-
   handle @api {
     reverse_proxy backend:3001
   }
-
   handle @legal {
     reverse_proxy backend:3001
   }
