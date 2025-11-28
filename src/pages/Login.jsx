@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Facebook, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { buildLegalUrl } from '../lib/legalLinks';
+import { useTranslation } from 'react-i18next';
 
 const translateError = (rawMessage) => {
   if (!rawMessage) {
@@ -72,6 +73,7 @@ const ensureFacebookSdk = () =>
 
 export default function Login() {
   const { user, loading, signInWithPassword, signInWithFacebook } = useAuth();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
@@ -80,6 +82,7 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const [facebookLoading, setFacebookLoading] = useState(false);
   const [facebookReady, setFacebookReady] = useState(false);
+  const [lang, setLang] = useState(i18n.language || 'pt');
 
   const redirectPath = useMemo(() => {
     const fromPath = location.state?.from?.pathname;
@@ -92,6 +95,15 @@ export default function Login() {
       navigate(redirectPath, { replace: true });
     }
   }, [loading, user, navigate, redirectPath]);
+
+  const handleLangChange = useCallback(
+    (next) => {
+      const normalized = next === 'en' ? 'en' : 'pt';
+      setLang(normalized);
+      i18n.changeLanguage(normalized);
+    },
+    [i18n],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -168,29 +180,53 @@ export default function Login() {
 
   return (
     <div className="auth-screen">
-      <div className="auth-card">
-        <div className="auth-brand">Monitor MSL</div>
-        <h1 className="auth-heading">Login</h1>
+        <div className="auth-card">
+        <div className="auth-brand" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+          <span>Monitor MSL</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <label htmlFor="lang-select" style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+              {t('lang.label')}
+            </label>
+            <select
+              id="lang-select"
+              value={lang}
+              onChange={(e) => handleLangChange(e.target.value)}
+              style={{
+                padding: '0.35rem 0.45rem',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
+                background: '#fff',
+                color: '#111827',
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="pt">{t('lang.pt')}</option>
+              <option value="en">{t('lang.en')}</option>
+            </select>
+          </div>
+        </div>
+        <h1 className="auth-heading">{t('login.title')}</h1>
         <form className="auth-form" onSubmit={handleSubmit}>
-          <label className="auth-label" htmlFor="email">E-mail</label>
+          <label className="auth-label" htmlFor="email">{t('login.email')}</label>
           <input
             id="email"
             type="email"
             autoComplete="email"
-            placeholder="Digite seu e-mail"
+            placeholder={t('login.email')}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
             disabled={submitting}
           />
           <div className="auth-label-row">
-            <label className="auth-label" htmlFor="password">Senha</label>
+            <label className="auth-label" htmlFor="password">{t('login.password')}</label>
           </div>
           <input
             id="password"
             type="password"
             autoComplete="current-password"
-            placeholder="Digite sua senha"
+            placeholder={t('login.password')}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
@@ -198,17 +234,17 @@ export default function Login() {
           />
           {formError && <p className="auth-error">{formError}</p>}
           <p className="auth-footnote" style={{ marginTop: '0.5rem'}}>
-            Esqueceu a senha? Entre em contato com um administrador.
+            {t('login.forgot')}
           </p>
           <button type="submit" className="auth-submit" disabled={submitting}>
             <LogIn size={16} />
-            {submitting ? 'Entrando...' : 'Entrar'}
+            {submitting ? t('login.submit_loading') : t('login.submit')}
           </button>
         </form>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '1.25rem 0 0.75rem' }}>
           <div style={{ flex: 1, height: 1, backgroundColor: '#e5e7eb' }} />
-          <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>ou</span>
+          <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>{t('login.or')}</span>
           <div style={{ flex: 1, height: 1, backgroundColor: '#e5e7eb' }} />
         </div>
 
@@ -229,16 +265,16 @@ export default function Login() {
         >
           <Facebook size={16} />
           {facebookLoading
-            ? 'Conectando...'
+            ? t('login.fb_loading')
             : !facebookReady && facebookAppId
-              ? 'Carregando Facebook...'
-              : 'Continuar com Facebook'}
+              ? t('login.fb_loading_sdk')
+              : t('login.fb')}
         </button>
 
         <p className="auth-footnote">
-          Nao tem conta?{' '}
+          {t('login.no_account')}{' '}
           <Link className="auth-link" to="/register">
-            Criar conta
+            {t('login.create_account')}
           </Link>
         </p>
 
@@ -249,7 +285,7 @@ export default function Login() {
             target="_blank"
             rel="noreferrer"
           >
-            Termos de Serviço
+            {t('login.legal_terms')}
           </a>
           <a
             href={buildLegalUrl('/legal/privacy-policy.html')}
@@ -257,7 +293,7 @@ export default function Login() {
             target="_blank"
             rel="noreferrer"
           >
-            Políticas de Privacidade
+            {t('login.legal_privacy')}
           </a>
           <a
             href={buildLegalUrl('/legal/privacy-policy-en.html')}
@@ -265,7 +301,7 @@ export default function Login() {
             target="_blank"
             rel="noreferrer"
           >
-            Privacy Policy
+            {t('login.legal_privacy_en')}
           </a>
         </div>
       </div>

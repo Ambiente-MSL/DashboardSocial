@@ -5,6 +5,7 @@ import RootRouter from './router';
 import { ThemeProvider } from './context/ThemeContext';
 import { AccountsProvider } from './context/AccountsContext';
 import { AuthProvider } from './context/AuthContext';
+import './i18n';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
