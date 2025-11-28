@@ -1,5 +1,4 @@
-version: "3.9"
-
+version: '3.9'
 services:
   backend:
     build:
@@ -8,25 +7,30 @@ services:
     image: dashboardsocial-backend:latest
     container_name: monitor_backend
     env_file:
-      - ./deploy/backend.env
+    - ./deploy/backend.env
     environment:
       DATABASE_HOST: 172.17.0.1
-      DATABASE_PORT: "5432"
+      DATABASE_PORT: '5432'
       FRONTEND_ORIGIN: https://monitor.mslestrategia.com.br
+      FACEBOOK_APP_ID: '2063845937779150'
+      FACEBOOK_APP_SECRET: 817f6bda801530f8f4a50249330618f5
     restart: unless-stopped
     ports:
-      - "2025:3001"
+    - 2025:3001
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+    - host.docker.internal:host-gateway
     networks:
-      - internal
+    - internal
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:3001/api/instagram/posts?limit=1"]
+      test:
+      - CMD
+      - curl
+      - -fsS
+      - http://localhost:3001/api/instagram/posts?limit=1
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 120s
-
   worker:
     build:
       context: ./backend
@@ -34,14 +38,16 @@ services:
     image: dashboardsocial-backend:latest
     container_name: monitor_worker
     env_file:
-      - ./deploy/backend.env
+    - ./deploy/backend.env
     command: python scheduler_runner.py
     restart: unless-stopped
     depends_on:
-      - backend
+    - backend
     networks:
-      - internal
-
+    - internal
+    environment:
+      FACEBOOK_APP_ID: '2063845937779150'
+      FACEBOOK_APP_SECRET: 817f6bda801530f8f4a50249330618f5
   frontend:
     build:
       context: .
@@ -52,11 +58,10 @@ services:
     container_name: monitor_frontend
     restart: unless-stopped
     depends_on:
-      - backend
+    - backend
     ports:
-      - "2024:80"
+    - 2024:80
     networks:
-      - internal
-
+    - internal
 networks:
-  internal:
+  internal: null
