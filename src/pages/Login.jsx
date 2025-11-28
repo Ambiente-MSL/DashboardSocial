@@ -39,7 +39,7 @@ const ensureFacebookSdk = () =>
           appId: facebookAppId,
           cookie: true,
           xfbml: false,
-          version: 'v19.0',
+          version: 'v23.0',
         });
         resolve(window.FB);
       } catch (err) {
@@ -80,8 +80,21 @@ export default function Login() {
   const [facebookReady, setFacebookReady] = useState(false);
 
   const legalBaseUrl = useMemo(() => {
+    const explicit = (process.env.REACT_APP_LEGAL_BASE_URL || '').replace(/\/$/, '');
+    if (explicit) return explicit;
+
     const apiBase = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
-    return apiBase || '';
+    if (apiBase) {
+        // remove sufixo /api ou /api/ caso REACT_APP_API_URL inclua o prefixo
+        const withoutApi = apiBase.replace(/\/api$/i, '');
+        return withoutApi || apiBase;
+    }
+
+    // fallback para mesma origem (pode servir em produção se o backend estiver no mesmo host reverso)
+    if (typeof window !== 'undefined') {
+      return window.location.origin;
+    }
+    return '';
   }, []);
 
   const buildLegalUrl = useCallback(
