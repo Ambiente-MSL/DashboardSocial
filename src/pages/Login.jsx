@@ -232,10 +232,14 @@ export default function Login() {
             justifyContent: 'center',
           }}
           onClick={handleFacebookLogin}
-          disabled={submitting || facebookLoading || !facebookReady}
+          disabled={submitting || facebookLoading || (facebookAppId && !facebookReady)}
         >
           <Facebook size={16} />
-          {facebookLoading ? 'Conectando...' : 'Continuar com Facebook'}
+          {facebookLoading
+            ? 'Conectando...'
+            : !facebookReady && facebookAppId
+              ? 'Carregando Facebook...'
+              : 'Continuar com Facebook'}
         </button>
 
         <p className="auth-footnote">
