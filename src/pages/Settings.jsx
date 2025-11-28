@@ -9,6 +9,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAccounts } from '../context/AccountsContext';
 
 import NavigationHero from '../components/NavigationHero';
+import { buildLegalUrl } from '../lib/legalLinks';
 
 
 
@@ -33,26 +34,6 @@ const ACCOUNT_FORM_INITIAL = {
 export default function Settings() {
   const outletContext = useOutletContext() || {};
   const { setTopbarConfig, resetTopbarConfig } = outletContext;
-
-  const legalBaseUrl = useMemo(() => {
-    const explicit = (process.env.REACT_APP_LEGAL_BASE_URL || '').replace(/\/$/, '');
-    if (explicit) return explicit;
-    const apiBase = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
-    if (apiBase) {
-      const withoutApi = apiBase.replace(/\/api$/i, '');
-      return withoutApi || apiBase;
-    }
-    if (typeof window !== 'undefined') return window.location.origin;
-    return '';
-  }, []);
-
-  const buildLegalUrl = useCallback(
-    (path) => {
-      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-      return `${legalBaseUrl}${normalizedPath}`;
-    },
-    [legalBaseUrl],
-  );
 
   useEffect(() => {
     if (!setTopbarConfig) return undefined;

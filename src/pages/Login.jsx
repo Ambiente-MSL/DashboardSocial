@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Facebook, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { buildLegalUrl } from '../lib/legalLinks';
 
 const translateError = (rawMessage) => {
   if (!rawMessage) {
@@ -78,32 +79,6 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const [facebookLoading, setFacebookLoading] = useState(false);
   const [facebookReady, setFacebookReady] = useState(false);
-
-  const legalBaseUrl = useMemo(() => {
-    const explicit = (process.env.REACT_APP_LEGAL_BASE_URL || '').replace(/\/$/, '');
-    if (explicit) return explicit;
-
-    const apiBase = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
-    if (apiBase) {
-        // remove sufixo /api ou /api/ caso REACT_APP_API_URL inclua o prefixo
-        const withoutApi = apiBase.replace(/\/api$/i, '');
-        return withoutApi || apiBase;
-    }
-
-    // fallback para mesma origem (pode servir em produção se o backend estiver no mesmo host reverso)
-    if (typeof window !== 'undefined') {
-      return window.location.origin;
-    }
-    return '';
-  }, []);
-
-  const buildLegalUrl = useCallback(
-    (path) => {
-      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-      return `${legalBaseUrl}${normalizedPath}`;
-    },
-    [legalBaseUrl],
-  );
 
   const redirectPath = useMemo(() => {
     const fromPath = location.state?.from?.pathname;
