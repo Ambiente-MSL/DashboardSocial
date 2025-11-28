@@ -22,6 +22,7 @@ const translateError = (rawMessage) => {
 };
 
 const facebookAppId = process.env.REACT_APP_FACEBOOK_APP_ID;
+const facebookConfigId = process.env.REACT_APP_FACEBOOK_CONFIG_ID;
 
 const ensureFacebookSdk = () =>
   new Promise((resolve, reject) => {
@@ -138,6 +139,10 @@ export default function Login() {
     try {
       const FB = await ensureFacebookSdk();
       const accessToken = await new Promise((resolve, reject) => {
+        const options = facebookConfigId
+          ? { config_id: facebookConfigId, return_scopes: true }
+          : { scope: 'email,public_profile', return_scopes: true };
+
         FB.login(
           (response) => {
             if (response?.authResponse?.accessToken) {
@@ -145,10 +150,10 @@ export default function Login() {
             } else if (response?.status === 'not_authorized') {
               reject(new Error('Permissão do Facebook não autorizada.'));
             } else {
-              reject(new Error('Login com Facebook cancelado.'));
+              reject(new Error('Login com Facebook cancelado ou não disponível.'));
             }
           },
-          { scope: 'email,public_profile', return_scopes: true },
+          options,
         );
       });
 
