@@ -35,6 +35,9 @@ import {
   Settings,
   Shield,
 } from "lucide-react";
+import { useAccounts } from "../context/AccountsContext";
+import { DEFAULT_ACCOUNTS } from "../data/accounts";
+import { useAuth } from "../context/AuthContext";
 
 // Hero Tabs
 const HERO_TABS = [
@@ -45,18 +48,6 @@ const HERO_TABS = [
   { id: "admin", label: "Admin", href: "/admin", icon: Shield },
   { id: "settings", label: "Configurações", href: "/configuracoes", icon: Settings },
 ];
-
-// Mock Data
-const MOCK_OVERVIEW_STATS = {
-  spend: { value: 12450.0, delta: 8.5, label: "Investimento Total" },
-  impressions: { value: 485320, delta: 12.3, label: "Impressões" },
-  reach: { value: 245680, delta: 15.7, label: "Alcance" },
-  clicks: { value: 8542, delta: 10.2, label: "Cliques" },
-  ctr: { value: 3.48, delta: 0.5, label: "CTR", suffix: "%" },
-  cpc: { value: 1.46, delta: -5.2, label: "CPC", prefix: "R$" },
-  conversions: { value: 1245, delta: 18.9, label: "Conversões" },
-  cpa: { value: 10.0, delta: -8.3, label: "CPA", prefix: "R$" },
-};
 
 const MOCK_SPEND_SERIES = [
   { date: "01/02", value: 1580 },
@@ -302,11 +293,19 @@ export default function AdsDashboard() {
   const location = useLocation();
   const outletContext = useOutletContext() || {};
   const { setTopbarConfig, resetTopbarConfig } = outletContext;
+  const { accounts } = useAccounts();
+  const { apiFetch } = useAuth();
 
   const [activeSpendBar, setActiveSpendBar] = useState(-1);
   const [activeGenderIndex, setActiveGenderIndex] = useState(-1);
   const [activeDeviceIndex, setActiveDeviceIndex] = useState(-1);
   const [activeCampaignIndex, setActiveCampaignIndex] = useState(-1);
+  const availableAccounts = accounts.length ? accounts : DEFAULT_ACCOUNTS;
+  const [adsData, setAdsData] = useState(null);
+  const [adsError, setAdsError] = useState("");
+  const [adsLoading, setAdsLoading] = useState(false);
+  const primaryAccount = availableAccounts[0] || {};
+  const adAccountId = primaryAccount.adAccountId || "";
 
   // Configure Topbar
   useEffect(() => {
@@ -314,6 +313,33 @@ export default function AdsDashboard() {
     setTopbarConfig({ title: "Anúncios", showFilters: true });
     return () => resetTopbarConfig?.();
   }, [setTopbarConfig, resetTopbarConfig]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadAds = async () => {
+      setAdsLoading(true);
+      setAdsError("");
+      try {
+        const params = new URLSearchParams();
+        if (adAccountId) params.set("actId", adAccountId);
+        const resp = await apiFetch(`/api/ads/highlights?${params.toString()}`);
+        if (cancelled) return;
+        setAdsData(resp || {});
+      } catch (err) {
+        if (cancelled) return;
+        setAdsData(null);
+        setAdsError(err?.message || "Não foi possível carregar dados de anúncios.");
+      } finally {
+        if (!cancelled) {
+          setAdsLoading(false);
+        }
+      }
+    };
+    loadAds();
+    return () => {
+      cancelled = true;
+    };
+  }, [adAccountId, apiFetch]);
 
   const formatNumber = (num) => {
     if (typeof num !== "number") return num;
@@ -328,21 +354,67 @@ export default function AdsDashboard() {
     }).format(num);
   };
 
+  const totals = adsData?.totals || {};
+  const averages = adsData?.averages || {};
+  const actions = Array.isArray(adsData?.actions) ? adsData.actions : [];
+
+  const conversions = useMemo(() => {
+    if (!actions.length) return 0;
+    const targetTypes = [
+      "offsite_conversion",
+      "onsite_conversion.purchase",
+      "purchase",
+      "lead",
+      "complete_registration",
+    ];
+    for (const target of targetTypes) {
+      const found = actions.find((action) => (action?.type || "").includes(target));
+      if (found?.value != null) return Number(found.value) || 0;
+    }
+    return 0;
+  }, [actions]);
+
+  const ctrValue = Number(averages.ctr) || 0;
+  const cpcValue = Number(averages.cpc) || 0;
+  const cpaValue = conversions > 0 ? (totals.spend || 0) / conversions : 0;
+  const frequencyValue = Number(averages.frequency) || 0;
+
+  const overviewStats = {
+    spend: { value: Number(totals.spend || 0), delta: 0, label: "Investimento Total" },
+    impressions: { value: Number(totals.impressions || 0), delta: 0, label: "Impressões" },
+    reach: { value: Number(totals.reach || 0), delta: 0, label: "Alcance" },
+    clicks: { value: Number(totals.clicks || 0), delta: 0, label: "Cliques" },
+    ctr: { value: ctrValue, delta: 0, label: "CTR", suffix: "%" },
+    cpc: { value: cpcValue, delta: 0, label: "CPC", prefix: "R$" },
+    conversions: { value: conversions, delta: 0, label: "Conversões" },
+    cpa: { value: cpaValue, delta: 0, label: "CPA", prefix: "R$" },
+    frequency: { value: frequencyValue, delta: 0, label: "Frequência" },
+  };
+
+  // manter compatibilidade com seções que ainda usam o nome antigo
+  const MOCK_OVERVIEW_STATS = overviewStats;
+
   const peakSpendPoint = useMemo(() => {
-    if (!MOCK_SPEND_SERIES.length) return null;
-    return MOCK_SPEND_SERIES.reduce(
+    const series = Array.isArray(adsData?.spend_series) ? adsData.spend_series : MOCK_SPEND_SERIES;
+    if (!series.length) return null;
+    return series.reduce(
       (acc, point, index) => {
         if (point.value > acc.value) {
           return { value: point.value, index, date: point.date };
         }
         return acc;
       },
-      { value: MOCK_SPEND_SERIES[0].value, index: 0, date: MOCK_SPEND_SERIES[0].date }
+      { value: series[0].value, index: 0, date: series[0].date }
     );
-  }, []);
+  }, [adsData?.spend_series]);
+
+  const spendSeries = useMemo(
+    () => (Array.isArray(adsData?.spend_series) && adsData.spend_series.length ? adsData.spend_series : MOCK_SPEND_SERIES),
+    [adsData?.spend_series],
+  );
 
   const highlightedSpendIndex = activeSpendBar >= 0 ? activeSpendBar : peakSpendPoint?.index ?? -1;
-  const highlightedSpendPoint = highlightedSpendIndex >= 0 ? MOCK_SPEND_SERIES[highlightedSpendIndex] : null;
+  const highlightedSpendPoint = highlightedSpendIndex >= 0 ? spendSeries[highlightedSpendIndex] : null;
 
   return (
     <div className="instagram-dashboard instagram-dashboard--clean">
@@ -803,7 +875,7 @@ export default function AdsDashboard() {
               <div className="ig-chart-area">
                 <ResponsiveContainer width="100%" height={320}>
                   <BarChart
-                    data={MOCK_SPEND_SERIES}
+                    data={spendSeries}
                     margin={{ top: 16, right: 16, bottom: 32, left: 0 }}
                     barCategoryGap="35%"
                   >
@@ -873,15 +945,15 @@ export default function AdsDashboard() {
                       dataKey="value"
                       radius={[12, 12, 0, 0]}
                       barSize={36}
-                      onMouseEnter={(_, index) => setActiveSpendBar(index)}
-                      onMouseLeave={() => setActiveSpendBar(-1)}
-                    >
-                      {MOCK_SPEND_SERIES.map((entry, index) => (
-                        <Cell
-                          key={entry.date}
-                          fill={index === highlightedSpendIndex ? "url(#spendBarActive)" : "url(#spendBar)"}
-                        />
-                      ))}
+                    onMouseEnter={(_, index) => setActiveSpendBar(index)}
+                    onMouseLeave={() => setActiveSpendBar(-1)}
+                  >
+                    {spendSeries.map((entry, index) => (
+                      <Cell
+                        key={entry.date}
+                        fill={index === highlightedSpendIndex ? "url(#spendBarActive)" : "url(#spendBar)"}
+                      />
+                    ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
