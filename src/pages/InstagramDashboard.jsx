@@ -615,7 +615,7 @@ export default function InstagramDashboard() {
 
   useEffect(() => {
     if (sinceDate && untilDate) return;
-    const defaultPreset = IG_TOPBAR_PRESETS.find((item) => item.id === "1m") || IG_TOPBAR_PRESETS[0];
+    const defaultPreset = IG_TOPBAR_PRESETS.find((item) => item.id === "7d") || IG_TOPBAR_PRESETS[0];
     if (!defaultPreset?.days || defaultPreset.days <= 0) return;
     const endDate = defaultEnd;
     const startDate = startOfDay(subDays(endDate, defaultPreset.days - 1));

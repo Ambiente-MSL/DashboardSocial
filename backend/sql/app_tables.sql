@@ -16,6 +16,18 @@ CREATE TABLE IF NOT EXISTS app_users (
 CREATE UNIQUE INDEX IF NOT EXISTS app_users_email_lower_idx ON app_users (LOWER(email));
 CREATE UNIQUE INDEX IF NOT EXISTS app_users_facebook_id_idx ON app_users (facebook_id) WHERE facebook_id IS NOT NULL;
 
+-- Índices de performance para métricas/Instagram
+CREATE INDEX IF NOT EXISTS metrics_daily_account_platform_date_idx
+    ON metrics_daily (account_id, platform, metric_date);
+CREATE INDEX IF NOT EXISTS metrics_daily_account_platform_key_date_idx
+    ON metrics_daily (account_id, platform, metric_key, metric_date);
+
+CREATE INDEX IF NOT EXISTS metrics_daily_rollup_account_platform_date_idx
+    ON metrics_daily_rollup (account_id, platform, start_date, end_date);
+
+CREATE INDEX IF NOT EXISTS ig_comments_account_ts_idx
+    ON ig_comments (account_id, timestamp);
+
 CREATE TABLE IF NOT EXISTS report_templates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
