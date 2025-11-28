@@ -725,7 +725,7 @@ export default function Settings() {
         <footer style={{ marginTop: '2rem', textAlign: 'center' }}>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
             <a
-              href={buildLegalUrl('/terms-of-service')}
+              href={buildLegalUrl('/legal/terms-of-service.html')}
               style={{ color: '#7c3aed', textDecoration: 'underline', fontWeight: 500 }}
               target="_blank"
               rel="noreferrer"
@@ -733,7 +733,7 @@ export default function Settings() {
               Termos de Serviço
             </a>
             <a
-              href={buildLegalUrl('/privacy-policy')}
+              href={buildLegalUrl('/legal/privacy-policy.html')}
               style={{ color: '#7c3aed', textDecoration: 'underline', fontWeight: 500 }}
               target="_blank"
               rel="noreferrer"
@@ -741,7 +741,7 @@ export default function Settings() {
               Políticas de Privacidade
             </a>
             <a
-              href={buildLegalUrl('/privacy-policy-en')}
+              href={buildLegalUrl('/legal/privacy-policy-en.html')}
               style={{ color: '#7c3aed', textDecoration: 'underline', fontWeight: 500 }}
               target="_blank"
               rel="noreferrer"

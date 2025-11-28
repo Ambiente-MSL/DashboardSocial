@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy | MSL Monitor</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #0b1224;
+      --card: #111a31;
+      --accent: #7aa6ff;
+      --muted: #9fb3c8;
+      --text: #e7edf5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", "Segoe UI", -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(122,166,255,0.10), transparent 35%),
+                  radial-gradient(circle at 82% 10%, rgba(122,166,255,0.08), transparent 32%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 48px 20px 64px;
+    }
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, rgba(17,26,49,0.95), rgba(15,21,37,0.92));
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 18px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.28);
+      overflow: hidden;
+    }
+    header {
+      padding: 36px 36px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: linear-gradient(135deg, rgba(122,166,255,0.12), rgba(17,26,49,0.65));
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: -0.02em; }
+    .tagline { margin: 0; color: var(--muted); font-size: 15px; }
+    .section { padding: 26px 36px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .section:last-of-type { border-bottom: none; }
+    h2 { margin: 0 0 12px; font-size: 18px; color: var(--accent); letter-spacing: -0.01em; }
+    p { margin: 0 0 12px; color: var(--text); }
+    ul { margin: 0 0 12px 18px; padding: 0; color: var(--muted); }
+    li { margin-bottom: 8px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(122,166,255,0.12);
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.01em;
+    }
+    .muted { color: var(--muted); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    @media (max-width: 720px) {
+      .page { border-radius: 12px; }
+      header, .section { padding: 22px 20px; }
+      body { padding: 20px 12px 40px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="pill">MSL Monitor · Privacy Policy</div>
+      <h1>How we handle data</h1>
+      <p class="tagline">Information for internal users and Facebook App Review.</p>
+    </header>
+
+    <section class="section">
+      <h2>1. Controller & contact</h2>
+      <p>Controller: MSLE Estratégia. Contact: <a href="mailto:privacidade@mslestrategia.com.br">privacidade@mslestrategia.com.br</a>.</p>
+    </section>
+
+    <section class="section">
+      <h2>2. Data we collect</h2>
+      <ul>
+        <li><strong>Account:</strong> email, name, role, password hash (PBKDF2) or Facebook ID/name/email when social login is used.</li>
+        <li><strong>Social metrics:</strong> data returned by Meta Graph API for connected pages, ad accounts, and profiles.</li>
+        <li><strong>Technical logs:</strong> access/error/audit logs for security and troubleshooting.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>3. Purpose</h2>
+      <ul>
+        <li>Provide internal dashboards for Facebook and Instagram performance.</li>
+        <li>Generate reports and analyses requested by the controller.</li>
+        <li>Fulfill security/audit requirements and Facebook App Review demands.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>4. Sharing</h2>
+      <p>We do not share personal data with third parties, except essential providers (hosting, database) under contract and confidentiality.</p>
+    </section>
+
+    <section class="section">
+      <h2>5. Retention</h2>
+      <p>Account data is retained while the user is active or as required by law. Meta metrics may be cached for performance/history within contractual limits.</p>
+    </section>
+
+    <section class="section">
+      <h2>6. Data subject rights</h2>
+      <p>Request access, correction, or deletion via the contact email. For social logins, you may revoke access in your Facebook/Instagram account.</p>
+    </section>
+
+    <section class="section">
+      <h2>7. Security</h2>
+      <ul>
+        <li>Passwords hashed with PBKDF2-HMAC-SHA256.</li>
+        <li>JWT tokens with configured expiration.</li>
+        <li>Role-based access controls and error auditing.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>8. Cookies & local storage</h2>
+      <p>We use localStorage only to store the authenticated session token. No third-party tracking cookies are used.</p>
+    </section>
+
+    <section class="section">
+      <h2>9. Changes</h2>
+      <p>We will update this policy when needed. See the last updated date below.</p>
+      <p class="muted">Last updated: 20 January 2025.</p>
+    </section>
+  </main>
+</body>
+</html>

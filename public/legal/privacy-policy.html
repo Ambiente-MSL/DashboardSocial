@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Privacidade | MSL Monitor</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #0b1224;
+      --card: #111a31;
+      --accent: #4fd1c5;
+      --muted: #9fb3c8;
+      --text: #e7edf5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", "Segoe UI", -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(79,209,197,0.08), transparent 35%),
+                  radial-gradient(circle at 80% 0%, rgba(79,209,197,0.06), transparent 30%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 48px 20px 64px;
+    }
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, rgba(17,26,49,0.95), rgba(15,21,37,0.92));
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 18px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.28);
+      overflow: hidden;
+    }
+    header {
+      padding: 36px 36px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: linear-gradient(135deg, rgba(79,209,197,0.12), rgba(17,26,49,0.65));
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: -0.02em;
+    }
+    .tagline {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .section {
+      padding: 26px 36px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .section:last-of-type { border-bottom: none; }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
+    p { margin: 0 0 12px; color: var(--text); }
+    ul { margin: 0 0 12px 18px; padding: 0; color: var(--muted); }
+    li { margin-bottom: 8px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(79,209,197,0.12);
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.01em;
+    }
+    .muted { color: var(--muted); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    @media (max-width: 720px) {
+      .page { border-radius: 12px; }
+      header, .section { padding: 22px 20px; }
+      body { padding: 20px 12px 40px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="pill">MSL Monitor · Política de Privacidade</div>
+      <h1>Como tratamos seus dados</h1>
+      <p class="tagline">Informações para usuários internos e revisores do Facebook App Review.</p>
+    </header>
+
+    <section class="section">
+      <h2>1. Controladora e contato</h2>
+      <p>Controladora: MSLE Estratégia. E-mail para dúvidas ou solicitações: <a href="mailto:privacidade@mslestrategia.com.br">privacidade@mslestrategia.com.br</a>.</p>
+    </section>
+
+    <section class="section">
+      <h2>2. Dados que coletamos</h2>
+      <ul>
+        <li><strong>Conta:</strong> e-mail, nome, role, hash de senha (PBKDF2) ou identificador do Facebook (id, nome, e-mail) quando login social é usado.</li>
+        <li><strong>Métricas sociais:</strong> dados retornados pela Graph API da Meta para páginas, contas de anúncios e perfis conectados.</li>
+        <li><strong>Logs técnicos:</strong> registros de acesso, erros e eventos para auditoria e segurança.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>3. Finalidades</h2>
+      <ul>
+        <li>Disponibilizar dashboards internos de desempenho de Facebook e Instagram.</li>
+        <li>Gerar relatórios e análises solicitadas pelo controlador.</li>
+        <li>Garantir segurança, auditoria e atendimento a requisitos do Facebook App Review.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>4. Compartilhamento</h2>
+      <p>Não compartilhamos dados pessoais com terceiros, exceto com provedores estritamente necessários (ex.: hosting, banco de dados) sob contrato e confidencialidade.</p>
+    </section>
+
+    <section class="section">
+      <h2>5. Retenção</h2>
+      <p>Dados de conta são mantidos enquanto o usuário estiver ativo ou conforme obrigações legais. Métricas da Meta podem ser armazenadas em cache para performance e histórico, seguindo limites contratuais.</p>
+    </section>
+
+    <section class="section">
+      <h2>6. Direitos do titular</h2>
+      <p>Solicite acesso, correção ou exclusão pelo e-mail de contato. Para logins sociais, você pode revogar acessos diretamente na sua conta do Facebook/Instagram.</p>
+    </section>
+
+    <section class="section">
+      <h2>7. Segurança</h2>
+      <ul>
+        <li>Hash de senhas com PBKDF2-HMAC-SHA256.</li>
+        <li>Tokens JWT com expiração configurada.</li>
+        <li>Controles de acesso por role e auditoria de erros.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>8. Cookies e armazenamento local</h2>
+      <p>Utilizamos localStorage apenas para guardar o token de sessão do usuário autenticado. Não usamos cookies de terceiros para rastreamento.</p>
+    </section>
+
+    <section class="section">
+      <h2>9. Alterações</h2>
+      <p>Atualizaremos esta política conforme necessário. Manteremos a data de última atualização abaixo.</p>
+      <p class="muted">Última atualização: 20 janeiro 2025.</p>
+    </section>
+  </main>
+</body>
+</html>
