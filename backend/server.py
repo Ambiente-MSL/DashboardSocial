@@ -913,13 +913,13 @@ def _validate_facebook_access_token(access_token: str) -> Dict[str, Any]:
             error_message = error_field.get("message")
         raise ValueError(error_message or "Token do Facebook não pôde ser validado.")
 
-    email = str(profile_body.get("email") or "").strip().lower()
-    if not email:
-        raise ValueError("Não recebemos o e-mail do Facebook. Garanta que a permissão 'email' foi concedida.")
-
+    email = str(profile_body.get("email") or "").strip().lower() or None
     facebook_id = str(debug_data.get("user_id") or profile_body.get("id") or "").strip()
     if not facebook_id:
         raise ValueError("Não foi possível identificar o usuário do Facebook.")
+
+    if not email:
+        logger.warning("Login com Facebook sem email retornado. Verifique permissão 'email' no app Meta/config.")
 
     return {
         "facebook_id": facebook_id,

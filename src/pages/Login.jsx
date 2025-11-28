@@ -140,7 +140,7 @@ export default function Login() {
       const FB = await ensureFacebookSdk();
       const accessToken = await new Promise((resolve, reject) => {
         const options = facebookConfigId
-          ? { config_id: facebookConfigId, return_scopes: true }
+          ? { config_id: facebookConfigId, scope: 'email,public_profile', return_scopes: true }
           : { scope: 'email,public_profile', return_scopes: true };
 
         FB.login(
