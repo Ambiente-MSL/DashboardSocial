@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Facebook, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -78,6 +78,19 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const [facebookLoading, setFacebookLoading] = useState(false);
   const [facebookReady, setFacebookReady] = useState(false);
+
+  const legalBaseUrl = useMemo(() => {
+    const apiBase = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
+    return apiBase || '';
+  }, []);
+
+  const buildLegalUrl = useCallback(
+    (path) => {
+      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+      return `${legalBaseUrl}${normalizedPath}`;
+    },
+    [legalBaseUrl],
+  );
 
   const redirectPath = useMemo(() => {
     const fromPath = location.state?.from?.pathname;
@@ -231,6 +244,33 @@ export default function Login() {
             Criar conta
           </Link>
         </p>
+
+        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <a
+            href={buildLegalUrl('/terms-of-service')}
+            style={{ color: '#7c3aed', textDecoration: 'underline', fontWeight: 500 }}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Termos de Serviço
+          </a>
+          <a
+            href={buildLegalUrl('/privacy-policy')}
+            style={{ color: '#7c3aed', textDecoration: 'underline', fontWeight: 500 }}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Políticas de Privacidade
+          </a>
+          <a
+            href={buildLegalUrl('/privacy-policy-en')}
+            style={{ color: '#7c3aed', textDecoration: 'underline', fontWeight: 500 }}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Privacy Policy
+          </a>
+        </div>
       </div>
     </div>
   );
