@@ -16,6 +16,52 @@ CREATE TABLE IF NOT EXISTS app_users (
 CREATE UNIQUE INDEX IF NOT EXISTS app_users_email_lower_idx ON app_users (LOWER(email));
 CREATE UNIQUE INDEX IF NOT EXISTS app_users_facebook_id_idx ON app_users (facebook_id) WHERE facebook_id IS NOT NULL;
 
+CREATE TABLE IF NOT EXISTS ig_comments (
+    comment_id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    media_id TEXT,
+    parent_id TEXT,
+    username TEXT,
+    text TEXT NOT NULL,
+    like_count INTEGER DEFAULT 0,
+    created_at_utc TIMESTAMPTZ NOT NULL,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ig_comments_daily (
+    account_id TEXT NOT NULL,
+    comment_date DATE NOT NULL,
+    comments_count INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (account_id, comment_date)
+);
+
+-- Tabelas de cache (Instagram, Facebook e Ads)
+CREATE TABLE IF NOT EXISTS ig_cache (
+    cache_key TEXT PRIMARY KEY,
+    resource TEXT NOT NULL,
+    owner_id TEXT,
+    since_ts BIGINT,
+    until_ts BIGINT,
+    since_date DATE,
+    until_date DATE,
+    extra JSONB,
+    payload JSONB,
+    fetched_at TIMESTAMPTZ,
+    next_refresh_at TIMESTAMPTZ,
+    ttl_hours INTEGER DEFAULT 24,
+    last_refresh_reason TEXT,
+    last_refresh_status TEXT,
+    last_refresh_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS fb_cache (LIKE ig_cache INCLUDING ALL);
+CREATE TABLE IF NOT EXISTS ads_cache (LIKE ig_cache INCLUDING ALL);
+
 -- Índices de performance para métricas/Instagram
 CREATE INDEX IF NOT EXISTS metrics_daily_account_platform_date_idx
     ON metrics_daily (account_id, platform, metric_date);

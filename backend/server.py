@@ -2084,6 +2084,40 @@ def delete_report(report_id: str) -> Any:
 
     return jsonify({"success": True})
 
+@app.post("/api/instagram/comments/ingest")
+def ingest_comments_api() -> Any:
+    """
+    Força ingestão de comentários do Instagram (últimos N dias) para um igUserId.
+    Útil para popular a nuvem de palavras.
+    """
+    user, error = _authenticate_request(request)
+    if error:
+        return error
+
+    payload = request.get_json(silent=True) or {}
+    ig_user_id = str(payload.get("igUserId") or payload.get("ig_user_id") or IG_ID or "").strip()
+    days = int(payload.get("days") or COMMENTS_INGEST_DEFAULT_DAYS)
+    days = max(1, min(90, days))
+
+    if not ig_user_id:
+        return jsonify({"error": "igUserId is required"}), 400
+
+    try:
+        medias, inserted, updated = ingest_account_comments(ig_user_id, days=days)
+    except MetaAPIError as err:
+        return meta_error_response(err)
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Falha ao ingerir comentários para %s", ig_user_id)
+        return jsonify({"error": "could not ingest comments"}), 500
+
+    return jsonify({
+        "igUserId": ig_user_id,
+        "days": days,
+        "medias": medias,
+        "inserted": inserted,
+        "updated": updated,
+    }), 202
+
 
 @app.get("/api/facebook/metrics")
 def facebook_metrics():
