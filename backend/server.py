@@ -134,6 +134,9 @@ IG_COMMENTS_DAILY_TABLE = "ig_comments_daily"
 APP_USERS_TABLE = "app_users"
 REPORT_TEMPLATES_TABLE = "report_templates"
 REPORTS_TABLE = "reports"
+SOCIAL_COVERS_TABLE = "social_covers"
+ALLOWED_COVER_PLATFORMS = {"instagram", "facebook", "ads"}
+COVER_MAX_BYTES = int(os.getenv("COVER_MAX_BYTES", str(2 * 1024 * 1024)))  # 2 MB default
 DEFAULT_USER_ROLE = os.getenv("DEFAULT_USER_ROLE", "analista")
 WORDCLOUD_DEFAULT_TOP = 120
 WORDCLOUD_MAX_TOP = 250
@@ -947,6 +950,25 @@ def _serialize_user_row(row: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _serialize_cover_row(row: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if not row:
+        return None
+    updated_at = row.get("updated_at")
+    if isinstance(updated_at, datetime):
+        updated_at_iso = updated_at.isoformat()
+    else:
+        updated_at_iso = updated_at
+    return {
+        "id": row.get("id"),
+        "account_id": row.get("account_id"),
+        "platform": row.get("platform"),
+        "url": row.get("storage_url"),
+        "content_type": row.get("content_type"),
+        "size_bytes": row.get("size_bytes"),
+        "updated_at": updated_at_iso,
+    }
+
+
 def _fetch_user_by_email(email: str) -> Optional[Dict[str, Any]]:
     normalized = email.strip().lower()
     if not normalized:
@@ -1122,6 +1144,81 @@ def _update_app_user_role(user_id: str, role: str) -> None:
         WHERE id = %(user_id)s
         """,
         {"role": role, "user_id": user_id},
+    )
+
+
+def _estimate_data_url_size_bytes(data_url: str) -> int:
+    if not data_url:
+        return 0
+    if ";base64," in data_url:
+        b64_part = data_url.split(",", 1)[1]
+        padding = b64_part.count("=")
+        return int(len(b64_part) * 3 / 4) - padding
+    return len(data_url.encode("utf-8"))
+
+
+def _fetch_social_cover(account_id: str, platform: str) -> Optional[Dict[str, Any]]:
+    return fetch_one(
+        f"""
+        SELECT id, account_id, platform, storage_url, content_type, size_bytes, created_at, updated_at
+        FROM {SOCIAL_COVERS_TABLE}
+        WHERE account_id = %(account_id)s AND platform = %(platform)s
+        LIMIT 1
+        """,
+        {"account_id": account_id, "platform": platform},
+    )
+
+
+def _upsert_social_cover(
+    account_id: str,
+    platform: str,
+    storage_url: str,
+    content_type: Optional[str],
+    size_bytes: Optional[int],
+) -> Dict[str, Any]:
+    existing = _fetch_social_cover(account_id, platform)
+    if existing:
+        execute(
+            f"""
+            UPDATE {SOCIAL_COVERS_TABLE}
+            SET storage_url = %(storage_url)s,
+                content_type = %(content_type)s,
+                size_bytes = %(size_bytes)s,
+                updated_at = NOW()
+            WHERE account_id = %(account_id)s AND platform = %(platform)s
+            """,
+            {
+                "storage_url": storage_url,
+                "content_type": content_type,
+                "size_bytes": size_bytes,
+                "account_id": account_id,
+                "platform": platform,
+            },
+        )
+    else:
+        execute(
+            f"""
+            INSERT INTO {SOCIAL_COVERS_TABLE} (account_id, platform, storage_url, content_type, size_bytes)
+            VALUES (%(account_id)s, %(platform)s, %(storage_url)s, %(content_type)s, %(size_bytes)s)
+            """,
+            {
+                "account_id": account_id,
+                "platform": platform,
+                "storage_url": storage_url,
+                "content_type": content_type,
+                "size_bytes": size_bytes,
+            },
+        )
+    return _fetch_social_cover(account_id, platform) or {}
+
+
+def _delete_social_cover(account_id: str, platform: str) -> None:
+    execute(
+        f"""
+        DELETE FROM {SOCIAL_COVERS_TABLE}
+        WHERE account_id = %(account_id)s AND platform = %(platform)s
+        """,
+        {"account_id": account_id, "platform": platform},
     )
 
 
@@ -1719,6 +1816,103 @@ def auth_session() -> Any:
         return jsonify({"error": "user not found"}), 404
 
     return jsonify({"token": token, "user": _serialize_user_row(user_row)})
+
+
+@app.get("/api/covers")
+def get_social_cover() -> Any:
+    user, error = _authenticate_request(request)
+    if error:
+        return error
+
+    platform = str(request.args.get("platform") or "instagram").strip().lower()
+    account_id = str(request.args.get("account_id") or request.args.get("accountId") or "").strip()
+    if not account_id:
+        return jsonify({"error": "account_id is required"}), 400
+    if platform not in ALLOWED_COVER_PLATFORMS:
+        return jsonify({"error": "invalid platform"}), 400
+
+    try:
+        cover_row = _fetch_social_cover(account_id, platform)
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Failed to fetch cover for %s/%s", platform, account_id)
+        return jsonify({"error": "could not load cover"}), 500
+
+    return jsonify({"cover": _serialize_cover_row(cover_row)})
+
+
+@app.post("/api/covers")
+def upsert_social_cover() -> Any:
+    user, error = _authenticate_request(request)
+    if error:
+        return error
+
+    payload = request.get_json(silent=True) or {}
+    platform = str(payload.get("platform") or "instagram").strip().lower()
+    account_id = str(payload.get("account_id") or payload.get("accountId") or "").strip()
+    data_url = str(payload.get("data_url") or payload.get("dataUrl") or "").strip()
+    content_type = str(payload.get("content_type") or payload.get("contentType") or "").strip() or None
+    size_bytes = payload.get("size_bytes") or payload.get("sizeBytes")
+
+    if not account_id:
+        return jsonify({"error": "account_id is required"}), 400
+    if platform not in ALLOWED_COVER_PLATFORMS:
+        return jsonify({"error": "invalid platform"}), 400
+    if not data_url:
+        return jsonify({"error": "data_url is required"}), 400
+    if not data_url.startswith("data:image/"):
+        return jsonify({"error": "data_url must be a data:image/* base64 string"}), 400
+
+    estimated_size = _estimate_data_url_size_bytes(data_url)
+    size_int = None
+    try:
+        if size_bytes is not None:
+            size_int = int(size_bytes)
+    except (TypeError, ValueError):
+        size_int = None
+    size_int = size_int or estimated_size
+    if size_int > COVER_MAX_BYTES:
+        return jsonify({"error": f"imagem excede o limite de {COVER_MAX_BYTES // 1024} KB"}), 400
+
+    if not content_type:
+        match = re.match(r"data:(.*?);base64,", data_url)
+        if match:
+            content_type = match.group(1)
+
+    try:
+        cover_row = _upsert_social_cover(
+            account_id=account_id,
+            platform=platform,
+            storage_url=data_url,
+            content_type=content_type,
+            size_bytes=size_int,
+        )
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Failed to save cover for %s/%s", platform, account_id)
+        return jsonify({"error": "could not save cover"}), 500
+
+    return jsonify({"cover": _serialize_cover_row(cover_row)}), 201
+
+
+@app.delete("/api/covers")
+def delete_social_cover_route() -> Any:
+    user, error = _authenticate_request(request)
+    if error:
+        return error
+
+    platform = str(request.args.get("platform") or "instagram").strip().lower()
+    account_id = str(request.args.get("account_id") or request.args.get("accountId") or "").strip()
+    if not account_id:
+        return jsonify({"error": "account_id is required"}), 400
+    if platform not in ALLOWED_COVER_PLATFORMS:
+        return jsonify({"error": "invalid platform"}), 400
+
+    try:
+        _delete_social_cover(account_id, platform)
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Failed to delete cover for %s/%s", platform, account_id)
+        return jsonify({"error": "could not delete cover"}), 500
+
+    return jsonify({"success": True})
 
 
 @app.get("/api/admin/users")

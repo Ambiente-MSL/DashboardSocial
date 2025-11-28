@@ -47,6 +47,7 @@ import useQueryState from "../hooks/useQueryState";
 import { useAccounts } from "../context/AccountsContext";
 import { DEFAULT_ACCOUNTS } from "../data/accounts";
 import WordCloudCard from "../components/WordCloudCard";
+import { useAuth } from "../context/AuthContext";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const FALLBACK_ACCOUNT_ID = DEFAULT_ACCOUNTS[0]?.id || "";
@@ -136,8 +137,6 @@ const HERO_TABS = [
   { id: "admin", label: "Admin", href: "/admin", icon: Shield },
   { id: "settings", label: "Configurações", href: "/configuracoes", icon: Settings },
 ];
-
-const COVER_STORAGE_KEY = "ig-dashboard.coverImage";
 
 const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
 
@@ -576,6 +575,7 @@ export default function InstagramDashboard() {
   const outlet = useOutletContext() || {};
   const { setTopbarConfig, resetTopbarConfig } = outlet;
   const location = useLocation();
+  const { apiFetch } = useAuth();
   const { accounts } = useAccounts();
   const availableAccounts = accounts.length ? accounts : DEFAULT_ACCOUNTS;
   const [getQuery, setQuery] = useQueryState({ account: FALLBACK_ACCOUNT_ID });
@@ -1483,44 +1483,91 @@ export default function InstagramDashboard() {
   const hashtagList = useMemo(() => buildHashtagFrequency(filteredPosts), [filteredPosts]);
 
   const accountInitial = (accountInfo?.username || accountInfo?.name || "IG").charAt(0).toUpperCase();
-  const [coverImage, setCoverImage] = useState(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      return window.localStorage.getItem(COVER_STORAGE_KEY);
-    } catch (err) {
-      console.warn("Não foi possível ler capa salva localmente.", err);
-      return null;
-    }
-  });
+  const [coverImage, setCoverImage] = useState(null);
+  const [coverLoading, setCoverLoading] = useState(false);
+  const [coverError, setCoverError] = useState("");
 
-  const handleCoverUpload = useCallback((event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      alert("Envie um arquivo de imagem.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      setCoverImage(dataUrl);
+  useEffect(() => {
+    let cancelled = false;
+    if (!accountId) return () => { cancelled = true; };
+    const loadCover = async () => {
+      setCoverLoading(true);
+      setCoverError("");
       try {
-        window.localStorage.setItem(COVER_STORAGE_KEY, dataUrl);
+        const response = await apiFetch(
+          `/api/covers?platform=instagram&account_id=${encodeURIComponent(accountId)}`,
+          { method: "GET" },
+        );
+        if (cancelled) return;
+        setCoverImage(response?.cover?.url || response?.cover?.storage_url || null);
       } catch (err) {
-        console.warn("Não foi possível salvar a capa localmente.", err);
+        if (cancelled) return;
+        setCoverImage(null);
+        setCoverError(err?.message || "Não foi possível carregar a capa.");
+      } finally {
+        if (!cancelled) {
+          setCoverLoading(false);
+        }
       }
     };
-    reader.readAsDataURL(file);
-  }, []);
+    loadCover();
+    return () => {
+      cancelled = true;
+    };
+  }, [accountId, apiFetch]);
 
-  const handleCoverRemove = useCallback(() => {
-    setCoverImage(null);
+  const handleCoverUpload = useCallback(
+    async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        alert("Envie um arquivo de imagem.");
+        return;
+      }
+      setCoverLoading(true);
+      setCoverError("");
+      try {
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error("Falha ao ler o arquivo."));
+          reader.readAsDataURL(file);
+        });
+
+        const response = await apiFetch("/api/covers", {
+          method: "POST",
+          body: {
+            platform: "instagram",
+            account_id: accountId,
+            data_url: dataUrl,
+            content_type: file.type,
+            size_bytes: file.size,
+          },
+        });
+        setCoverImage(response?.cover?.url || response?.cover?.storage_url || dataUrl);
+      } catch (err) {
+        setCoverError(err?.message || "Não foi possível salvar a capa.");
+      } finally {
+        setCoverLoading(false);
+      }
+    },
+    [accountId, apiFetch],
+  );
+
+  const handleCoverRemove = useCallback(async () => {
+    setCoverLoading(true);
+    setCoverError("");
     try {
-      window.localStorage.removeItem(COVER_STORAGE_KEY);
+      await apiFetch(`/api/covers?platform=instagram&account_id=${encodeURIComponent(accountId)}`, {
+        method: "DELETE",
+      });
+      setCoverImage(null);
     } catch (err) {
-      console.warn("Não foi possível remover a capa localmente.", err);
+      setCoverError(err?.message || "Não foi possível remover a capa.");
+    } finally {
+      setCoverLoading(false);
     }
-  }, []);
+  }, [accountId, apiFetch]);
 
   return (
     <div className="instagram-dashboard instagram-dashboard--clean">
@@ -1576,7 +1623,7 @@ export default function InstagramDashboard() {
           <div className="ig-clean-grid">
           <div className="ig-clean-grid__left">
             <section className="ig-profile-vertical">
-            <div
+              <div
                 className="ig-profile-vertical__cover"
                 style={{
                   position: "relative",
@@ -1593,6 +1640,24 @@ export default function InstagramDashboard() {
                   overflow: "hidden",
                 }}
               >
+                {coverLoading && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: "rgba(17,24,39,0.35)",
+                      color: "#fff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 600,
+                      fontSize: "0.95rem",
+                      zIndex: 2,
+                    }}
+                  >
+                    Carregando capa...
+                  </div>
+                )}
                 {!coverImage && (
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#6b7280" }}>
                     <InstagramIcon size={32} />
@@ -1605,9 +1670,28 @@ export default function InstagramDashboard() {
                       position: "absolute",
                       inset: 0,
                       background: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.35) 100%)",
+                      }}
+                      aria-hidden="true"
+                    />
+                  )}
+                {coverError && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 12,
+                      bottom: 12,
+                      right: 12,
+                      background: "rgba(255,255,255,0.92)",
+                      color: "#b91c1c",
+                      border: "1px solid #fecdd3",
+                      borderRadius: "10px",
+                      padding: "8px 10px",
+                      fontSize: "0.85rem",
+                      fontWeight: 600,
                     }}
-                    aria-hidden="true"
-                  />
+                  >
+                    {coverError}
+                  </div>
                 )}
                 <div style={{ position: "absolute", right: 12, bottom: 12, display: "flex", gap: "8px" }}>
                   <label
