@@ -137,6 +137,8 @@ const HERO_TABS = [
   { id: "settings", label: "Configurações", href: "/configuracoes", icon: Settings },
 ];
 
+const COVER_STORAGE_KEY = "ig-dashboard.coverImage";
+
 const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
 
 const SHORT_DATE_FORMATTER = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" });
@@ -1481,6 +1483,44 @@ export default function InstagramDashboard() {
   const hashtagList = useMemo(() => buildHashtagFrequency(filteredPosts), [filteredPosts]);
 
   const accountInitial = (accountInfo?.username || accountInfo?.name || "IG").charAt(0).toUpperCase();
+  const [coverImage, setCoverImage] = useState(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return window.localStorage.getItem(COVER_STORAGE_KEY);
+    } catch (err) {
+      console.warn("Não foi possível ler capa salva localmente.", err);
+      return null;
+    }
+  });
+
+  const handleCoverUpload = useCallback((event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Envie um arquivo de imagem.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      setCoverImage(dataUrl);
+      try {
+        window.localStorage.setItem(COVER_STORAGE_KEY, dataUrl);
+      } catch (err) {
+        console.warn("Não foi possível salvar a capa localmente.", err);
+      }
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleCoverRemove = useCallback(() => {
+    setCoverImage(null);
+    try {
+      window.localStorage.removeItem(COVER_STORAGE_KEY);
+    } catch (err) {
+      console.warn("Não foi possível remover a capa localmente.", err);
+    }
+  }, []);
 
   return (
     <div className="instagram-dashboard instagram-dashboard--clean">
@@ -1534,14 +1574,83 @@ export default function InstagramDashboard() {
 
         {/* Grid Principal */}
           <div className="ig-clean-grid">
-            <div className="ig-clean-grid__left">
-              <section className="ig-profile-vertical">
-              <div
+          <div className="ig-clean-grid__left">
+            <section className="ig-profile-vertical">
+            <div
                 className="ig-profile-vertical__cover"
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.5rem",
+                  minHeight: "120px",
+                  backgroundColor: "#f5f5f5",
+                  backgroundImage: coverImage ? `url(${coverImage})` : "linear-gradient(135deg, #f2f4f7 0%, #e5e7eb 100%)",
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  borderRadius: "16px",
+                  overflow: "hidden",
+                }}
               >
-                <InstagramIcon size={32} />
-                <span style={{ fontWeight: 500 }}>Capa não configurada</span>
+                {!coverImage && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#6b7280" }}>
+                    <InstagramIcon size={32} />
+                    <span style={{ fontWeight: 600 }}>Capa não configurada</span>
+                  </div>
+                )}
+                {coverImage && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.35) 100%)",
+                    }}
+                    aria-hidden="true"
+                  />
+                )}
+                <div style={{ position: "absolute", right: 12, bottom: 12, display: "flex", gap: "8px" }}>
+                  <label
+                    htmlFor="ig-cover-upload"
+                    style={{
+                      background: "rgba(255,255,255,0.9)",
+                      color: "#111827",
+                      borderRadius: "8px",
+                      padding: "6px 10px",
+                      fontSize: "0.85rem",
+                      cursor: "pointer",
+                      border: "1px solid #e5e7eb",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Enviar capa
+                  </label>
+                  {coverImage && (
+                    <button
+                      type="button"
+                      onClick={handleCoverRemove}
+                      style={{
+                        background: "rgba(255,255,255,0.9)",
+                        color: "#b91c1c",
+                        borderRadius: "8px",
+                        padding: "6px 10px",
+                        fontSize: "0.85rem",
+                        border: "1px solid #fecdd3",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Remover
+                    </button>
+                  )}
+                  <input
+                    id="ig-cover-upload"
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={handleCoverUpload}
+                  />
+                </div>
               </div>
 
               <div className="ig-profile-vertical__avatar-wrapper">
@@ -1746,7 +1855,7 @@ export default function InstagramDashboard() {
             <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
-                  <h2 className="ig-clean-title2">Crescimento do perfil ill</h2>
+                  <h2 className="ig-clean-title2">Crescimento do perfil</h2>
                   <h3>Alcance</h3>
                 </div>
               </header>
