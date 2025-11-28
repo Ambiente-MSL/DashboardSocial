@@ -29,6 +29,7 @@ import {
 import useQueryState from "../hooks/useQueryState";
 import { useAccounts } from "../context/AccountsContext";
 import { DEFAULT_ACCOUNTS } from "../data/accounts";
+import { useAuth } from "../context/AuthContext";
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const FALLBACK_ACCOUNT_ID = DEFAULT_ACCOUNTS[0]?.id || "";
 
@@ -158,6 +159,7 @@ export default function FacebookDashboard() {
   const outlet = useOutletContext() || {};
   const { setTopbarConfig, resetTopbarConfig } = outlet;
   const location = useLocation();
+  const { apiFetch } = useAuth();
   const { accounts } = useAccounts();
   const availableAccounts = accounts.length ? accounts : DEFAULT_ACCOUNTS;
   const [getQuery, setQuery] = useQueryState({ account: FALLBACK_ACCOUNT_ID });
@@ -184,6 +186,11 @@ useEffect(() => {
     () => accountConfig?.facebookPageId || accountConfig?.id || "",
     [accountConfig?.id, accountConfig?.facebookPageId],
   );
+
+  const [coverImage, setCoverImage] = useState(null);
+  const [coverLoading, setCoverLoading] = useState(false);
+  const [coverError, setCoverError] = useState("");
+  const [pageInfo, setPageInfo] = useState(null);
 
   const sinceParam = getQuery("since");
   const untilParam = getQuery("until");
@@ -283,6 +290,9 @@ useEffect(() => {
     setOverviewSource(null);
     setOverviewLoading(false);
     setPageError("");
+    setPageInfo(null);
+    setCoverImage(null);
+    setCoverError("");
   }, [accountSnapshotKey]);
 
   useEffect(() => {
@@ -295,14 +305,48 @@ useEffect(() => {
       return () => {};
     }
 
+    let cancelled = false;
+    const loadPageInfo = async () => {
+      try {
+        const resp = await apiFetch(`/api/facebook/page-info?pageId=${encodeURIComponent(accountConfig.facebookPageId)}`);
+        if (cancelled) return;
+        setPageInfo(resp?.page || null);
+      } catch (err) {
+        if (cancelled) return;
+        setPageInfo(null);
+      }
+    };
+    const loadCover = async () => {
+      setCoverLoading(true);
+      setCoverError("");
+      try {
+        const resp = await apiFetch(
+          `/api/covers?platform=facebook&account_id=${encodeURIComponent(accountConfig.facebookPageId)}`,
+        );
+        if (cancelled) return;
+        setCoverImage(resp?.cover?.url || resp?.cover?.storage_url || null);
+      } catch (err) {
+        if (cancelled) return;
+        setCoverImage(null);
+        setCoverError(err?.message || "Não foi possível carregar a capa.");
+      } finally {
+        if (!cancelled) {
+          setCoverLoading(false);
+        }
+      }
+    };
+
+    loadPageInfo();
+    loadCover();
+
     if (!sinceParam || !untilParam) {
       setOverviewSource(null);
       setOverviewLoading(true);
-      return () => {};
+      return () => { cancelled = true; };
     }
 
     const controller = new AbortController();
-    let cancelled = false;
+    cancelled = false;
 
     const loadOverviewMetrics = async () => {
       setOverviewLoading(true);
@@ -342,14 +386,73 @@ useEffect(() => {
       cancelled = true;
       controller.abort();
     };
-  }, [accountConfig?.facebookPageId, sinceParam, untilParam]);
-  const avatarUrl = useMemo(() => (
-    accountConfig?.profilePictureUrl || accountConfig?.pagePictureUrl || ""
-  ), [accountConfig?.pagePictureUrl, accountConfig?.profilePictureUrl]);
+  }, [accountConfig?.facebookPageId, sinceParam, untilParam, apiFetch]);
+  const avatarUrl = useMemo(
+    () => pageInfo?.picture_url || accountConfig?.profilePictureUrl || accountConfig?.pagePictureUrl || "",
+    [pageInfo?.picture_url, accountConfig?.pagePictureUrl, accountConfig?.profilePictureUrl],
+  );
 
   const heroCoverStyle = useMemo(() => ({
-    backgroundImage: "linear-gradient(180deg, rgba(15, 23, 42, 0.25) 0%, rgba(15, 23, 42, 0.65) 100%)",
-  }), []);
+    position: "relative",
+    backgroundImage: coverImage
+      ? `linear-gradient(180deg, rgba(15,23,42,0.35) 0%, rgba(15,23,42,0.65) 100%), url(${coverImage})`
+      : "linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%)",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    minHeight: "120px",
+    borderRadius: "16px",
+  }), [coverImage]);
+
+  const handleCoverUpload = useCallback(async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !accountConfig?.facebookPageId) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Envie um arquivo de imagem.");
+      return;
+    }
+    setCoverLoading(true);
+    setCoverError("");
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("Falha ao ler o arquivo."));
+        reader.readAsDataURL(file);
+      });
+
+      const resp = await apiFetch("/api/covers", {
+        method: "POST",
+        body: {
+          platform: "facebook",
+          account_id: accountConfig.facebookPageId,
+          data_url: dataUrl,
+          content_type: file.type,
+          size_bytes: file.size,
+        },
+      });
+      setCoverImage(resp?.cover?.url || resp?.cover?.storage_url || dataUrl);
+    } catch (err) {
+      setCoverError(err?.message || "Não foi possível salvar a capa.");
+    } finally {
+      setCoverLoading(false);
+    }
+  }, [accountConfig?.facebookPageId, apiFetch]);
+
+  const handleCoverRemove = useCallback(async () => {
+    if (!accountConfig?.facebookPageId) return;
+    setCoverLoading(true);
+    setCoverError("");
+    try {
+      await apiFetch(`/api/covers?platform=facebook&account_id=${encodeURIComponent(accountConfig.facebookPageId)}`, {
+        method: "DELETE",
+      });
+      setCoverImage(null);
+    } catch (err) {
+      setCoverError(err?.message || "Não foi possível remover a capa.");
+    } finally {
+      setCoverLoading(false);
+    }
+  }, [accountConfig?.facebookPageId, apiFetch]);
 
   // Facebook metrics no longer trigger full API calls; only reach uses the backend.
 
@@ -579,7 +682,87 @@ useEffect(() => {
         <div className="ig-clean-grid">
           <div className="ig-clean-grid__left">
             <section className="ig-profile-vertical">
-              <div className="ig-profile-vertical__cover" style={heroCoverStyle} />
+              <div className="ig-profile-vertical__cover" style={heroCoverStyle}>
+                {coverLoading && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: "rgba(17,24,39,0.35)",
+                      color: "#fff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 600,
+                      fontSize: "0.95rem",
+                      zIndex: 2,
+                    }}
+                  >
+                    Carregando capa...
+                  </div>
+                )}
+                {coverError && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 12,
+                      bottom: 12,
+                      right: 12,
+                      background: "rgba(255,255,255,0.92)",
+                      color: "#b91c1c",
+                      border: "1px solid #fecdd3",
+                      borderRadius: "10px",
+                      padding: "8px 10px",
+                      fontSize: "0.85rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {coverError}
+                  </div>
+                )}
+                <div style={{ position: "absolute", right: 12, bottom: 12, display: "flex", gap: "8px" }}>
+                  <label
+                    htmlFor="fb-cover-upload"
+                    style={{
+                      background: "rgba(255,255,255,0.9)",
+                      color: "#111827",
+                      borderRadius: "8px",
+                      padding: "6px 10px",
+                      fontSize: "0.85rem",
+                      cursor: "pointer",
+                      border: "1px solid #e5e7eb",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Enviar capa
+                  </label>
+                  {coverImage && (
+                    <button
+                      type="button"
+                      onClick={handleCoverRemove}
+                      style={{
+                        background: "rgba(255,255,255,0.9)",
+                        color: "#b91c1c",
+                        borderRadius: "8px",
+                        padding: "6px 10px",
+                        fontSize: "0.85rem",
+                        border: "1px solid #fecdd3",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Remover
+                    </button>
+                  )}
+                  <input
+                    id="fb-cover-upload"
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={handleCoverUpload}
+                  />
+                </div>
+              </div>
 
               <div className="ig-profile-vertical__avatar-wrapper">
                 <div className="ig-profile-vertical__avatar">

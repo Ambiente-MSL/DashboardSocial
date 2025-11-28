@@ -27,6 +27,7 @@ from cache import (
 from meta import (
     MetaAPIError,
     ads_highlights,
+    get_page_access_token,
     fb_audience,
     fb_page_window,
     fb_recent_posts,
@@ -966,6 +967,26 @@ def _serialize_cover_row(row: Optional[Dict[str, Any]]) -> Optional[Dict[str, An
         "content_type": row.get("content_type"),
         "size_bytes": row.get("size_bytes"),
         "updated_at": updated_at_iso,
+    }
+
+
+def _fetch_facebook_page_info(page_id: str) -> Dict[str, Any]:
+    if not page_id:
+        raise ValueError("page_id is required")
+    token = get_page_access_token(page_id)
+    data = gget(
+        f"/{page_id}",
+        params={
+            "fields": "id,name,picture{url,height,width}",
+        },
+        token=token,
+    )
+    picture = data.get("picture") or {}
+    picture_data = picture.get("data") or {}
+    return {
+        "id": data.get("id") or page_id,
+        "name": data.get("name"),
+        "picture_url": picture_data.get("url"),
     }
 
 
@@ -2090,6 +2111,24 @@ def facebook_metrics():
     response = dict(payload)
     response["cache"] = meta
     return jsonify(response)
+
+
+@app.get("/api/facebook/page-info")
+def facebook_page_info():
+    user, error = _authenticate_request(request)
+    if error:
+        return error
+    page_id = request.args.get("pageId") or PAGE_ID
+    if not page_id:
+        return jsonify({"error": "pageId is required"}), 400
+    try:
+        data = _fetch_facebook_page_info(page_id)
+    except MetaAPIError as err:
+        return meta_error_response(err)
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Failed to fetch page info for %s", page_id)
+        return jsonify({"error": "could not load page info"}), 500
+    return jsonify({"page": data})
 
 
 @app.get("/api/facebook/followers")
