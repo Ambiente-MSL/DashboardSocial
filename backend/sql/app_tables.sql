@@ -6,11 +6,15 @@ CREATE TABLE IF NOT EXISTS app_users (
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'analista',
     nome TEXT NOT NULL,
+    facebook_id TEXT UNIQUE,
+    facebook_email TEXT,
+    facebook_name TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS app_users_email_lower_idx ON app_users (LOWER(email));
+CREATE UNIQUE INDEX IF NOT EXISTS app_users_facebook_id_idx ON app_users (facebook_id) WHERE facebook_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS report_templates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

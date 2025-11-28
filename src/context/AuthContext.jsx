@@ -45,6 +45,9 @@ const AuthContext = createContext({
   signInWithPassword: async () => {
     throw new Error('AuthProvider não inicializado.');
   },
+  signInWithFacebook: async () => {
+    throw new Error('AuthProvider não inicializado.');
+  },
   signUp: async () => {
     throw new Error('AuthProvider não inicializado.');
   },
@@ -144,6 +147,27 @@ export function AuthProvider({ children }) {
     [persistToken],
   );
 
+  const signInWithFacebook = useCallback(
+    async (accessToken) => {
+      const response = await fetch(buildApiUrl('/api/auth/facebook'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ access_token: accessToken }),
+      });
+      const body = await parseResponseBody(response);
+      if (!response.ok) {
+        throw new Error(body?.error || 'Não foi possível entrar com Facebook.');
+      }
+      persistToken(body.token || null);
+      setUser(body.user ?? null);
+      setRole(body.user?.role ?? null);
+      return body;
+    },
+    [persistToken],
+  );
+
   const signUp = useCallback(
     async (email, password, nome) => {
       const response = await fetch(buildApiUrl('/api/auth/register'), {
@@ -223,11 +247,12 @@ export function AuthProvider({ children }) {
       token,
       loading,
       signInWithPassword,
+      signInWithFacebook,
       signUp,
       signOut,
       apiFetch,
     }),
-    [user, role, token, loading, signInWithPassword, signUp, signOut, apiFetch],
+    [user, role, token, loading, signInWithPassword, signInWithFacebook, signUp, signOut, apiFetch],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

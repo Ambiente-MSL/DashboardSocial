@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LogIn } from 'lucide-react';
+import { Facebook, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const translateError = (rawMessage) => {
@@ -20,14 +20,64 @@ const translateError = (rawMessage) => {
   return rawMessage;
 };
 
+const facebookAppId = process.env.REACT_APP_FACEBOOK_APP_ID;
+
+const ensureFacebookSdk = () =>
+  new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') {
+      reject(new Error('Ambiente de navegador não disponível.'));
+      return;
+    }
+    if (window.FB) {
+      resolve(window.FB);
+      return;
+    }
+
+    window.fbAsyncInit = () => {
+      try {
+        window.FB.init({
+          appId: facebookAppId,
+          cookie: true,
+          xfbml: false,
+          version: 'v19.0',
+        });
+        resolve(window.FB);
+      } catch (err) {
+        reject(err);
+      }
+    };
+
+    const existingScript = document.getElementById('facebook-jssdk');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(window.FB));
+      existingScript.addEventListener('error', () => reject(new Error('Não foi possível carregar o SDK do Facebook.')));
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'facebook-jssdk';
+    script.src = 'https://connect.facebook.net/en_US/sdk.js';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (window.FB) {
+        resolve(window.FB);
+      }
+    };
+    script.onerror = () => reject(new Error('Não foi possível carregar o SDK do Facebook.'));
+    document.body.appendChild(script);
+  });
+
 export default function Login() {
-  const { user, loading, signInWithPassword } = useAuth();
+  const { user, loading, signInWithPassword, signInWithFacebook } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [facebookLoading, setFacebookLoading] = useState(false);
+  const [facebookReady, setFacebookReady] = useState(false);
 
   const redirectPath = useMemo(() => {
     const fromPath = location.state?.from?.pathname;
@@ -41,6 +91,28 @@ export default function Login() {
     }
   }, [loading, user, navigate, redirectPath]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!facebookAppId) return undefined;
+
+    ensureFacebookSdk()
+      .then(() => {
+        if (!cancelled) {
+          setFacebookReady(true);
+        }
+      })
+      .catch((err) => {
+        console.error('Erro ao carregar SDK do Facebook', err);
+        if (!cancelled) {
+          setFacebookReady(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormError('');
@@ -52,6 +124,39 @@ export default function Login() {
       setFormError(translateError(err?.message));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleFacebookLogin = async () => {
+    setFormError('');
+    if (!facebookAppId) {
+      setFormError('Configuração do Facebook ausente. Defina REACT_APP_FACEBOOK_APP_ID.');
+      return;
+    }
+    setFacebookLoading(true);
+    try {
+      const FB = await ensureFacebookSdk();
+      const accessToken = await new Promise((resolve, reject) => {
+        FB.login(
+          (response) => {
+            if (response?.authResponse?.accessToken) {
+              resolve(response.authResponse.accessToken);
+            } else if (response?.status === 'not_authorized') {
+              reject(new Error('Permissão do Facebook não autorizada.'));
+            } else {
+              reject(new Error('Login com Facebook cancelado.'));
+            }
+          },
+          { scope: 'email,public_profile', return_scopes: true },
+        );
+      });
+
+      await signInWithFacebook(accessToken);
+      navigate(redirectPath, { replace: true });
+    } catch (err) {
+      setFormError(translateError(err?.message));
+    } finally {
+      setFacebookLoading(false);
     }
   };
 
@@ -94,6 +199,32 @@ export default function Login() {
             {submitting ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '1.25rem 0 0.75rem' }}>
+          <div style={{ flex: 1, height: 1, backgroundColor: '#e5e7eb' }} />
+          <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>ou</span>
+          <div style={{ flex: 1, height: 1, backgroundColor: '#e5e7eb' }} />
+        </div>
+
+        <button
+          type="button"
+          className="auth-submit"
+          style={{
+            backgroundColor: '#0866ff',
+            borderColor: '#0653d9',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            justifyContent: 'center',
+          }}
+          onClick={handleFacebookLogin}
+          disabled={submitting || facebookLoading || !facebookReady}
+        >
+          <Facebook size={16} />
+          {facebookLoading ? 'Conectando...' : 'Continuar com Facebook'}
+        </button>
+
         <p className="auth-footnote">
           Nao tem conta?{' '}
           <Link className="auth-link" to="/register">

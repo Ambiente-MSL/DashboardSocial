@@ -4,6 +4,7 @@ import re
 import time
 import logging
 import math
+import secrets
 import unicodedata
 import uuid
 from collections import Counter, defaultdict
@@ -14,6 +15,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from psycopg2.extras import Json
+import requests
 
 from auth_utils import hash_password as _hash_password, verify_password as _verify_password
 from cache import (
@@ -98,6 +100,11 @@ if not AUTH_SECRET_KEY:
 
 AUTH_SERIALIZER = URLSafeTimedSerializer(AUTH_SECRET_KEY, salt="dashboardsocial-auth")
 AUTH_TOKEN_TTL_SECONDS = int(os.getenv("AUTH_TOKEN_TTL_SECONDS", "86400"))
+
+FACEBOOK_APP_ID = os.getenv("FACEBOOK_APP_ID")
+FACEBOOK_APP_SECRET = os.getenv("FACEBOOK_APP_SECRET")
+FACEBOOK_GRAPH_VERSION = os.getenv("FACEBOOK_GRAPH_VERSION", "v19.0")
+FACEBOOK_GRAPH_BASE = f"https://graph.facebook.com/{FACEBOOK_GRAPH_VERSION}"
 
 PAGE_ID = os.getenv("META_PAGE_ID")
 IG_ID = os.getenv("META_IG_USER_ID")
@@ -837,6 +844,88 @@ def _decode_auth_token(token: str) -> Optional[str]:
         return None
 
 
+def _facebook_api_url(path: str) -> str:
+    normalized = path if path.startswith("/") else f"/{path}"
+    return f"{FACEBOOK_GRAPH_BASE}{normalized}"
+
+
+def _parse_facebook_response(response) -> Dict[str, Any]:
+    try:
+        return response.json()
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _validate_facebook_access_token(access_token: str) -> Dict[str, Any]:
+    if not access_token:
+        raise ValueError("facebook access_token é obrigatório")
+    if not FACEBOOK_APP_ID or not FACEBOOK_APP_SECRET:
+        raise ValueError("FACEBOOK_APP_ID e FACEBOOK_APP_SECRET não configurados")
+
+    app_token = f"{FACEBOOK_APP_ID}|{FACEBOOK_APP_SECRET}"
+    try:
+        debug_response = requests.get(
+            _facebook_api_url("/debug_token"),
+            params={"input_token": access_token, "access_token": app_token},
+            timeout=10,
+        )
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Erro ao chamar debug_token no Facebook")
+        raise ValueError("Falha ao validar token com o Facebook") from err
+
+    debug_body = _parse_facebook_response(debug_response)
+    debug_data = debug_body.get("data") or {}
+    if not debug_response.ok or not debug_data.get("is_valid"):
+        error_message = None
+        error_field = debug_data.get("error")
+        if isinstance(error_field, dict):
+            error_message = error_field.get("message")
+        raise ValueError(error_message or "Token do Facebook inválido.")
+
+    if str(debug_data.get("app_id")) != str(FACEBOOK_APP_ID):
+        raise ValueError("Token do Facebook não pertence a este aplicativo.")
+
+    expires_at = debug_data.get("expires_at")
+    if expires_at and int(expires_at) < int(time.time()):
+        raise ValueError("Token do Facebook expirado.")
+
+    try:
+        profile_response = requests.get(
+            _facebook_api_url("/me"),
+            params={
+                "fields": "id,name,email",
+                "access_token": access_token,
+            },
+            timeout=10,
+        )
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Erro ao buscar perfil do Facebook")
+        raise ValueError("Falha ao buscar perfil no Facebook.") from err
+
+    profile_body = _parse_facebook_response(profile_response)
+    if not profile_response.ok:
+        error_message = None
+        error_field = profile_body.get("error")
+        if isinstance(error_field, dict):
+            error_message = error_field.get("message")
+        raise ValueError(error_message or "Token do Facebook não pôde ser validado.")
+
+    email = str(profile_body.get("email") or "").strip().lower()
+    if not email:
+        raise ValueError("Não recebemos o e-mail do Facebook. Garanta que a permissão 'email' foi concedida.")
+
+    facebook_id = str(debug_data.get("user_id") or profile_body.get("id") or "").strip()
+    if not facebook_id:
+        raise ValueError("Não foi possível identificar o usuário do Facebook.")
+
+    return {
+        "facebook_id": facebook_id,
+        "email": email,
+        "nome": profile_body.get("name"),
+        "facebook_name": profile_body.get("name"),
+    }
+
+
 def _extract_bearer_token(req) -> Optional[str]:
     header = req.headers.get("Authorization", "").strip()
     if header.lower().startswith("bearer "):
@@ -864,7 +953,7 @@ def _fetch_user_by_email(email: str) -> Optional[Dict[str, Any]]:
         return None
     return fetch_one(
         f"""
-        SELECT id, email, role, nome, password_hash
+        SELECT id, email, role, nome, password_hash, facebook_id, facebook_email, facebook_name
         FROM {APP_USERS_TABLE}
         WHERE lower(email) = %(email)s
         LIMIT 1
@@ -878,12 +967,26 @@ def _fetch_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
         return None
     return fetch_one(
         f"""
-        SELECT id, email, role, nome, password_hash
+        SELECT id, email, role, nome, password_hash, facebook_id, facebook_email, facebook_name
         FROM {APP_USERS_TABLE}
         WHERE id = %(user_id)s
         LIMIT 1
         """,
         {"user_id": user_id},
+    )
+
+
+def _fetch_user_by_facebook_id(facebook_id: str) -> Optional[Dict[str, Any]]:
+    if not facebook_id:
+        return None
+    return fetch_one(
+        f"""
+        SELECT id, email, role, nome, password_hash, facebook_id, facebook_email, facebook_name
+        FROM {APP_USERS_TABLE}
+        WHERE facebook_id = %(facebook_id)s
+        LIMIT 1
+        """,
+        {"facebook_id": facebook_id},
     )
 
 
@@ -906,8 +1009,8 @@ def _create_app_user(email: str, password: str, nome: str, role: Optional[str] =
     normalized_role = role or DEFAULT_USER_ROLE or "analista"
     execute(
         f"""
-        INSERT INTO {APP_USERS_TABLE} (id, email, password_hash, role, nome)
-        VALUES (%(id)s, %(email)s, %(password_hash)s, %(role)s, %(nome)s)
+        INSERT INTO {APP_USERS_TABLE} (id, email, password_hash, role, nome, facebook_id, facebook_email, facebook_name)
+        VALUES (%(id)s, %(email)s, %(password_hash)s, %(role)s, %(nome)s, %(facebook_id)s, %(facebook_email)s, %(facebook_name)s)
         """,
         {
             "id": user_id,
@@ -915,9 +1018,87 @@ def _create_app_user(email: str, password: str, nome: str, role: Optional[str] =
             "password_hash": hashed,
             "role": normalized_role,
             "nome": nome,
+            "facebook_id": None,
+            "facebook_email": None,
+            "facebook_name": None,
         },
     )
     return user_id
+
+
+def _upsert_facebook_user(profile: Dict[str, Any]) -> Dict[str, Any]:
+    facebook_id = str(profile.get("facebook_id") or profile.get("id") or "").strip()
+    email = str(profile.get("email") or "").strip().lower()
+    nome = str(profile.get("nome") or profile.get("name") or "").strip() or "Usuário Facebook"
+    facebook_email = email or None
+    facebook_name = str(profile.get("name") or profile.get("facebook_name") or nome).strip() or None
+
+    existing_by_fb = _fetch_user_by_facebook_id(facebook_id)
+    if existing_by_fb:
+        execute(
+            f"""
+            UPDATE {APP_USERS_TABLE}
+            SET
+                email = COALESCE(%(email)s, email),
+                facebook_email = %(facebook_email)s,
+                facebook_name = COALESCE(%(facebook_name)s, facebook_name),
+                nome = COALESCE(%(nome)s, nome),
+                updated_at = NOW()
+            WHERE id = %(user_id)s
+            """,
+            {
+                "user_id": existing_by_fb["id"],
+                "email": email or existing_by_fb.get("email"),
+                "facebook_email": facebook_email,
+                "facebook_name": facebook_name,
+                "nome": nome,
+            },
+        )
+        return _fetch_user_by_id(existing_by_fb["id"])
+
+    existing_by_email = _fetch_user_by_email(email) if email else None
+    if existing_by_email:
+        execute(
+            f"""
+            UPDATE {APP_USERS_TABLE}
+            SET
+                facebook_id = %(facebook_id)s,
+                facebook_email = %(facebook_email)s,
+                facebook_name = COALESCE(%(facebook_name)s, facebook_name),
+                nome = COALESCE(%(nome)s, nome),
+                updated_at = NOW()
+            WHERE id = %(user_id)s
+            """,
+            {
+                "facebook_id": facebook_id,
+                "facebook_email": facebook_email,
+                "facebook_name": facebook_name,
+                "nome": nome,
+                "user_id": existing_by_email["id"],
+            },
+        )
+        return _fetch_user_by_id(existing_by_email["id"])
+
+    user_id = str(uuid.uuid4())
+    placeholder_password = secrets.token_urlsafe(32)
+    hashed = _hash_password(placeholder_password)
+    execute(
+        f"""
+        INSERT INTO {APP_USERS_TABLE} (id, email, password_hash, role, nome, facebook_id, facebook_email, facebook_name)
+        VALUES (%(id)s, %(email)s, %(password_hash)s, %(role)s, %(nome)s, %(facebook_id)s, %(facebook_email)s, %(facebook_name)s)
+        """,
+        {
+            "id": user_id,
+            "email": email,
+            "password_hash": hashed,
+            "role": DEFAULT_USER_ROLE or "analista",
+            "nome": nome,
+            "facebook_id": facebook_id,
+            "facebook_email": facebook_email,
+            "facebook_name": facebook_name,
+        },
+    )
+    return _fetch_user_by_id(user_id)
 
 
 def _list_app_users() -> List[Dict[str, Any]]:
@@ -1490,6 +1671,34 @@ def auth_login() -> Any:
     user_row = _fetch_user_by_email(email)
     if not user_row or not _verify_password(password, user_row.get("password_hash")):
         return jsonify({"error": "invalid credentials"}), 401
+
+    token = _issue_auth_token(user_row["id"])
+    return jsonify({"token": token, "user": _serialize_user_row(user_row)})
+
+
+@app.post("/api/auth/facebook")
+def auth_facebook() -> Any:
+    payload = request.get_json(silent=True) or {}
+    access_token = str(
+        payload.get("access_token") or payload.get("accessToken") or ""
+    ).strip()
+
+    if not access_token:
+        return jsonify({"error": "facebook access_token is required"}), 400
+
+    try:
+        profile = _validate_facebook_access_token(access_token)
+    except ValueError as err:
+        return jsonify({"error": str(err)}), 400
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Erro inesperado ao validar token do Facebook")
+        return jsonify({"error": "could not validate facebook token"}), 502
+
+    try:
+        user_row = _upsert_facebook_user(profile)
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Falha ao criar/atualizar usuário do Facebook %s", profile)
+        return jsonify({"error": "could not sign in with facebook"}), 500
 
     token = _issue_auth_token(user_row["id"])
     return jsonify({"token": token, "user": _serialize_user_row(user_row)})
