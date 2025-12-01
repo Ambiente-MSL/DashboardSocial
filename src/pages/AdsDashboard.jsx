@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Link, useLocation, useOutletContext } from "react-router-dom";
 import { differenceInCalendarDays, endOfDay, startOfDay, subDays } from "date-fns";
 import {
@@ -35,6 +35,8 @@ import {
   Instagram as InstagramIcon,
   Settings,
   Shield,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useAccounts } from "../context/AccountsContext";
 import { DEFAULT_ACCOUNTS } from "../data/accounts";
@@ -319,6 +321,7 @@ export default function AdsDashboard() {
   const [adsData, setAdsData] = useState(null);
   const [adsError, setAdsError] = useState("");
   const [adsLoading, setAdsLoading] = useState(false);
+  const spendScrollRef = useRef(null);
   const primaryAccount = useMemo(() => {
     if (!availableAccounts.length) return {};
     const selected = availableAccounts.find((acc) => acc.id === queryAccountId);
@@ -536,6 +539,12 @@ export default function AdsDashboard() {
 
   const highlightedSpendIndex = activeSpendBar >= 0 ? activeSpendBar : peakSpendPoint?.index ?? -1;
   const highlightedSpendPoint = highlightedSpendIndex >= 0 ? spendSeries[highlightedSpendIndex] : null;
+  const scrollSpendChart = useCallback((direction) => {
+    const container = spendScrollRef.current;
+    if (!container) return;
+    const delta = Math.max(container.clientWidth * 0.7, 320);
+    container.scrollBy({ left: direction * delta, behavior: "smooth" });
+  }, []);
 
   return (
     <div className="instagram-dashboard instagram-dashboard--clean">
@@ -899,10 +908,35 @@ export default function AdsDashboard() {
                   <h3>Investimento ao Longo do Tempo</h3>
                   <p className="ig-card-subtitle">Gastos diários em campanhas</p>
                 </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <button
+                    type="button"
+                    onClick={() => scrollSpendChart(-1)}
+                    aria-label="Voltar período"
+                    className="topbar__chip"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scrollSpendChart(1)}
+                    aria-label="Avançar período"
+                    className="topbar__chip"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
               </header>
 
               <div className="ig-chart-area">
-                <div style={{ overflowX: "auto", paddingBottom: "8px" }}>
+                <div
+                  ref={spendScrollRef}
+                  style={{
+                    overflowX: "auto",
+                    paddingBottom: "8px",
+                    scrollbarWidth: "thin",
+                  }}
+                >
                   <div style={{ minWidth: spendChartMinWidth, height: 320 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
