@@ -325,6 +325,9 @@ export default function AdsDashboard() {
     return found || availableAccounts[0];
   }, [availableAccounts, queryAccountId]);
   const adAccountId = primaryAccount.adAccountId || "";
+  const actParam = adAccountId
+    ? (adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`)
+    : "";
 
   useEffect(() => {
     if (!availableAccounts.length) return;
@@ -408,15 +411,15 @@ export default function AdsDashboard() {
     let cancelled = false;
     const loadAds = async () => {
       setAdsLoading(true);
-      setAdsError(adAccountId ? "" : "A conta selecionada não possui adAccountId configurado.");
-      if (!adAccountId) {
+      setAdsError(actParam ? "" : "A conta selecionada não possui adAccountId configurado.");
+      if (!actParam) {
         setAdsData(null);
         setAdsLoading(false);
         return;
       }
       try {
         const params = new URLSearchParams();
-        params.set("actId", adAccountId);
+        params.set("actId", actParam);
         if (sinceDate) params.set("since", startOfDay(sinceDate).toISOString());
         if (untilDate) params.set("until", endOfDay(untilDate).toISOString());
         const resp = await apiFetch(`/api/ads/highlights?${params.toString()}`);

@@ -43,7 +43,11 @@ function normalizeAccount(raw, existing = []) {
     const normalizedAds = adAccounts
       .map((ad) => {
         if (!ad) return null;
-        const adId = ad.id != null ? String(ad.id).trim() : "";
+        const adIdRaw = ad.id != null ? String(ad.id).trim() : "";
+        const accountIdRaw = ad.accountId ?? ad.account_id;
+        const baseId = adIdRaw || (accountIdRaw != null ? String(accountIdRaw).trim() : "");
+        if (!baseId) return null;
+        const adId = baseId.startsWith("act_") ? baseId : `act_${baseId}`;
         if (!adId) return null;
         return {
           id: adId,
@@ -56,6 +60,9 @@ function normalizeAccount(raw, existing = []) {
       .filter(Boolean);
     if (normalizedAds.length) {
       normalized.adAccounts = normalizedAds;
+      if (!normalized.adAccountId) {
+        normalized.adAccountId = normalizedAds[0].id;
+      }
     }
   }
   if (source) {
