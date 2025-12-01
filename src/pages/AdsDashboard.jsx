@@ -1037,60 +1037,64 @@ export default function AdsDashboard() {
               </header>
 
               <div className="ig-chart-area">
-                <ResponsiveContainer width="100%" height={320}>
-                  <ComposedChart data={MOCK_PERFORMANCE_SERIES} margin={{ top: 16, right: 16, bottom: 32, left: 0 }}>
-                    <defs>
-                      <linearGradient id="impressionsGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
-                        <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(value) => {
-                        if (value >= 1000) return `${Math.round(value / 1000)}k`;
-                        return value;
-                      }}
-                    />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        return (
-                          <div className="ig-follower-tooltip">
-                            <div className="ig-follower-tooltip__date">{payload[0].payload.date}</div>
-                            <div className="ig-follower-tooltip__label">
-                              Impressões: {formatNumber(payload[0].payload.impressions)}
-                            </div>
-                            <div className="ig-follower-tooltip__label">
-                              Cliques: {formatNumber(payload[0].payload.clicks)}
-                            </div>
-                            <div className="ig-follower-tooltip__label">
-                              Conversões: {formatNumber(payload[0].payload.conversions)}
-                            </div>
-                          </div>
-                        );
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="impressions"
-                      stroke="#6366f1"
-                      strokeWidth={2}
-                      fill="url(#impressionsGradient)"
-                    />
-                    <Line type="monotone" dataKey="clicks" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="conversions" stroke="#a855f7" strokeWidth={2} dot={false} />
-                  </ComposedChart>
-                </ResponsiveContainer>
+                <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
+                  <div style={{ minWidth: Math.max(MOCK_PERFORMANCE_SERIES.length * 80, 100) + '%' }}>
+                    <ResponsiveContainer width="100%" height={320}>
+                      <ComposedChart data={MOCK_PERFORMANCE_SERIES} margin={{ top: 16, right: 16, bottom: 32, left: 0 }}>
+                        <defs>
+                          <linearGradient id="impressionsGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
+                            <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fill: "#9ca3af", fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          tick={{ fill: "#9ca3af", fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={(value) => {
+                            if (value >= 1000) return `${Math.round(value / 1000)}k`;
+                            return value;
+                          }}
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            return (
+                              <div className="ig-follower-tooltip">
+                                <div className="ig-follower-tooltip__date">{payload[0].payload.date}</div>
+                                <div className="ig-follower-tooltip__label">
+                                  Impressões: {formatNumber(payload[0].payload.impressions)}
+                                </div>
+                                <div className="ig-follower-tooltip__label">
+                                  Cliques: {formatNumber(payload[0].payload.clicks)}
+                                </div>
+                                <div className="ig-follower-tooltip__label">
+                                  Conversões: {formatNumber(payload[0].payload.conversions)}
+                                </div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="impressions"
+                          stroke="#6366f1"
+                          strokeWidth={2}
+                          fill="url(#impressionsGradient)"
+                        />
+                        <Line type="monotone" dataKey="clicks" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="conversions" stroke="#a855f7" strokeWidth={2} dot={false} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -1341,41 +1345,45 @@ export default function AdsDashboard() {
               </header>
 
               <div className="ig-chart-area">
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={MOCK_AGE_DISTRIBUTION} margin={{ top: 16, right: 16, bottom: 16, left: 0 }}>
-                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
-                    <XAxis
-                      dataKey="range"
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(value) => `${value}%`}
-                    />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        return (
-                          <div className="ig-follower-tooltip">
-                            <div className="ig-follower-tooltip__label">
-                              {payload[0].payload.range} anos
-                            </div>
-                            <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
-                          </div>
-                        );
-                      }}
-                    />
-                    <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={48}>
-                      {MOCK_AGE_DISTRIBUTION.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
+                  <div style={{ minWidth: Math.max(MOCK_AGE_DISTRIBUTION.length * 100, 100) + '%' }}>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={MOCK_AGE_DISTRIBUTION} margin={{ top: 16, right: 16, bottom: 16, left: 0 }}>
+                        <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
+                        <XAxis
+                          dataKey="range"
+                          tick={{ fill: "#9ca3af", fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          tick={{ fill: "#9ca3af", fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={(value) => `${value}%`}
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            return (
+                              <div className="ig-follower-tooltip">
+                                <div className="ig-follower-tooltip__label">
+                                  {payload[0].payload.range} anos
+                                </div>
+                                <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={48}>
+                          {MOCK_AGE_DISTRIBUTION.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -1389,56 +1397,60 @@ export default function AdsDashboard() {
               </header>
 
               <div className="ig-chart-area">
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart
-                    data={MOCK_CAMPAIGN_PERFORMANCE}
-                    margin={{ top: 16, right: 16, bottom: 16, left: 80 }}
-                    layout="vertical"
-                  >
-                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" horizontal={false} />
-                    <XAxis
-                      type="number"
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(value) => `${value}%`}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={80}
-                    />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        return (
-                          <div className="ig-follower-tooltip">
-                            <div className="ig-follower-tooltip__label">{payload[0].payload.name}</div>
-                            <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
-                          </div>
-                        );
-                      }}
-                    />
-                    <Bar
-                      dataKey="value"
-                      radius={[0, 8, 8, 0]}
-                      barSize={32}
-                      onMouseEnter={(_, index) => setActiveCampaignIndex(index)}
-                      onMouseLeave={() => setActiveCampaignIndex(-1)}
-                    >
-                      {MOCK_CAMPAIGN_PERFORMANCE.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={entry.color}
-                          opacity={activeCampaignIndex === -1 || activeCampaignIndex === index ? 1 : 0.5}
+                <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
+                  <div style={{ minWidth: Math.max(MOCK_CAMPAIGN_PERFORMANCE.length * 60, 100) + '%' }}>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart
+                        data={MOCK_CAMPAIGN_PERFORMANCE}
+                        margin={{ top: 16, right: 16, bottom: 16, left: 80 }}
+                        layout="vertical"
+                      >
+                        <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" horizontal={false} />
+                        <XAxis
+                          type="number"
+                          tick={{ fill: "#9ca3af", fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={(value) => `${value}%`}
                         />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          tick={{ fill: "#9ca3af", fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={80}
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            return (
+                              <div className="ig-follower-tooltip">
+                                <div className="ig-follower-tooltip__label">{payload[0].payload.name}</div>
+                                <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar
+                          dataKey="value"
+                          radius={[0, 8, 8, 0]}
+                          barSize={32}
+                          onMouseEnter={(_, index) => setActiveCampaignIndex(index)}
+                          onMouseLeave={() => setActiveCampaignIndex(-1)}
+                        >
+                          {MOCK_CAMPAIGN_PERFORMANCE.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={entry.color}
+                              opacity={activeCampaignIndex === -1 || activeCampaignIndex === index ? 1 : 0.5}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -1465,44 +1477,48 @@ export default function AdsDashboard() {
                   <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '16px' }}>
                     Idade × Gênero
                   </h4>
-                  <ResponsiveContainer width="100%" height={220}>
-                    <BarChart
-                      data={MOCK_AGE_GENDER_DATA}
-                      layout="vertical"
-                      margin={{ left: 0, right: 10, top: 5, bottom: 5 }}
-                      barGap={4}
-                      barCategoryGap="20%"
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-                      <XAxis
-                        type="number"
-                        tick={{ fill: '#6b7280', fontSize: 11 }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="age"
-                        tick={{ fill: '#374151', fontSize: 12, fontWeight: 600 }}
-                        width={50}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <Tooltip
-                        cursor={{ fill: 'rgba(99, 102, 241, 0.08)' }}
-                        formatter={(value) => Number(value).toLocaleString("pt-BR")}
-                        contentStyle={{
-                          backgroundColor: 'white',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                          fontSize: '12px'
-                        }}
-                      />
-                      <Bar dataKey="male" fill="#6366f1" radius={[0, 6, 6, 0]} barSize={12} name="Homens" />
-                      <Bar dataKey="female" fill="#ec4899" radius={[0, 6, 6, 0]} barSize={12} name="Mulheres" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
+                    <div style={{ minWidth: Math.max(MOCK_AGE_GENDER_DATA.length * 60, 100) + '%' }}>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <BarChart
+                          data={MOCK_AGE_GENDER_DATA}
+                          layout="vertical"
+                          margin={{ left: 0, right: 10, top: 5, bottom: 5 }}
+                          barGap={4}
+                          barCategoryGap="20%"
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
+                          <XAxis
+                            type="number"
+                            tick={{ fill: '#6b7280', fontSize: 11 }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <YAxis
+                            type="category"
+                            dataKey="age"
+                            tick={{ fill: '#374151', fontSize: 12, fontWeight: 600 }}
+                            width={50}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <Tooltip
+                            cursor={{ fill: 'rgba(99, 102, 241, 0.08)' }}
+                            formatter={(value) => Number(value).toLocaleString("pt-BR")}
+                            contentStyle={{
+                              backgroundColor: 'white',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                              fontSize: '12px'
+                            }}
+                          />
+                          <Bar dataKey="male" fill="#6366f1" radius={[0, 6, 6, 0]} barSize={12} name="Homens" />
+                          <Bar dataKey="female" fill="#ec4899" radius={[0, 6, 6, 0]} barSize={12} name="Mulheres" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
                   <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
                       <span style={{ width: '12px', height: '12px', borderRadius: '3px', background: '#6366f1' }}></span>
