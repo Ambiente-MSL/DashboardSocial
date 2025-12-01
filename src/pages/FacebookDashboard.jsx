@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Link, useLocation, useOutletContext } from "react-router-dom";
+import { useLocation, useOutletContext } from "react-router-dom";
 import { differenceInCalendarDays, endOfDay, startOfDay, subDays } from "date-fns";
 import {
   ResponsiveContainer,
@@ -18,14 +18,6 @@ import {
   ReferenceDot,
   ReferenceLine,
 } from "recharts";
-import {
-  BarChart3,
-  FileText,
-  Facebook,
-  Instagram as InstagramIcon,
-  Settings,
-  Shield,
-} from "lucide-react";
 import useQueryState from "../hooks/useQueryState";
 import { useAccounts } from "../context/AccountsContext";
 import { DEFAULT_ACCOUNTS } from "../data/accounts";
@@ -49,15 +41,6 @@ const DEFAULT_WEEKLY_POSTS = [2, 3, 4, 5, 6, 4, 3];
 const DEFAULT_GENDER_STATS = [
   { name: "Homens", value: 40 },
   { name: "Mulheres", value: 60 },
-];
-
-const HERO_TABS = [
-  { id: "instagram", label: "Instagram", href: "/instagram", icon: InstagramIcon },
-  { id: "facebook", label: "Facebook", href: "/facebook", icon: Facebook },
-  { id: "ads", label: "Ads", href: "/ads", icon: BarChart3 },
-  { id: "reports", label: "Relatórios", href: "/relatorios", icon: FileText },
-  { id: "admin", label: "Admin", href: "/admin", icon: Shield },
-  { id: "settings", label: "Configurações", href: "/configuracoes", icon: Settings },
 ];
 
 const FOLLOWER_GROWTH_SERIES = [
@@ -658,47 +641,6 @@ useEffect(() => {
       {/* Container Limpo (fundo branco) */}
       <div className="ig-clean-container">
         <div className="ig-hero-gradient" aria-hidden="true" />
-        {/* Header com Logo Facebook e Tabs */}
-        <div className="ig-clean-header fb-topbar">
-          <div className="ig-clean-header__brand">
-            <div className="ig-clean-header__logo">
-              <Facebook size={32} color="#1877F2" fill="#1877F2" />
-            </div>
-            <h1>Facebook</h1>
-          </div>
-
-          <nav className="ig-clean-tabs">
-            {HERO_TABS.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = tab.href ? location.pathname === tab.href : tab.id === "facebook";
-              const linkTarget = tab.href
-                ? (location.search ? { pathname: tab.href, search: location.search } : tab.href)
-                : null;
-              return tab.href ? (
-                <Link
-                  key={tab.id}
-                  to={linkTarget}
-                  className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
-                >
-                  <Icon size={18} />
-                  <span>{tab.label}</span>
-                </Link>
-              ) : (
-                <button
-                  key={tab.id}
-                  type="button"
-                  className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
-                  disabled={!tab.href}
-                >
-                  <Icon size={18} />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        <h2 className="ig-clean-title">Visão Geral</h2>
 
         {/* Grid Principal */}
         <div className="ig-clean-grid">
