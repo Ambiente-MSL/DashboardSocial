@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useLocation, useOutletContext } from "react-router-dom";
+import { Link, useLocation, useOutletContext } from "react-router-dom";
 import { differenceInCalendarDays, endOfDay, startOfDay, subDays } from "date-fns";
 import {
   ResponsiveContainer,
@@ -21,6 +21,7 @@ import {
   Sector,
 } from "recharts";
 import {
+  TrendingUp,
   DollarSign,
   Eye,
   MousePointerClick,
@@ -28,11 +29,27 @@ import {
   Target,
   Activity,
   Zap,
+  BarChart3,
+  FileText,
+  Facebook,
+  Instagram as InstagramIcon,
+  Settings,
+  Shield,
 } from "lucide-react";
 import { useAccounts } from "../context/AccountsContext";
 import { DEFAULT_ACCOUNTS } from "../data/accounts";
 import { useAuth } from "../context/AuthContext";
 import useQueryState from "../hooks/useQueryState";
+
+// Hero Tabs
+const HERO_TABS = [
+  { id: "instagram", label: "Instagram", href: "/instagram", icon: InstagramIcon },
+  { id: "facebook", label: "Facebook", href: "/facebook", icon: Facebook },
+  { id: "ads", label: "Ads", href: "/ads", icon: BarChart3 },
+  { id: "reports", label: "Relatórios", href: "/relatorios", icon: FileText },
+  { id: "admin", label: "Admin", href: "/admin", icon: Shield },
+  { id: "settings", label: "Configurações", href: "/configuracoes", icon: Settings },
+];
 
 const MOCK_SPEND_SERIES = [
   { date: "01/02", value: 1580 },
@@ -519,6 +536,48 @@ export default function AdsDashboard() {
             background: 'linear-gradient(180deg, rgba(0, 33, 71, 0.85) 0%, rgba(0, 33, 71, 0.70) 50%, rgba(0, 33, 71, 0.55) 100%)'
           }}
         />
+
+        {/* Header com Logo e Tabs */}
+        <div className="ig-clean-header">
+          <div className="ig-clean-header__brand">
+            <div className="ig-clean-header__logo" style={{ background: 'linear-gradient(135deg, #002147 0%, #002d52 100%)' }}>
+              <TrendingUp size={32} color="white" />
+            </div>
+            <h1>Anúncios</h1>
+          </div>
+
+          <nav className="ig-clean-tabs">
+            {HERO_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = tab.href ? location.pathname === tab.href : tab.id === "ads";
+              const linkTarget = tab.href
+                ? (location.search ? { pathname: tab.href, search: location.search } : tab.href)
+                : null;
+              return tab.href ? (
+                <Link
+                  key={tab.id}
+                  to={linkTarget}
+                  className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
+                >
+                  <Icon size={18} />
+                  <span>{tab.label}</span>
+                </Link>
+              ) : (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
+                  disabled={!tab.href}
+                >
+                  <Icon size={18} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        <h2 className="ig-clean-title">Visão Geral</h2>
 
         {/* Grid Principal */}
         <div className="ig-clean-grid">

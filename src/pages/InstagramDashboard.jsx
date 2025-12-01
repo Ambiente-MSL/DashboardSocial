@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState, useCallback } from "react";
-import { useLocation, useOutletContext } from "react-router-dom";
+import { Link, useLocation, useOutletContext } from "react-router-dom";
 import {
   differenceInCalendarDays,
   endOfDay,
@@ -29,10 +29,17 @@ import {
   Brush,
 } from "recharts";
 import {
+  BarChart3,
   Bookmark,
+  FileText,
+  Facebook,
+  Hash,
   Heart,
+  Instagram as InstagramIcon,
   MessageCircle,
   Share2,
+  Settings,
+  Shield,
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
@@ -120,6 +127,15 @@ const FALLBACK_CALENDAR_MONTH_OPTIONS = [
   { value: "2025-09", label: "Setembro 2025", year: 2025, month: 8 },
   { value: "2025-10", label: "Outubro 2025", year: 2025, month: 9 },
   { value: "2025-11", label: "Novembro 2025", year: 2025, month: 10 },
+];
+
+const HERO_TABS = [
+  { id: "instagram", label: "Instagram", href: "/instagram", icon: InstagramIcon },
+  { id: "facebook", label: "Facebook", href: "/facebook", icon: Facebook },
+  { id: "ads", label: "Ads", href: "/ads", icon: BarChart3 },
+  { id: "reports", label: "Relatórios", href: "/relatorios", icon: FileText },
+  { id: "admin", label: "Admin", href: "/admin", icon: Shield },
+  { id: "settings", label: "Configurações", href: "/configuracoes", icon: Settings },
 ];
 
 const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
@@ -1561,6 +1577,47 @@ export default function InstagramDashboard() {
       {/* Container Limpo (fundo branco) */}
       <div className="ig-clean-container">
         <div className="ig-hero-gradient" aria-hidden="true" />
+        {/* Header com Logo Instagram e Tabs */}
+        <div className="ig-clean-header">
+          <div className="ig-clean-header__brand">
+            <div className="ig-clean-header__logo">
+              <InstagramIcon size={32} />
+            </div>
+            <h1>Instagram</h1>
+          </div>
+
+          <nav className="ig-clean-tabs">
+            {HERO_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = tab.href ? location.pathname === tab.href : tab.id === "instagram";
+              const linkTarget = tab.href
+                ? (location.search ? { pathname: tab.href, search: location.search } : tab.href)
+                : null;
+              return tab.href ? (
+                <Link
+                  key={tab.id}
+                  to={linkTarget}
+                  className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
+                >
+                  <Icon size={18} />
+                  <span>{tab.label}</span>
+                </Link>
+              ) : (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
+                  disabled={!tab.href}
+                >
+                  <Icon size={18} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        <h2 className="ig-clean-title">Visão Geral</h2>
 
         {/* Grid Principal */}
           <div className="ig-clean-grid">

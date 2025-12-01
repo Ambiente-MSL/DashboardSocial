@@ -8823,48 +8823,6 @@ body:has(.facebook-dashboard--clean) .app-main__content {
   cursor: not-allowed;
 }
 
-/* Account Select no Header */
-.ig-clean-header__account {
-  margin-left: auto;
-  padding-left: 20px;
-}
-
-.ig-clean-header__account .account-dropdown {
-  min-width: 200px;
-}
-
-.ig-clean-header__account .account-dropdown__label {
-  color: #6b7280;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 4px;
-}
-
-.ig-clean-header__account .account-dropdown__trigger {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 8px 12px;
-  transition: all 0.2s ease;
-}
-
-.ig-clean-header__account .account-dropdown__trigger:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
-}
-
-.ig-clean-header__account .account-dropdown__name {
-  color: #111827;
-  font-weight: 500;
-}
-
-.ig-clean-header__account .account-dropdown__list {
-  right: 0;
-  left: auto;
-  min-width: 220px;
-}
-
 /* Título */
 .ig-clean-title {
   font-size: 28px;
