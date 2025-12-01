@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link, useLocation, useOutletContext } from "react-router-dom";
+import { differenceInCalendarDays, endOfDay, startOfDay, subDays } from "date-fns";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -38,6 +39,7 @@ import {
 import { useAccounts } from "../context/AccountsContext";
 import { DEFAULT_ACCOUNTS } from "../data/accounts";
 import { useAuth } from "../context/AuthContext";
+import useQueryState from "../hooks/useQueryState";
 
 // Hero Tabs
 const HERO_TABS = [
@@ -262,6 +264,14 @@ const MOCK_CAMPAIGN_PERFORMANCE = [
 
 const IG_DONUT_COLORS = ["#6366f1", "#8b5cf6", "#a855f7", "#c084fc", "#d8b4fe"];
 
+const ADS_TOPBAR_PRESETS = [
+  { id: "7d", label: "7 dias", days: 7 },
+  { id: "1m", label: "1 mês", days: 30 },
+  { id: "3m", label: "3 meses", days: 90 },
+];
+
+const DEFAULT_ADS_RANGE_DAYS = 7;
+
 const renderActiveShape = (props) => {
   const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
   return (
@@ -295,24 +305,104 @@ export default function AdsDashboard() {
   const { setTopbarConfig, resetTopbarConfig } = outletContext;
   const { accounts } = useAccounts();
   const { apiFetch } = useAuth();
+  const availableAccounts = useMemo(
+    () => (accounts.length ? accounts.filter((acc) => acc.adAccountId) : DEFAULT_ACCOUNTS),
+    [accounts],
+  );
+  const [getQuery, setQuery] = useQueryState({ account: availableAccounts[0]?.id || "" });
+  const queryAccountId = getQuery("account");
 
   const [activeSpendBar, setActiveSpendBar] = useState(-1);
   const [activeGenderIndex, setActiveGenderIndex] = useState(-1);
   const [activeDeviceIndex, setActiveDeviceIndex] = useState(-1);
   const [activeCampaignIndex, setActiveCampaignIndex] = useState(-1);
-  const availableAccounts = accounts.length ? accounts : DEFAULT_ACCOUNTS;
   const [adsData, setAdsData] = useState(null);
   const [adsError, setAdsError] = useState("");
   const [adsLoading, setAdsLoading] = useState(false);
-  const primaryAccount = availableAccounts[0] || {};
+  const primaryAccount = useMemo(() => {
+    if (!availableAccounts.length) return {};
+    const found = availableAccounts.find((acc) => acc.id === queryAccountId);
+    return found || availableAccounts[0];
+  }, [availableAccounts, queryAccountId]);
   const adAccountId = primaryAccount.adAccountId || "";
+
+  useEffect(() => {
+    if (!availableAccounts.length) return;
+    if (!queryAccountId || !availableAccounts.some((acc) => acc.id === queryAccountId)) {
+      setQuery({ account: availableAccounts[0].id });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableAccounts.length, queryAccountId]);
+
+  const now = useMemo(() => new Date(), []);
+  const defaultEnd = useMemo(() => endOfDay(subDays(startOfDay(now), 1)), [now]);
+  const sinceParam = getQuery("since");
+  const untilParam = getQuery("until");
+  const sinceDate = useMemo(() => {
+    if (!sinceParam) return null;
+    const numeric = Number(sinceParam);
+    if (!Number.isFinite(numeric)) return null;
+    const ms = numeric > 1_000_000_000_000 ? numeric : numeric * 1000;
+    const date = new Date(ms);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }, [sinceParam]);
+  const untilDate = useMemo(() => {
+    if (!untilParam) return null;
+    const numeric = Number(untilParam);
+    if (!Number.isFinite(numeric)) return null;
+    const ms = numeric > 1_000_000_000_000 ? numeric : numeric * 1000;
+    const date = new Date(ms);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }, [untilParam]);
+
+  const activePreset = useMemo(() => {
+    if (!sinceDate || !untilDate) return "custom";
+    const diff = differenceInCalendarDays(endOfDay(untilDate), startOfDay(sinceDate)) + 1;
+    const preset = ADS_TOPBAR_PRESETS.find((item) => item.days === diff);
+    return preset?.id ?? "custom";
+  }, [sinceDate, untilDate]);
 
   // Configure Topbar
   useEffect(() => {
     if (!setTopbarConfig) return undefined;
-    setTopbarConfig({ title: "Anúncios", showFilters: true });
+    setTopbarConfig({
+      title: "Anúncios",
+      showFilters: true,
+      presets: ADS_TOPBAR_PRESETS,
+      selectedPreset: activePreset,
+      onPresetSelect: (presetId) => {
+        const preset = ADS_TOPBAR_PRESETS.find((item) => item.id === presetId);
+        if (!preset?.days || preset.days <= 0) return;
+        const endDate = defaultEnd;
+        const startDate = startOfDay(subDays(endDate, preset.days - 1));
+        setQuery({
+          since: Math.floor(startDate.getTime() / 1000),
+          until: Math.floor(endDate.getTime() / 1000),
+        });
+      },
+      onDateChange: (start, end) => {
+        if (!start || !end) return;
+        const normalizedStart = startOfDay(start);
+        const normalizedEnd = endOfDay(end);
+        setQuery({
+          since: Math.floor(normalizedStart.getTime() / 1000),
+          until: Math.floor(normalizedEnd.getTime() / 1000),
+        });
+      },
+    });
     return () => resetTopbarConfig?.();
-  }, [setTopbarConfig, resetTopbarConfig]);
+  }, [setTopbarConfig, resetTopbarConfig, activePreset, defaultEnd, setQuery]);
+
+  useEffect(() => {
+    if (sinceDate && untilDate) return;
+    const preset = ADS_TOPBAR_PRESETS.find((item) => item.id === "7d") || ADS_TOPBAR_PRESETS[0];
+    const endDate = defaultEnd;
+    const startDate = startOfDay(subDays(endDate, (preset?.days ?? DEFAULT_ADS_RANGE_DAYS) - 1));
+    setQuery({
+      since: Math.floor(startDate.getTime() / 1000),
+      until: Math.floor(endDate.getTime() / 1000),
+    });
+  }, [defaultEnd, sinceDate, untilDate, setQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -322,6 +412,8 @@ export default function AdsDashboard() {
       try {
         const params = new URLSearchParams();
         if (adAccountId) params.set("actId", adAccountId);
+        if (sinceDate) params.set("since", startOfDay(sinceDate).toISOString());
+        if (untilDate) params.set("until", endOfDay(untilDate).toISOString());
         const resp = await apiFetch(`/api/ads/highlights?${params.toString()}`);
         if (cancelled) return;
         setAdsData(resp || {});
@@ -339,7 +431,7 @@ export default function AdsDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [adAccountId, apiFetch]);
+  }, [adAccountId, apiFetch, sinceDate, untilDate]);
 
   const formatNumber = (num) => {
     if (typeof num !== "number") return num;
