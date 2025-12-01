@@ -945,7 +945,7 @@ export default function AdsDashboard() {
                       <BarChart
                         data={spendSeries}
                         margin={{ top: 16, right: 16, bottom: 32, left: 0 }}
-                        barCategoryGap="35%"
+                        barCategoryGap="15%"
                       >
                         <defs>
                           <linearGradient id="spendBar" x1="0" y1="0" x2="0" y2="1">
@@ -1110,47 +1110,181 @@ export default function AdsDashboard() {
                 </div>
               </header>
 
-              <div className="posts-table-container" style={{ marginTop: "16px", overflowX: "auto" }}>
-                <table className="posts-table" style={{ minWidth: "780px", tableLayout: "fixed" }}>
-                  <colgroup>
-                    <col style={{ width: "28%" }} />
-                    <col style={{ width: "16%" }} />
-                    <col style={{ width: "12%" }} />
-                    <col style={{ width: "12%" }} />
-                    <col style={{ width: "10%" }} />
-                    <col style={{ width: "12%" }} />
-                    <col style={{ width: "10%" }} />
-                    <col style={{ width: "10%" }} />
-                  </colgroup>
+              <div style={{ marginTop: "16px", overflowX: "auto" }}>
+                <table style={{
+                  width: "100%",
+                  borderCollapse: "separate",
+                  borderSpacing: "0 8px",
+                  minWidth: "600px"
+                }}>
                   <thead>
-                    <tr>
-                      <th>Nome da Campanha</th>
-                      <th>Objetivo</th>
-                      <th>Impressões</th>
-                      <th>Cliques</th>
-                      <th>CTR</th>
-                      <th>Investimento</th>
-                      <th>Conversões</th>
-                      <th>CPA</th>
+                    <tr style={{
+                      background: "transparent",
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em"
+                    }}>
+                      <th style={{
+                        textAlign: "left",
+                        padding: "8px 16px",
+                        width: "30%",
+                        minWidth: "200px",
+                        resize: "horizontal",
+                        overflow: "hidden"
+                      }}>Nome da Campanha</th>
+                      <th style={{
+                        textAlign: "left",
+                        padding: "8px 16px",
+                        width: "15%",
+                        minWidth: "120px",
+                        resize: "horizontal",
+                        overflow: "hidden"
+                      }}>Objetivo</th>
+                      <th style={{
+                        textAlign: "right",
+                        padding: "8px 16px",
+                        width: "15%",
+                        minWidth: "100px",
+                        resize: "horizontal",
+                        overflow: "hidden"
+                      }}>Impressões</th>
+                      <th style={{
+                        textAlign: "right",
+                        padding: "8px 16px",
+                        width: "12%",
+                        minWidth: "90px",
+                        resize: "horizontal",
+                        overflow: "hidden"
+                      }}>Cliques</th>
+                      <th style={{
+                        textAlign: "right",
+                        padding: "8px 16px",
+                        width: "10%",
+                        minWidth: "70px",
+                        resize: "horizontal",
+                        overflow: "hidden"
+                      }}>CTR</th>
+                      <th style={{
+                        textAlign: "right",
+                        padding: "8px 16px",
+                        width: "18%",
+                        minWidth: "120px",
+                        resize: "horizontal",
+                        overflow: "hidden"
+                      }}>Investimento</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {topCampaigns.map((campaign) => (
-                      <tr key={campaign.id || campaign.name}>
-                        <td
-                          className="posts-table__caption"
-                          style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-                          title={campaign.name}
-                        >
-                          {campaign.name || "—"}
+                    {topCampaigns.map((campaign, index) => (
+                      <tr key={campaign.id || campaign.name} style={{
+                        background: "linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%)",
+                        border: "1px solid rgba(0, 0, 0, 0.06)",
+                        borderRadius: "10px",
+                        transition: "all 0.2s ease",
+                        cursor: "pointer"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-2px)";
+                        e.currentTarget.style.boxShadow = "0 4px 12px rgba(99, 102, 241, 0.15)";
+                        e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.3)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = "none";
+                        e.currentTarget.style.borderColor = "rgba(0, 0, 0, 0.06)";
+                      }}>
+                        <td style={{
+                          padding: "16px",
+                          fontWeight: "600",
+                          fontSize: "14px",
+                          color: "#111827",
+                          borderTopLeftRadius: "10px",
+                          borderBottomLeftRadius: "10px",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          maxWidth: "300px"
+                        }} title={campaign.name}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <span style={{
+                              width: "32px",
+                              height: "32px",
+                              borderRadius: "8px",
+                              background: `linear-gradient(135deg, ${index % 2 === 0 ? "#6366f1" : "#8b5cf6"} 0%, ${index % 2 === 0 ? "#8b5cf6" : "#a855f7"} 100%)`,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "white",
+                              fontSize: "13px",
+                              fontWeight: "700",
+                              flexShrink: 0
+                            }}>
+                              #{index + 1}
+                            </span>
+                            <span>{campaign.name || "—"}</span>
+                          </div>
                         </td>
-                        <td style={{ whiteSpace: "nowrap" }}>{campaign.objective || "—"}</td>
-                        <td>{formatNumber(Number(campaign.impressions || 0))}</td>
-                        <td>{formatNumber(Number(campaign.clicks || 0))}</td>
-                        <td>{campaign.ctr != null ? `${formatPercentage(Number(campaign.ctr))}%` : "—"}</td>
-                        <td>{formatCurrency(Number(campaign.spend || 0))}</td>
-                        <td>{formatNumber(Number(campaign.conversions || 0))}</td>
-                        <td>{campaign.cpa != null ? formatCurrency(Number(campaign.cpa)) : "—"}</td>
+                        <td style={{
+                          padding: "16px",
+                          fontSize: "13px",
+                          color: "#6b7280"
+                        }}>
+                          <span style={{
+                            padding: "4px 10px",
+                            borderRadius: "6px",
+                            fontSize: "11px",
+                            fontWeight: "600",
+                            background: campaign.objective === "Conversões" ? "#dbeafe" :
+                                       campaign.objective === "Tráfego" ? "#fce7f3" :
+                                       campaign.objective === "Awareness" ? "#e0e7ff" : "#f3f4f6",
+                            color: campaign.objective === "Conversões" ? "#1e40af" :
+                                  campaign.objective === "Tráfego" ? "#9f1239" :
+                                  campaign.objective === "Awareness" ? "#3730a3" : "#374151",
+                            whiteSpace: "nowrap"
+                          }}>
+                            {campaign.objective || "—"}
+                          </span>
+                        </td>
+                        <td style={{
+                          padding: "16px",
+                          textAlign: "right",
+                          fontSize: "14px",
+                          fontWeight: "600",
+                          color: "#374151"
+                        }}>
+                          {formatNumber(Number(campaign.impressions || 0))}
+                        </td>
+                        <td style={{
+                          padding: "16px",
+                          textAlign: "right",
+                          fontSize: "14px",
+                          fontWeight: "600",
+                          color: "#374151"
+                        }}>
+                          {formatNumber(Number(campaign.clicks || 0))}
+                        </td>
+                        <td style={{
+                          padding: "16px",
+                          textAlign: "right",
+                          fontSize: "14px",
+                          fontWeight: "700",
+                          color: "#6366f1"
+                        }}>
+                          {campaign.ctr != null ? `${formatPercentage(Number(campaign.ctr))}%` : "—"}
+                        </td>
+                        <td style={{
+                          padding: "16px",
+                          textAlign: "right",
+                          fontSize: "15px",
+                          fontWeight: "700",
+                          color: "#111827",
+                          borderTopRightRadius: "10px",
+                          borderBottomRightRadius: "10px"
+                        }}>
+                          {formatCurrency(Number(campaign.spend || 0))}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
