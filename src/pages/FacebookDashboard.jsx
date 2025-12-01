@@ -487,7 +487,10 @@ useEffect(() => {
   }, [pageMetrics]);
 
   // Calculate overview metrics
-  const followersFallback = extractNumber(followersOverride, extractNumber(overviewSource?.page_overview?.followers_total, 0));
+  const followersFallback = extractNumber(
+    followersOverride,
+    extractNumber(overviewSource?.page_overview?.followers_total, 0)
+  );
   const totalFollowers = extractNumber(pageMetricsByKey.followers_total?.value, followersFallback);
   const reachValue = extractNumber(
     pageMetricsByKey.reach?.value,
@@ -517,37 +520,19 @@ useEffect(() => {
   const reachMetricValue = reachValue;
   const followersMetricValue = totalFollowers;
 
-  const avgFollowersPerDay = useMemo(() => {
-    if (netFollowersSeries.length >= 2) {
-      const total = netFollowersSeries.reduce((sum, entry) => sum + extractNumber(entry.net, 0), 0);
-      return Math.round(total / netFollowersSeries.length);
-    }
-    return Math.round(newFollowers / 30);
-  }, [netFollowersSeries, newFollowers]);
-
-  const weeklyFollowersPattern = useMemo(() => buildWeeklyPattern(DEFAULT_WEEKLY_FOLLOWERS), []);
-  const weeklyPostsPattern = useMemo(() => buildWeeklyPattern(DEFAULT_WEEKLY_POSTS), []);
-
   const overviewMetrics = useMemo(
     () => ({
-      followers: activeSnapshot?.followers ?? followersMetricValue ?? 0,
+      followers: followersMetricValue ?? activeSnapshot?.followers ?? 0,
       reach: activeSnapshot?.reach ?? reachMetricValue ?? 0,
-      followersDaily: activeSnapshot?.followersDaily ?? avgFollowersPerDay ?? 0,
-      posts: activeSnapshot?.posts ?? postsCount ?? 0,
       engagement: engagementValue ?? 0,
-      impressions: impressionsValue ?? 0,
       pageViews: pageViewsValue ?? 0,
-      clicks: clicksValue ?? 0,
     }),
     [
       activeSnapshot,
-      avgFollowersPerDay,
       clicksValue,
       engagementValue,
       followersMetricValue,
-      impressionsValue,
       pageViewsValue,
-      postsCount,
       reachMetricValue,
     ],
   );
@@ -816,23 +801,8 @@ useEffect(() => {
 
                 <div className="ig-overview-activity" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div className="ig-overview-stat">
-                    <div className="ig-overview-stat__value">{followersDailyDisplay}</div>
-                    <div className="ig-overview-stat__label">Seguidores diários</div>
-                  </div>
-
-                  <div className="ig-overview-stat">
-                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.posts)}</div>
-                    <div className="ig-overview-stat__label">Posts criados</div>
-                  </div>
-
-                  <div className="ig-overview-stat">
                     <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.engagement || 0)}</div>
                     <div className="ig-overview-stat__label">Engajamento total</div>
-                  </div>
-
-                  <div className="ig-overview-stat">
-                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.impressions || 0)}</div>
-                    <div className="ig-overview-stat__label">Impressões</div>
                   </div>
 
                   <div className="ig-overview-stat">
@@ -840,10 +810,6 @@ useEffect(() => {
                     <div className="ig-overview-stat__label">Visualizações de página</div>
                   </div>
 
-                  <div className="ig-overview-stat">
-                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.clicks || 0)}</div>
-                    <div className="ig-overview-stat__label">Cliques no link</div>
-                  </div>
                 </div>
 
                 <div className="ig-profile-vertical__divider" />
