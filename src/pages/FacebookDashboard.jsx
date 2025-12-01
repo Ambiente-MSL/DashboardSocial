@@ -191,6 +191,7 @@ useEffect(() => {
   const [coverLoading, setCoverLoading] = useState(false);
   const [coverError, setCoverError] = useState("");
   const [pageInfo, setPageInfo] = useState(null);
+  const [followersOverride, setFollowersOverride] = useState(null);
 
   const sinceParam = getQuery("since");
   const untilParam = getQuery("until");
@@ -293,6 +294,7 @@ useEffect(() => {
     setPageInfo(null);
     setCoverImage(null);
     setCoverError("");
+    setFollowersOverride(null);
   }, [accountSnapshotKey]);
 
   useEffect(() => {
@@ -336,8 +338,28 @@ useEffect(() => {
       }
     };
 
+    const loadFollowers = async () => {
+      if (!accountConfig?.facebookPageId) return;
+      try {
+        const params = new URLSearchParams();
+        params.set("pageId", accountConfig.facebookPageId);
+        if (sinceParam) params.set("since", sinceParam);
+        if (untilParam) params.set("until", untilParam);
+        const resp = await apiFetch(`/api/facebook/followers?${params.toString()}`);
+        if (cancelled) return;
+        const val = resp?.followers?.value;
+        if (val !== undefined && val !== null) {
+          setFollowersOverride(Number(val));
+        }
+      } catch (err) {
+        if (cancelled) return;
+        // keep existing counts if fetch fails
+      }
+    };
+
     loadPageInfo();
     loadCover();
+    loadFollowers();
 
     if (!sinceParam || !untilParam) {
       setOverviewSource(null);
@@ -465,7 +487,7 @@ useEffect(() => {
   }, [pageMetrics]);
 
   // Calculate overview metrics
-  const followersFallback = extractNumber(overviewSource?.page_overview?.followers_total, 0);
+  const followersFallback = extractNumber(followersOverride, extractNumber(overviewSource?.page_overview?.followers_total, 0));
   const totalFollowers = extractNumber(pageMetricsByKey.followers_total?.value, followersFallback);
   const reachValue = extractNumber(
     pageMetricsByKey.reach?.value,
