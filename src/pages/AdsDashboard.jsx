@@ -462,6 +462,11 @@ export default function AdsDashboard() {
     }).format(num);
   };
 
+  const formatPercentage = (num) => {
+    if (!Number.isFinite(num)) return num;
+    return num.toFixed(2);
+  };
+
   const totals = adsData?.totals || {};
   const averages = adsData?.averages || {};
   const actions = Array.isArray(adsData?.actions) ? adsData.actions : [];
@@ -485,7 +490,6 @@ export default function AdsDashboard() {
   const ctrValue = Number(averages.ctr) || 0;
   const cpcValue = Number(averages.cpc) || 0;
   const cpaValue = conversions > 0 ? (totals.spend || 0) / conversions : 0;
-  const frequencyValue = Number(averages.frequency) || 0;
 
   const overviewStats = {
     spend: { value: Number(totals.spend || 0), delta: 0, label: "Investimento Total" },
@@ -496,7 +500,6 @@ export default function AdsDashboard() {
     cpc: { value: cpcValue, delta: 0, label: "CPC", prefix: "R$" },
     conversions: { value: conversions, delta: 0, label: "Conversões" },
     cpa: { value: cpaValue, delta: 0, label: "CPA", prefix: "R$" },
-    frequency: { value: frequencyValue, delta: 0, label: "Frequência" },
   };
 
   // manter compatibilidade com seções que ainda usam o nome antigo
@@ -653,7 +656,7 @@ export default function AdsDashboard() {
                   </div>
                 </div>
 
-                {/* Frequência */}
+                {/* CPA */}
                 <div style={{
                   padding: '14px',
                   background: 'rgba(255, 255, 255, 0.6)',
@@ -665,22 +668,22 @@ export default function AdsDashboard() {
                       width: '20px',
                       height: '20px',
                       borderRadius: '6px',
-                      background: 'rgba(168, 85, 247, 0.15)',
+                      background: 'rgba(192, 132, 252, 0.15)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}>
-                      <Activity size={12} color="#a855f7" strokeWidth={2.5} />
+                      <TrendingUp size={12} color="#c084fc" strokeWidth={2.5} />
                     </div>
                     <span style={{ fontSize: '10px', fontWeight: 600, color: '#1f2937', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                      Frequência
+                      CPA
                     </span>
                   </div>
                   <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
-                    2.1x
+                    {formatCurrency(MOCK_OVERVIEW_STATS.cpa.value)}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>
-                    +0.3x
+                  <div style={{ fontSize: '11px', color: '#ef4444', fontWeight: 600 }}>
+                    {MOCK_OVERVIEW_STATS.cpa.delta}%
                   </div>
                 </div>
 
@@ -801,7 +804,7 @@ export default function AdsDashboard() {
                     </span>
                   </div>
                   <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
-                    {MOCK_OVERVIEW_STATS.ctr.value}%
+                    {formatPercentage(MOCK_OVERVIEW_STATS.ctr.value)}%
                   </div>
                   <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>
                     +{MOCK_OVERVIEW_STATS.ctr.delta}%
@@ -839,36 +842,6 @@ export default function AdsDashboard() {
                   </div>
                 </div>
 
-                {/* CPA */}
-                <div style={{
-                  padding: '14px',
-                  background: 'rgba(255, 255, 255, 0.6)',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(0, 0, 0, 0.08)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '6px',
-                      background: 'rgba(192, 132, 252, 0.15)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <TrendingUp size={12} color="#c084fc" strokeWidth={2.5} />
-                    </div>
-                    <span style={{ fontSize: '10px', fontWeight: 600, color: '#1f2937', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                      CPA
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
-                    {formatCurrency(MOCK_OVERVIEW_STATS.cpa.value)}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#ef4444', fontWeight: 600 }}>
-                    {MOCK_OVERVIEW_STATS.cpa.delta}%
-                  </div>
-                </div>
               </div>
 
               <div className="ig-profile-vertical__divider" />
