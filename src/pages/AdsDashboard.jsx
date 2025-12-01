@@ -321,8 +321,10 @@ export default function AdsDashboard() {
   const [adsLoading, setAdsLoading] = useState(false);
   const primaryAccount = useMemo(() => {
     if (!availableAccounts.length) return {};
-    const found = availableAccounts.find((acc) => acc.id === queryAccountId);
-    return found || availableAccounts[0];
+    const selected = availableAccounts.find((acc) => acc.id === queryAccountId);
+    if (selected?.adAccountId) return selected;
+    const firstWithAds = availableAccounts.find((acc) => acc.adAccountId);
+    return selected || firstWithAds || availableAccounts[0];
   }, [availableAccounts, queryAccountId]);
   const adAccountId = primaryAccount.adAccountId || "";
   const actParam = adAccountId
@@ -406,6 +408,12 @@ export default function AdsDashboard() {
       until: Math.floor(endDate.getTime() / 1000),
     });
   }, [defaultEnd, sinceDate, untilDate, setQuery]);
+
+  // reset quando trocar conta ou range para evitar exibir dados da conta anterior
+  useEffect(() => {
+    setAdsData(null);
+    setAdsError("");
+  }, [queryAccountId, sinceDate?.getTime?.(), untilDate?.getTime?.()]);
 
   useEffect(() => {
     let cancelled = false;
