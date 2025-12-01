@@ -1578,23 +1578,32 @@ def fb_recent_posts(page_id: str, limit: int = 6):
 # ---- Ads (Marketing API) ----
 
 def ads_highlights(act_id: str, since_str: str, until_str: str):
-    fields = "campaign_name,adset_name,ad_name,ad_id,impressions,reach,clicks,spend,ctr,cpc,cpm,frequency,actions"
+    fields = (
+        "campaign_id,campaign_name,objective,impressions,reach,clicks,spend,ctr,cpc,cpm,frequency,actions"
+    )
     res = gget(
         f"/{act_id}/insights",
         {
             "fields": fields,
             "time_range[since]": since_str,
             "time_range[until]": until_str,
-            "level": "ad",
-            "limit": 200,
+            "level": "campaign",
+            "limit": 500,
         },
     )
-    best_ad = None
     totals = {"spend": 0.0, "impressions": 0, "reach": 0, "clicks": 0}
-    actions_totals = {}
+    actions_totals: Dict[str, float] = {}
+    campaigns: List[Dict[str, Any]] = []
     # buckets de video
     v3 = v10 = thru = 0.0
     vavg = 0.0
+    conversion_types = (
+        "offsite_conversion",
+        "onsite_conversion.purchase",
+        "purchase",
+        "lead",
+        "complete_registration",
+    )
 
     for row in res.get("data", []):
         spend = float(row.get("spend", 0) or 0)
@@ -1611,12 +1620,15 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
         totals["reach"] += reach
         totals["clicks"] += clicks
 
+        conversions = 0.0
         for action in row.get("actions") or []:
             action_type = action.get("action_type")
             if not action_type:
                 continue
             value = float(action.get("value", 0) or 0)
             actions_totals[action_type] = actions_totals.get(action_type, 0.0) + value
+            if any(keyword in action_type for keyword in conversion_types):
+                conversions += value
             # capturar ações típicas de vídeo
             if action_type == "video_3_sec_watched_actions":
                 v3 += value
@@ -1627,21 +1639,21 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
             elif action_type == "video_avg_time_watched_actions":
                 vavg += value
 
-        if best_ad is None or ctr > float(best_ad.get("ctr", 0) or 0):
-            best_ad = {
-                "ad_id": row.get("ad_id"),
-                "ad_name": row.get("ad_name"),
-                "campaign_name": row.get("campaign_name"),
-                "adset_name": row.get("adset_name"),
-                "ctr": ctr,
-                "cpc": cpc,
-                "cpm": cpm,
-                "frequency": frequency,
-                "impressions": impressions,
-                "reach": reach,
-                "spend": spend,
-                "clicks": clicks,
-            }
+        campaign_entry = {
+            "id": row.get("campaign_id") or row.get("campaign_name"),
+            "name": row.get("campaign_name") or "Campanha",
+        "objective": row.get("objective") or "",
+        "impressions": impressions,
+        "clicks": clicks,
+        "ctr": ctr,
+        "spend": spend,
+        "cpc": cpc,
+        "cpm": cpm,
+        "frequency": frequency,
+        "conversions": int(round(conversions)),
+        "cpa": (spend / conversions) if conversions else None,
+    }
+        campaigns.append(campaign_entry)
 
     averages = {
         "cpc": (totals["spend"] / totals["clicks"]) if totals["clicks"] else None,
@@ -1668,6 +1680,40 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
             {"bucket": "10s–thruplay", "views": int(thru)},
         ],
     }
+
+    # série de gastos diários
+    spend_series: List[Dict[str, Any]] = []
+    try:
+        series_res = gget(
+            f"/{act_id}/insights",
+            {
+                "fields": "spend",
+                "time_range[since]": since_str,
+                "time_range[until]": until_str,
+                "level": "account",
+                "time_increment": 1,
+                "limit": 500,
+            },
+        )
+        for row in series_res.get("data", []):
+            spend_value = float(row.get("spend", 0) or 0)
+            date_value = row.get("date_start") or row.get("date_stop") or row.get("date")
+            label = date_value
+            try:
+                label = datetime.fromisoformat(date_value).strftime("%d/%m") if date_value else date_value
+            except Exception:  # noqa: BLE001
+                pass
+            spend_series.append({"date": label, "value": spend_value})
+    except Exception:  # noqa: BLE001
+        spend_series = []
+
+    sorted_campaigns = sorted(campaigns, key=lambda item: item.get("spend", 0), reverse=True)
+    top_campaigns = sorted_campaigns[:10] if sorted_campaigns else []
+    best_entry = None
+    try:
+        best_entry = max(sorted_campaigns, key=lambda item: item.get("ctr") or 0)
+    except ValueError:
+        best_entry = None
 
     # Demografia (igual ao seu)
     try:
@@ -1733,11 +1779,29 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
         "topSegments": sorted(combo_totals.values(), key=lambda item: item["reach"], reverse=True)[:5],
     }
 
+    best_ad_payload = None
+    if best_entry:
+        best_ad_payload = {
+            "ad_id": best_entry.get("id"),
+            "ad_name": best_entry.get("name"),
+            "campaign_name": best_entry.get("name"),
+            "ctr": best_entry.get("ctr"),
+            "cpc": best_entry.get("cpc"),
+            "cpm": best_entry.get("cpm"),
+            "frequency": best_entry.get("frequency"),
+            "impressions": best_entry.get("impressions"),
+            "reach": best_entry.get("reach"),
+            "spend": best_entry.get("spend"),
+            "clicks": best_entry.get("clicks"),
+        }
+
     return {
-        "best_ad": best_ad,
+        "best_ad": best_ad_payload,
         "totals": totals,
         "averages": averages,
         "actions": actions_summary,
         "demographics": demographics,
         "video_summary": video_summary,  # NOVO
+        "spend_series": spend_series,
+        "campaigns": top_campaigns,
     }

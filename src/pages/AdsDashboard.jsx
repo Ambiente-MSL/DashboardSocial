@@ -524,6 +524,16 @@ export default function AdsDashboard() {
     [adsData?.spend_series],
   );
 
+  const spendChartMinWidth = useMemo(() => {
+    const baseWidth = (spendSeries?.length || 0) * 56 + 160;
+    return Math.max(baseWidth, 720);
+  }, [spendSeries]);
+
+  const topCampaigns = useMemo(
+    () => (Array.isArray(adsData?.campaigns) && adsData.campaigns.length ? adsData.campaigns : MOCK_TOP_CAMPAIGNS),
+    [adsData?.campaigns],
+  );
+
   const highlightedSpendIndex = activeSpendBar >= 0 ? activeSpendBar : peakSpendPoint?.index ?? -1;
   const highlightedSpendPoint = highlightedSpendIndex >= 0 ? spendSeries[highlightedSpendIndex] : null;
 
@@ -954,90 +964,94 @@ export default function AdsDashboard() {
               </header>
 
               <div className="ig-chart-area">
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart
-                    data={spendSeries}
-                    margin={{ top: 16, right: 16, bottom: 32, left: 0 }}
-                    barCategoryGap="35%"
-                  >
-                    <defs>
-                      <linearGradient id="spendBar" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#6366f1" />
-                        <stop offset="100%" stopColor="#8b5cf6" />
-                      </linearGradient>
-                      <linearGradient id="spendBarActive" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#f472b6" />
-                        <stop offset="45%" stopColor="#d946ef" />
-                        <stop offset="100%" stopColor="#6366f1" />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(value) => `R$ ${formatNumber(value)}`}
-                    />
-                    <Tooltip
-                      cursor={{ fill: "rgba(99, 102, 241, 0.1)" }}
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        return (
-                          <div className="ig-follower-tooltip">
-                            <div className="ig-follower-tooltip__label">
-                              Investimento: {formatCurrency(payload[0].value)}
-                            </div>
-                            <div className="ig-follower-tooltip__date">{payload[0].payload.date}</div>
-                          </div>
-                        );
-                      }}
-                    />
-                    {highlightedSpendPoint && (
-                      <>
-                        <ReferenceLine
-                          x={highlightedSpendPoint.date}
-                          stroke="#111827"
-                          strokeDasharray="4 4"
-                          strokeOpacity={0.3}
+                <div style={{ overflowX: "auto", paddingBottom: "8px" }}>
+                  <div style={{ minWidth: spendChartMinWidth, height: 320 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={spendSeries}
+                        margin={{ top: 16, right: 16, bottom: 32, left: 0 }}
+                        barCategoryGap="35%"
+                      >
+                        <defs>
+                          <linearGradient id="spendBar" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#6366f1" />
+                            <stop offset="100%" stopColor="#8b5cf6" />
+                          </linearGradient>
+                          <linearGradient id="spendBarActive" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#f472b6" />
+                            <stop offset="45%" stopColor="#d946ef" />
+                            <stop offset="100%" stopColor="#6366f1" />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fill: "#9ca3af", fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
                         />
-                        <ReferenceLine
-                          y={highlightedSpendPoint.value}
-                          stroke="#111827"
-                          strokeDasharray="4 4"
-                          strokeOpacity={0.35}
+                        <YAxis
+                          tick={{ fill: "#9ca3af", fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={(value) => `R$ ${formatNumber(value)}`}
                         />
-                        <ReferenceDot
-                          x={highlightedSpendPoint.date}
-                          y={highlightedSpendPoint.value}
-                          r={6}
-                          fill="#111827"
-                          stroke="#ffffff"
-                          strokeWidth={2}
+                        <Tooltip
+                          cursor={{ fill: "rgba(99, 102, 241, 0.1)" }}
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            return (
+                              <div className="ig-follower-tooltip">
+                                <div className="ig-follower-tooltip__label">
+                                  Investimento: {formatCurrency(payload[0].value)}
+                                </div>
+                                <div className="ig-follower-tooltip__date">{payload[0].payload.date}</div>
+                              </div>
+                            );
+                          }}
                         />
-                      </>
-                    )}
-                    <Bar
-                      dataKey="value"
-                      radius={[12, 12, 0, 0]}
-                      barSize={36}
-                    onMouseEnter={(_, index) => setActiveSpendBar(index)}
-                    onMouseLeave={() => setActiveSpendBar(-1)}
-                  >
-                    {spendSeries.map((entry, index) => (
-                      <Cell
-                        key={entry.date}
-                        fill={index === highlightedSpendIndex ? "url(#spendBarActive)" : "url(#spendBar)"}
-                      />
-                    ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                        {highlightedSpendPoint && (
+                          <>
+                            <ReferenceLine
+                              x={highlightedSpendPoint.date}
+                              stroke="#111827"
+                              strokeDasharray="4 4"
+                              strokeOpacity={0.3}
+                            />
+                            <ReferenceLine
+                              y={highlightedSpendPoint.value}
+                              stroke="#111827"
+                              strokeDasharray="4 4"
+                              strokeOpacity={0.35}
+                            />
+                            <ReferenceDot
+                              x={highlightedSpendPoint.date}
+                              y={highlightedSpendPoint.value}
+                              r={6}
+                              fill="#111827"
+                              stroke="#ffffff"
+                              strokeWidth={2}
+                            />
+                          </>
+                        )}
+                        <Bar
+                          dataKey="value"
+                          radius={[12, 12, 0, 0]}
+                          barSize={36}
+                          onMouseEnter={(_, index) => setActiveSpendBar(index)}
+                          onMouseLeave={() => setActiveSpendBar(-1)}
+                        >
+                          {spendSeries.map((entry, index) => (
+                            <Cell
+                              key={entry.date}
+                              fill={index === highlightedSpendIndex ? "url(#spendBarActive)" : "url(#spendBar)"}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -1113,12 +1127,22 @@ export default function AdsDashboard() {
               <header className="ig-card-header">
                 <div>
                   <h3>Melhores Campanhas</h3>
-                  <p className="ig-card-subtitle">Top 4 por performance</p>
+                  <p className="ig-card-subtitle">Ranking por investimento no período filtrado</p>
                 </div>
               </header>
 
-              <div className="posts-table-container" style={{ marginTop: "16px" }}>
-                <table className="posts-table">
+              <div className="posts-table-container" style={{ marginTop: "16px", overflowX: "auto" }}>
+                <table className="posts-table" style={{ minWidth: "780px", tableLayout: "fixed" }}>
+                  <colgroup>
+                    <col style={{ width: "28%" }} />
+                    <col style={{ width: "16%" }} />
+                    <col style={{ width: "12%" }} />
+                    <col style={{ width: "12%" }} />
+                    <col style={{ width: "10%" }} />
+                    <col style={{ width: "12%" }} />
+                    <col style={{ width: "10%" }} />
+                    <col style={{ width: "10%" }} />
+                  </colgroup>
                   <thead>
                     <tr>
                       <th>Nome da Campanha</th>
@@ -1132,18 +1156,22 @@ export default function AdsDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {MOCK_TOP_CAMPAIGNS.map((campaign) => (
-                      <tr key={campaign.id}>
-                        <td className="posts-table__caption" style={{ fontWeight: 600 }}>
-                          {campaign.name}
+                    {topCampaigns.map((campaign) => (
+                      <tr key={campaign.id || campaign.name}>
+                        <td
+                          className="posts-table__caption"
+                          style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                          title={campaign.name}
+                        >
+                          {campaign.name || "—"}
                         </td>
-                        <td>{campaign.objective}</td>
-                        <td>{formatNumber(campaign.impressions)}</td>
-                        <td>{formatNumber(campaign.clicks)}</td>
-                        <td>{campaign.ctr}%</td>
-                        <td>{formatCurrency(campaign.spend)}</td>
-                        <td>{formatNumber(campaign.conversions)}</td>
-                        <td>{formatCurrency(campaign.cpa)}</td>
+                        <td style={{ whiteSpace: "nowrap" }}>{campaign.objective || "—"}</td>
+                        <td>{formatNumber(Number(campaign.impressions || 0))}</td>
+                        <td>{formatNumber(Number(campaign.clicks || 0))}</td>
+                        <td>{campaign.ctr != null ? `${formatPercentage(Number(campaign.ctr))}%` : "—"}</td>
+                        <td>{formatCurrency(Number(campaign.spend || 0))}</td>
+                        <td>{formatNumber(Number(campaign.conversions || 0))}</td>
+                        <td>{campaign.cpa != null ? formatCurrency(Number(campaign.cpa)) : "—"}</td>
                       </tr>
                     ))}
                   </tbody>
