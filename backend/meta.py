@@ -546,6 +546,19 @@ def fb_page_window(page_id: str, since: int, until: int):
     except MetaAPIError:
         followers_total = 0
 
+    # Fallback absoluto para total de seguidores independente do range (valor fixo da página)
+    try:
+        fan_info = gget(
+            f"/{page_id}",
+            {"fields": "fan_count,followers_count"},
+            token=page_token,
+        )
+        fan_count_val = fan_info.get("fan_count") or fan_info.get("followers_count")
+        if fan_count_val is not None:
+            followers_total = int(fan_count_val)
+    except MetaAPIError:
+        pass
+
     return {
         "impressions": impressions,
         "reach": reach,
