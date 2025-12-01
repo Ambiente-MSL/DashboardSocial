@@ -527,8 +527,9 @@ export default function AdsDashboard() {
   }, [spendSeries]);
 
   const spendChartMinWidth = useMemo(() => {
-    const baseWidth = (spendSeries?.length || 0) * 56 + 160;
-    return Math.max(baseWidth, 720);
+    const dataLength = spendSeries?.length || 0;
+    // Para 7 dias: 100%, para 30 dias: ~430%, mantém largura das barras fixa
+    return Math.max(dataLength * 60, 100);
   }, [spendSeries]);
 
   const topCampaigns = useMemo(() => {
@@ -932,12 +933,14 @@ export default function AdsDashboard() {
                 <div
                   ref={spendScrollRef}
                   style={{
+                    width: "100%",
                     overflowX: "auto",
+                    overflowY: "hidden",
                     paddingBottom: "8px",
                     scrollbarWidth: "thin",
                   }}
                 >
-                  <div style={{ minWidth: spendChartMinWidth, height: 320 }}>
+                  <div style={{ minWidth: `${spendChartMinWidth}%`, height: 320 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={spendSeries}
