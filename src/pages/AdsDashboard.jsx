@@ -528,8 +528,8 @@ export default function AdsDashboard() {
 
   const spendChartMinWidth = useMemo(() => {
     const dataLength = spendSeries?.length || 0;
-    // Para 7 dias: 100%, para 30 dias: ~430%, mantém largura das barras fixa
-    return Math.max(dataLength * 60, 100);
+    // Para 7 dias: 100%, para 30 dias: ~200%, mantém barras mais próximas
+    return Math.max(dataLength * 20, 100);
   }, [spendSeries]);
 
   const topCampaigns = useMemo(() => {
