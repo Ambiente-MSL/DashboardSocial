@@ -2669,9 +2669,45 @@ def ads_high():
         )
     except MetaAPIError as err:
         mark_cache_error("ads_highlights", act, since_ts, until_ts, None, err.args[0], platform="ads")
+        fallback = get_latest_cached_payload("ads_highlights", act, platform="ads")
+        if fallback:
+            payload, meta = fallback
+            meta = dict(meta or {})
+            meta["fallback_error"] = err.args[0]
+            meta["fallback_reason"] = "meta_api_error"
+            meta["requested_since"] = since_ts
+            meta["requested_until"] = until_ts
+            response = dict(payload) if isinstance(payload, dict) else {"payload": payload}
+            response["cache"] = meta
+            return jsonify(response)
         return meta_error_response(err)
     except ValueError as err:
+        fallback = get_latest_cached_payload("ads_highlights", act, platform="ads")
+        if fallback:
+            payload, meta = fallback
+            meta = dict(meta or {})
+            meta["fallback_error"] = err.args[0] if err.args else str(err)
+            meta["fallback_reason"] = "invalid_range"
+            meta["requested_since"] = since_ts
+            meta["requested_until"] = until_ts
+            response = dict(payload) if isinstance(payload, dict) else {"payload": payload}
+            response["cache"] = meta
+            return jsonify(response)
         return jsonify({"error": str(err)}), 400
+    except Exception as err:  # noqa: BLE001
+        logger.exception("Falha inesperada em ads_highlights")
+        fallback = get_latest_cached_payload("ads_highlights", act, platform="ads")
+        if fallback:
+            payload, meta = fallback
+            meta = dict(meta or {})
+            meta["fallback_error"] = str(err)
+            meta["fallback_reason"] = "unexpected_error"
+            meta["requested_since"] = since_ts
+            meta["requested_until"] = until_ts
+            response = dict(payload) if isinstance(payload, dict) else {"payload": payload}
+            response["cache"] = meta
+            return jsonify(response)
+        return jsonify({"error": str(err)}), 500
 
     response = dict(payload)
     response["cache"] = meta
