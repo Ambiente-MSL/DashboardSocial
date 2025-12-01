@@ -306,7 +306,7 @@ export default function AdsDashboard() {
   const { accounts } = useAccounts();
   const { apiFetch } = useAuth();
   const availableAccounts = useMemo(
-    () => (accounts.length ? accounts.filter((acc) => acc.adAccountId) : DEFAULT_ACCOUNTS),
+    () => (accounts.length ? accounts : DEFAULT_ACCOUNTS),
     [accounts],
   );
   const [getQuery, setQuery] = useQueryState({ account: availableAccounts[0]?.id || "" });
@@ -408,10 +408,15 @@ export default function AdsDashboard() {
     let cancelled = false;
     const loadAds = async () => {
       setAdsLoading(true);
-      setAdsError("");
+      setAdsError(adAccountId ? "" : "A conta selecionada não possui adAccountId configurado.");
+      if (!adAccountId) {
+        setAdsData(null);
+        setAdsLoading(false);
+        return;
+      }
       try {
         const params = new URLSearchParams();
-        if (adAccountId) params.set("actId", adAccountId);
+        params.set("actId", adAccountId);
         if (sinceDate) params.set("since", startOfDay(sinceDate).toISOString());
         if (untilDate) params.set("until", endOfDay(untilDate).toISOString());
         const resp = await apiFetch(`/api/ads/highlights?${params.toString()}`);
