@@ -2667,6 +2667,20 @@ def ads_high():
             fetcher=fetch_ads_highlights,
             platform="ads",
         )
+        if (
+            isinstance(payload, dict)
+            and (not payload.get("spend_series") or not payload.get("campaigns"))
+        ):
+            payload, meta = get_cached_payload(
+                "ads_highlights",
+                act,
+                since_ts,
+                until_ts,
+                fetcher=fetch_ads_highlights,
+                platform="ads",
+                force=True,
+                refresh_reason="backfill_spend_series_campaigns",
+            )
     except MetaAPIError as err:
         mark_cache_error("ads_highlights", act, since_ts, until_ts, None, err.args[0], platform="ads")
         fallback = get_latest_cached_payload("ads_highlights", act, platform="ads")

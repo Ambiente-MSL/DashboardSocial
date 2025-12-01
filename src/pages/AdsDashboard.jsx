@@ -496,17 +496,21 @@ export default function AdsDashboard() {
     impressions: { value: Number(totals.impressions || 0), delta: 0, label: "Impressões" },
     reach: { value: Number(totals.reach || 0), delta: 0, label: "Alcance" },
     clicks: { value: Number(totals.clicks || 0), delta: 0, label: "Cliques" },
-    ctr: { value: ctrValue, delta: 0, label: "CTR", suffix: "%" },
-    cpc: { value: cpcValue, delta: 0, label: "CPC", prefix: "R$" },
-    conversions: { value: conversions, delta: 0, label: "Conversões" },
-    cpa: { value: cpaValue, delta: 0, label: "CPA", prefix: "R$" },
+    ctr: { value: ctrValue, delta: 0, label: "CTR (taxa de cliques)", suffix: "%" },
+    cpc: { value: cpcValue, delta: 0, label: "CPC (custo por clique)", prefix: "R$" },
   };
 
   // manter compatibilidade com seções que ainda usam o nome antigo
   const MOCK_OVERVIEW_STATS = overviewStats;
 
+  const spendSeries = useMemo(() => {
+    if (Array.isArray(adsData?.spend_series)) return adsData.spend_series;
+    if (adsData) return [];
+    return MOCK_SPEND_SERIES;
+  }, [adsData]);
+
   const peakSpendPoint = useMemo(() => {
-    const series = Array.isArray(adsData?.spend_series) ? adsData.spend_series : MOCK_SPEND_SERIES;
+    const series = spendSeries;
     if (!series.length) return null;
     return series.reduce(
       (acc, point, index) => {
@@ -517,22 +521,18 @@ export default function AdsDashboard() {
       },
       { value: series[0].value, index: 0, date: series[0].date }
     );
-  }, [adsData?.spend_series]);
-
-  const spendSeries = useMemo(
-    () => (Array.isArray(adsData?.spend_series) && adsData.spend_series.length ? adsData.spend_series : MOCK_SPEND_SERIES),
-    [adsData?.spend_series],
-  );
+  }, [spendSeries]);
 
   const spendChartMinWidth = useMemo(() => {
     const baseWidth = (spendSeries?.length || 0) * 56 + 160;
     return Math.max(baseWidth, 720);
   }, [spendSeries]);
 
-  const topCampaigns = useMemo(
-    () => (Array.isArray(adsData?.campaigns) && adsData.campaigns.length ? adsData.campaigns : MOCK_TOP_CAMPAIGNS),
-    [adsData?.campaigns],
-  );
+  const topCampaigns = useMemo(() => {
+    if (Array.isArray(adsData?.campaigns)) return adsData.campaigns;
+    if (adsData) return [];
+    return MOCK_TOP_CAMPAIGNS;
+  }, [adsData]);
 
   const highlightedSpendIndex = activeSpendBar >= 0 ? activeSpendBar : peakSpendPoint?.index ?? -1;
   const highlightedSpendPoint = highlightedSpendIndex >= 0 ? spendSeries[highlightedSpendIndex] : null;
@@ -666,37 +666,6 @@ export default function AdsDashboard() {
                   </div>
                 </div>
 
-                {/* CPA */}
-                <div style={{
-                  padding: '14px',
-                  background: 'rgba(255, 255, 255, 0.6)',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(0, 0, 0, 0.08)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '6px',
-                      background: 'rgba(192, 132, 252, 0.15)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <TrendingUp size={12} color="#c084fc" strokeWidth={2.5} />
-                    </div>
-                    <span style={{ fontSize: '10px', fontWeight: 600, color: '#1f2937', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                      CPA
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
-                    {formatCurrency(MOCK_OVERVIEW_STATS.cpa.value)}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#ef4444', fontWeight: 600 }}>
-                    {MOCK_OVERVIEW_STATS.cpa.delta}%
-                  </div>
-                </div>
-
                 {/* Impressões */}
                 <div style={{
                   padding: '14px',
@@ -759,37 +728,6 @@ export default function AdsDashboard() {
                   </div>
                 </div>
 
-                {/* Conversões */}
-                <div style={{
-                  padding: '14px',
-                  background: 'rgba(255, 255, 255, 0.6)',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(0, 0, 0, 0.08)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '6px',
-                      background: 'rgba(99, 102, 241, 0.15)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <Zap size={12} color="#6366f1" strokeWidth={2.5} />
-                    </div>
-                    <span style={{ fontSize: '10px', fontWeight: 600, color: '#1f2937', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                      Conversões
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
-                    {formatNumber(MOCK_OVERVIEW_STATS.conversions.value)}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>
-                    +{MOCK_OVERVIEW_STATS.conversions.delta}%
-                  </div>
-                </div>
-
                 {/* CTR */}
                 <div style={{
                   padding: '14px',
@@ -810,7 +748,7 @@ export default function AdsDashboard() {
                       <Target size={12} color="#8b5cf6" strokeWidth={2.5} />
                     </div>
                     <span style={{ fontSize: '10px', fontWeight: 600, color: '#1f2937', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                      CTR
+                      CTR (taxa de cliques)
                     </span>
                   </div>
                   <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
@@ -841,7 +779,7 @@ export default function AdsDashboard() {
                       <Activity size={12} color="#a855f7" strokeWidth={2.5} />
                     </div>
                     <span style={{ fontSize: '10px', fontWeight: 600, color: '#1f2937', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                      CPC
+                      CPC (custo por clique)
                     </span>
                   </div>
                   <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>
