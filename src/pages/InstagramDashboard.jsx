@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+﻿import { useEffect, useMemo, useState, useCallback } from "react";
 import { useLocation, useOutletContext } from "react-router-dom";
 import {
   differenceInCalendarDays,
@@ -1882,7 +1882,7 @@ export default function InstagramDashboard() {
             <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
-                  <h2 className="ig-clean-title2">Crescimento do perfil il</h2>
+                  <h2 className="ig-clean-title2">Crescimento do perfil</h2>
                   <h3>Alcance</h3>
                 </div>
               </header>
