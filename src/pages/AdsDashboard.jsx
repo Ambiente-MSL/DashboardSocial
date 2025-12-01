@@ -587,9 +587,9 @@ export default function AdsDashboard() {
               {/* Grid 3x3 de Métricas */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '10px',
-                padding: '20px'
+                gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+                gap: '12px',
+                padding: '20px 24px'
               }}>
                 {/* Investimento */}
                 <div style={{
