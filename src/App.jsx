@@ -22,7 +22,7 @@ export default function App() {
   }, [location.pathname]);
 
   const showFilters = useMemo(() => {
-    const filterRoutes = new Set(['/facebook', '/instagram']);
+    const filterRoutes = new Set(['/facebook', '/instagram', '/ads']);
     return filterRoutes.has(location.pathname);
   }, [location.pathname]);
 
