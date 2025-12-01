@@ -945,7 +945,7 @@ export default function AdsDashboard() {
                       <BarChart
                         data={spendSeries}
                         margin={{ top: 16, right: 16, bottom: 32, left: 0 }}
-                        barCategoryGap="15%"
+                        barCategoryGap="5%"
                       >
                         <defs>
                           <linearGradient id="spendBar" x1="0" y1="0" x2="0" y2="1">
