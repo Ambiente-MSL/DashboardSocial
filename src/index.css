@@ -2702,7 +2702,7 @@ body.theme-light {
   padding: 10px 12px;
   border: none;
   background: transparent;
-  color: #1f2937;
+  color: #000000;
   cursor: pointer;
   border-radius: 8px;
   transition: all 0.15s ease;

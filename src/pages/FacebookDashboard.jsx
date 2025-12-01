@@ -1176,58 +1176,6 @@ useEffect(() => {
 
               <section className="ig-card-white fb-analytics-card">
                 <div className="ig-analytics-card__header">
-                  <h4>Quantidade de publicações por dia</h4>
-                  <select className="ig-card-filter" defaultValue="abril">
-                    <option value="janeiro">Janeiro 2024</option>
-                    <option value="fevereiro">Fevereiro 2024</option>
-                    <option value="marco">Março 2024</option>
-                    <option value="abril">Abril 2024</option>
-                    <option value="maio">Maio 2024</option>
-                    <option value="junho">Junho 2024</option>
-                    <option value="julho">Julho 2024</option>
-                    <option value="agosto">Agosto 2024</option>
-                    <option value="setembro">Setembro 2024</option>
-                    <option value="outubro">Outubro 2024</option>
-                  </select>
-                </div>
-                <div className="ig-analytics-card__body">
-                  <div className="ig-calendar">
-                    <div className="ig-calendar__weekdays">
-                      <span className="ig-calendar__weekday">Dom</span>
-                      <span className="ig-calendar__weekday">Seg</span>
-                      <span className="ig-calendar__weekday">Ter</span>
-                      <span className="ig-calendar__weekday">Qua</span>
-                      <span className="ig-calendar__weekday">Qui</span>
-                      <span className="ig-calendar__weekday">Sex</span>
-                      <span className="ig-calendar__weekday">Sáb</span>
-                    </div>
-                    <div className="ig-calendar__grid">
-                      <div className="ig-calendar__day fb-calendar__day--empty" />
-                      {Array.from({ length: 30 }, (_, i) => {
-                        const day = i + 1;
-                        const posts = Math.floor(Math.random() * 6);
-                        const level = posts === 0 ? 0 : Math.ceil((posts / 5) * 4);
-
-                        return (
-                          <div
-                            key={day}
-                            className={`fb-calendar__day fb-calendar__day--level-${level}`}
-                            data-tooltip={`${posts} publicaç${posts === 1 ? 'ão' : 'ões'}`}
-                          >
-                            <span className="ig-calendar__day-number">{day}</span>
-                          </div>
-                        );
-                      })}
-                      <div className="ig-calendar__day fb-calendar__day--empty" />
-                    </div>
-                  </div>
-                </div>
-              </section>
-            </div>
-
-            <div className="ig-analytics-grid fb-analytics-grid--pair">
-              <section className="ig-card-white fb-analytics-card">
-                <div className="ig-analytics-card__header">
                   <h4>Idade</h4>
                   <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
                 </div>
@@ -1255,60 +1203,6 @@ useEffect(() => {
                       <Bar dataKey="female" fill="#42A5F5" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
-                </div>
-              </section>
-
-              <section className="ig-card-white fb-analytics-card">
-                <div className="ig-analytics-card__header">
-                  <h4>Top Cidades</h4>
-                  <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
-                </div>
-                <div className="ig-analytics-card__body">
-                  <div className="ig-top-cities">
-                    <div className="ig-top-cities__header">
-                      <div className="ig-top-cities__total">
-                        <span className="ig-top-cities__total-number">1.500</span>
-                        <div className="ig-top-cities__trend">
-                          <svg width="80" height="30" viewBox="0 0 80 30">
-                            <path
-                              d="M 0 25 Q 20 20, 40 15 T 80 5"
-                              fill="none"
-                              stroke="#1877F2"
-                              strokeWidth="2"
-                            />
-                          </svg>
-                        </div>
-                      </div>
-                      <div className="ig-top-cities__legend">
-                        <span className="ig-top-cities__legend-item">
-                          <span className="ig-top-cities__legend-dot" style={{ backgroundColor: "#1877F2" }} />
-                          Crato
-                        </span>
-                      </div>
-                    </div>
-                    <div className="ig-top-cities__list">
-                      <div className="ig-top-city-item">
-                        <span className="ig-top-city-item__icon" style={{ backgroundColor: "#1877F2" }}>📍</span>
-                        <span className="ig-top-city-item__name">Fortaleza</span>
-                        <span className="ig-top-city-item__value">350</span>
-                      </div>
-                      <div className="ig-top-city-item">
-                        <span className="ig-top-city-item__icon" style={{ backgroundColor: "#0A66C2" }}>📍</span>
-                        <span className="ig-top-city-item__name">Crato</span>
-                        <span className="ig-top-city-item__value">200</span>
-                      </div>
-                      <div className="ig-top-city-item">
-                        <span className="ig-top-city-item__icon" style={{ backgroundColor: "#42A5F5" }}>📍</span>
-                        <span className="ig-top-city-item__name">Massape</span>
-                        <span className="ig-top-city-item__value">500</span>
-                      </div>
-                      <div className="ig-top-city-item">
-                        <span className="ig-top-city-item__icon" style={{ backgroundColor: "#1976D2" }}>📍</span>
-                        <span className="ig-top-city-item__name">France</span>
-                        <span className="ig-top-city-item__value">700</span>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </section>
             </div>
