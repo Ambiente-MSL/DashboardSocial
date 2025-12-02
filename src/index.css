@@ -2803,6 +2803,32 @@ body:has(.instagram-dashboard--clean) .topbar__account .account-dropdown__item-n
   font-weight: 500;
 }
 
+/* Facebook Dashboard - Dropdown Branco */
+body:has(.facebook-dashboard--clean) .topbar__account .account-dropdown__list {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+body:has(.facebook-dashboard--clean) .topbar__account .account-dropdown__item {
+  color: #1f2937;
+}
+
+body:has(.facebook-dashboard--clean) .topbar__account .account-dropdown__item:hover {
+  background: rgba(139, 92, 246, 0.1);
+  color: #111827;
+}
+
+body:has(.facebook-dashboard--clean) .topbar__account .account-dropdown__item--active {
+  background: rgba(139, 92, 246, 0.15);
+  color: #111827;
+}
+
+body:has(.facebook-dashboard--clean) .topbar__account .account-dropdown__item-name {
+  color: #1f2937;
+  font-weight: 500;
+}
+
 .filter-button {
 
   display: inline-flex;
