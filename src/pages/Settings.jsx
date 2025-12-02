@@ -44,6 +44,25 @@ export default function Settings() {
   const { theme, resolvedTheme, setTheme } = useTheme();
 
   const { accounts, addAccount, updateAccount, removeAccount } = useAccounts();
+  const discoveredAdAccounts = useMemo(() => {
+    const map = new Map();
+    accounts.forEach((account) => {
+      if (Array.isArray(account?.adAccounts)) {
+        account.adAccounts.forEach((ad) => {
+          if (!ad || !ad.id) return;
+          const id = String(ad.id);
+          if (!map.has(id)) {
+            map.set(id, {
+              id,
+              name: ad.name || id,
+              currency: ad.currency || "",
+            });
+          }
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [accounts]);
 
 
 
@@ -587,23 +606,29 @@ export default function Settings() {
                   </div>
 
                   <div className="accounts-form__field">
-
                     <label htmlFor="account-ads-id">ID conta de anuncios</label>
-
                     <input
-
                       id="account-ads-id"
-
                       name="adAccountId"
-
                       value={formData.adAccountId}
-
                       onChange={handleFieldChange}
-
                       placeholder="act_..."
-
+                      list="ad-accounts-options"
                     />
-
+                    {discoveredAdAccounts.length > 0 && (
+                      <>
+                        <datalist id="ad-accounts-options">
+                          {discoveredAdAccounts.map((ad) => (
+                            <option key={ad.id} value={ad.id}>
+                              {ad.name || ad.id}
+                            </option>
+                          ))}
+                        </datalist>
+                        <p className="settings-hint">
+                          Selecione uma das contas de anúncios descobertas ou digite um ID manualmente.
+                        </p>
+                      </>
+                    )}
                   </div>
 
 
