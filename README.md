@@ -12,19 +12,18 @@
 ✅ Dark/Light mode
 ✅ Estrutura modular (backend em Flask + frontend em React)
 
-🛠️ Tecnologias Utilizadas
-# Frontend
+# Tecnologias Utilizadas: 
+- Frontend
 ⚛️ React + Vite
 📈 Recharts (gráficos)
 🎨 Tailwind CSS (estilo moderno e responsivo)
-
-# Backend
+- Backend
 🐍 Python + Flask
 🔗 Integração com Meta Graph API
 🌍 Flask-CORS
 ⚡ Cache em memória (TTL)
 
-#⚙️ Configuração
+# Configuração
 1. Clonar o projeto
 git clone https://github.com/seuusuario/msl-monitor.git
 cd msl-monitor
