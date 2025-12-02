@@ -37,6 +37,7 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
+  Info,
 } from "lucide-react";
 import { useAccounts } from "../context/AccountsContext";
 import { DEFAULT_ACCOUNTS } from "../data/accounts";
@@ -87,12 +88,6 @@ const MOCK_AGE_DISTRIBUTION = [
 const MOCK_GENDER_DISTRIBUTION = [
   { name: "Homens", value: 45 },
   { name: "Mulheres", value: 55 },
-];
-
-const MOCK_DEVICE_DISTRIBUTION = [
-  { name: "Mobile", value: 72 },
-  { name: "Desktop", value: 23 },
-  { name: "Tablet", value: 5 },
 ];
 
 const MOCK_TOP_CAMPAIGNS = [
@@ -316,7 +311,6 @@ export default function AdsDashboard() {
 
   const [activeSpendBar, setActiveSpendBar] = useState(-1);
   const [activeGenderIndex, setActiveGenderIndex] = useState(-1);
-  const [activeDeviceIndex, setActiveDeviceIndex] = useState(-1);
   const [activeCampaignIndex, setActiveCampaignIndex] = useState(-1);
   const [adsData, setAdsData] = useState(null);
   const [adsError, setAdsError] = useState("");
@@ -470,6 +464,15 @@ export default function AdsDashboard() {
     return num.toFixed(2);
   };
 
+  const formatDuration = (seconds) => {
+    if (!Number.isFinite(seconds)) return "--";
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.round(seconds - mins * 60);
+    if (secs <= 0) return `${mins}m`;
+    return `${mins}m ${secs}s`;
+  };
+
   const totals = adsData?.totals || {};
   const averages = adsData?.averages || {};
   const actions = Array.isArray(adsData?.actions) ? adsData.actions : [];
@@ -502,6 +505,33 @@ export default function AdsDashboard() {
     ctr: { value: ctrValue, delta: 0, label: "CTR (taxa de cliques)", suffix: "%" },
     cpc: { value: cpcValue, delta: 0, label: "CPC (custo por clique)", prefix: "R$" },
   };
+
+  const videoSummary = adsData?.video_summary || {};
+  const videoViews3s = Number(videoSummary.video_views_3s ?? 0);
+  const videoViews10s = Number(videoSummary.video_views_10s ?? 0);
+  const videoViews15s = Number(videoSummary.video_views_15s ?? videoSummary.thruplays ?? 0);
+  const videoViews30s = Number(videoSummary.video_views_30s ?? 0);
+  const videoAvgTime = Number(
+    videoSummary.video_avg_time_watched != null ? videoSummary.video_avg_time_watched : NaN,
+  );
+
+  const videoViewSeries = useMemo(() => {
+    const base = [
+      { label: "3s", value: videoViews3s },
+      { label: "10s", value: videoViews10s },
+      { label: "15s", value: videoViews15s },
+      { label: "30s", value: videoViews30s },
+    ];
+    return base.map((item) => ({
+      ...item,
+      value: Number.isFinite(item.value) ? item.value : 0,
+    }));
+  }, [videoViews10s, videoViews15s, videoViews30s, videoViews3s]);
+
+  const hasVideoMetrics = useMemo(
+    () => videoViewSeries.some((item) => Number.isFinite(item.value) && item.value > 0) || Number.isFinite(videoAvgTime),
+    [videoAvgTime, videoViewSeries],
+  );
 
   // manter compatibilidade com seções que ainda usam o nome antigo
   const MOCK_OVERVIEW_STATS = overviewStats;
@@ -852,49 +882,99 @@ export default function AdsDashboard() {
 
               <div className="ig-profile-vertical__divider" />
 
-              {/* Device Distribution Donut */}
-              <div className="ig-profile-vertical__engagement">
-                <h4>Distribuição por Dispositivo</h4>
-                <div className="ig-profile-vertical__engagement-chart">
-                  <ResponsiveContainer width="100%" height={220}>
-                    <PieChart>
-                      <Pie
-                        data={MOCK_DEVICE_DISTRIBUTION}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={55}
-                        outerRadius={85}
-                        paddingAngle={3}
-                        stroke="none"
-                        activeIndex={activeDeviceIndex}
-                        activeShape={renderActiveShape}
-                        onMouseEnter={(_, index) => setActiveDeviceIndex(index)}
-                        onMouseLeave={() => setActiveDeviceIndex(-1)}
-                      >
-                        {MOCK_DEVICE_DISTRIBUTION.map((_, index) => (
-                          <Cell key={index} fill={IG_DONUT_COLORS[index % IG_DONUT_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value, name) => [`${value}%`, name]} />
-                    </PieChart>
-                  </ResponsiveContainer>
+              <div className="ig-profile-vertical__engagement" style={{ position: "relative" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <h4 style={{ margin: 0 }}>Views de vídeos pagos</h4>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#6b7280", fontSize: 12 }}>
+                    <Info size={14} />
+                    <span>Dados de todos os vídeos em anúncios pagos</span>
+                  </div>
                 </div>
 
-                <div className="ig-engagement-legend" style={{ marginTop: "12px", gap: "14px" }}>
-                  {MOCK_DEVICE_DISTRIBUTION.map((slice, index) => (
-                    <div key={slice.name} className="ig-engagement-legend__item" style={{ fontSize: "15px" }}>
-                      <span
-                        className="ig-engagement-legend__swatch"
-                        style={{
-                          backgroundColor: IG_DONUT_COLORS[index % IG_DONUT_COLORS.length],
-                          width: "14px",
-                          height: "14px",
-                        }}
-                      />
-                      <span className="ig-engagement-legend__label">{slice.name}</span>
-                      <span className="ig-engagement-legend__value">{slice.value}%</span>
+                <div
+                  style={{
+                    padding: "12px",
+                    borderRadius: "14px",
+                    background: "linear-gradient(135deg, rgba(59,130,246,0.08), rgba(14,165,233,0.12))",
+                    border: "1px solid rgba(59,130,246,0.15)",
+                  }}
+                >
+                  {adsLoading ? (
+                    <div className="ig-empty-state">Carregando...</div>
+                  ) : hasVideoMetrics ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "12px" }}>
+                      <div style={{ height: 220 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={videoViewSeries}
+                            layout="vertical"
+                            margin={{ top: 10, right: 20, bottom: 10, left: 30 }}
+                            barCategoryGap={14}
+                          >
+                            <defs>
+                              <linearGradient id="adsVideoBar" x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0%" stopColor="#0ea5e9" />
+                                <stop offset="50%" stopColor="#6366f1" />
+                                <stop offset="100%" stopColor="#a855f7" />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 6" horizontal={false} stroke="#e5e7eb" />
+                            <XAxis
+                              type="number"
+                              tick={{ fill: "#6b7280", fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                              tickFormatter={(value) => formatNumber(value)}
+                            />
+                            <YAxis
+                              type="category"
+                              dataKey="label"
+                              width={32}
+                              tick={{ fill: "#111827", fontWeight: 700, fontSize: 12 }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <Tooltip
+                              cursor={{ fill: "rgba(14,165,233,0.08)" }}
+                              content={({ active, payload }) => {
+                                if (!active || !payload?.length) return null;
+                                const item = payload[0]?.payload;
+                                return (
+                                  <div className="ig-tooltip">
+                                    <span className="ig-tooltip__title">{`Views ${item?.label}`}</span>
+                                    <div className="ig-tooltip__row">
+                                      <span>Total</span>
+                                      <strong>{formatNumber(item?.value || 0)}</strong>
+                                    </div>
+                                  </div>
+                                );
+                              }}
+                            />
+                            <Bar dataKey="value" radius={[6, 6, 6, 6]} fill="url(#adsVideoBar)" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px" }}>
+                        <div
+                          className="ig-overview-stat"
+                          style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "12px" }}
+                        >
+                          <div className="ig-overview-stat__value">{formatNumber(videoViews15s)}</div>
+                          <div className="ig-overview-stat__label">Views 15s (thruplays)</div>
+                        </div>
+                        <div
+                          className="ig-overview-stat"
+                          style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "12px" }}
+                        >
+                          <div className="ig-overview-stat__value">{formatDuration(videoAvgTime)}</div>
+                          <div className="ig-overview-stat__label">Tempo médio assistido</div>
+                        </div>
+                      </div>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="ig-empty-state">Sem dados de vídeo para o período/conta selecionados</div>
+                  )}
                 </div>
               </div>
             </section>

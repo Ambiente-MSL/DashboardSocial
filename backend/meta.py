@@ -1616,7 +1616,7 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
     actions_totals: Dict[str, float] = {}
     campaigns: List[Dict[str, Any]] = []
     # buckets de video
-    v3 = v10 = thru = 0.0
+    v3 = v10 = v15 = v30 = 0.0
     vavg = 0.0
     conversion_types = (
         "offsite_conversion",
@@ -1656,7 +1656,9 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
             elif action_type == "video_10_sec_watched_actions":
                 v10 += value
             elif action_type in ("thruplay", "video_15_sec_watched_actions"):
-                thru += value
+                v15 += value
+            elif action_type == "video_30_sec_watched_actions":
+                v30 += value
             elif action_type == "video_avg_time_watched_actions":
                 vavg += value
 
@@ -1692,13 +1694,16 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
     video_summary = {
         "video_views_3s": int(v3),
         "video_views_10s": int(v10),
-        "thruplays": int(thru),
+        "video_views_15s": int(v15),
+        "video_views_30s": int(v30),
+        "thruplays": int(v15),
         "video_avg_time_watched": float(vavg) if vavg > 0 else None,
-        "video_completion_rate": round((thru / v3) * 100.0, 2) if v3 > 0 else None,
+        "video_completion_rate": round((v15 / v3) * 100.0, 2) if v3 > 0 else None,
         "drop_off_points": [
             {"bucket": "0-3s", "views": int(v3)},
             {"bucket": "3-10s", "views": int(v10)},
-            {"bucket": "10s–thruplay", "views": int(thru)},
+            {"bucket": "10-15s", "views": int(v15)},
+            {"bucket": "15-30s", "views": int(v30)},
         ],
     }
 
