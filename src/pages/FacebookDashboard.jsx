@@ -625,14 +625,6 @@ useEffect(() => {
     );
   }, [reachTimelineData]);
 
-  // Best posting times (mock data - to be implemented with real data)
-  const bestTimes = useMemo(() => ({
-    bestDay: "Sexta-feira",
-    bestTimeRange: "18:00 - 21:00",
-    avgEngagement: 1250,
-    confidence: "média",
-  }), []);
-
   const accountInitial = (accountConfig?.label || accountConfig?.name || "FB").charAt(0).toUpperCase();
   const overviewIsLoading = overviewLoading;
 
@@ -778,7 +770,7 @@ useEffect(() => {
               </div>
 
               <div className="ig-profile-vertical__body">
-                <h3 className="ig-profile-vertical__username">
+                <h3 className="ig-profile-vertical__username" style={{ marginTop: '-10px' }}>
                   {accountConfig?.label || accountConfig?.name || "Página Facebook"}
                 </h3>
 
@@ -854,17 +846,6 @@ useEffect(() => {
                       <div className="ig-engagement-summary">
                         <div className="ig-engagement-summary__value">{engagementRateDisplay}</div>
                         <div className="ig-engagement-summary__label">Total de engajamento do período</div>
-                      </div>
-
-                      <div className="ig-engagement-mini-grid">
-                        <div className="ig-engagement-mini-card fb-engagement-mini-card--blue">
-                          <span className="ig-engagement-mini-card__label">Melhor horário para postar</span>
-                          <span className="ig-engagement-mini-card__value">{bestTimes.bestTimeRange || "--"}</span>
-                        </div>
-                        <div className="ig-engagement-mini-card fb-engagement-mini-card--darkblue">
-                          <span className="ig-engagement-mini-card__label">Melhor dia</span>
-                          <span className="ig-engagement-mini-card__value">{bestTimes.bestDay || "--"}</span>
-                        </div>
                       </div>
                     </>
                   ) : (
@@ -1175,9 +1156,9 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Palavras-chave e Hashtags - Largura Total */}
-        <div className="ig-analytics-grid fb-analytics-grid--pair">
-          <section className="ig-card-white fb-analytics-card fb-analytics-card--large">
+        {/* Palavras-chave - Largura Total */}
+        <div className="ig-analytics-grid">
+          <section className="ig-card-white fb-analytics-card" style={{ gridColumn: '1 / -1' }}>
             <div className="ig-analytics-card__header">
               <h4>Palavras chaves mais comentadas</h4>
               <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
@@ -1204,42 +1185,6 @@ useEffect(() => {
                 <span className="ig-word-cloud__word fb-word-cloud__word--lg" style={{ color: '#1877F2' }}>atualização</span>
                 <span className="ig-word-cloud__word fb-word-cloud__word--sm" style={{ color: '#1976D2' }}>novidade</span>
               </div>
-            </div>
-          </section>
-
-          <section className="ig-card-white fb-analytics-card fb-analytics-card--large">
-            <div className="ig-analytics-card__header">
-              <h4>Hashtags mais usadas</h4>
-              <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
-            </div>
-            <div className="ig-analytics-card__body">
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart
-                  data={[
-                    { name: "#sucesso", value: 45 },
-                    { name: "#negócios", value: 38 },
-                    { name: "#família", value: 32 },
-                    { name: "#motivação", value: 28 },
-                    { name: "#empreender", value: 25 },
-                    { name: "#saúde", value: 22 },
-                    { name: "#bem-estar", value: 18 },
-                    { name: "#comunidade", value: 15 },
-                    { name: "#ofertas", value: 12 },
-                    { name: "#promoção", value: 10 },
-                  ].slice(0, 10)}
-                  layout="vertical"
-                  margin={{ left: 12, right: 12, top: 5, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-                  <XAxis type="number" tick={{ fill: '#111827' }} fontSize={12} allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" tick={{ fill: '#111827' }} fontSize={12} width={100} />
-                  <Tooltip
-                    cursor={{ fill: 'rgba(24, 119, 242, 0.1)' }}
-                    formatter={(value) => [String(value), "Ocorrências"]}
-                  />
-                  <Bar dataKey="value" fill="#1877F2" radius={[0, 6, 6, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
             </div>
           </section>
         </div>
