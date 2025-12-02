@@ -61,18 +61,36 @@ const HERO_TABS = [
 ];
 
 const FOLLOWER_GROWTH_SERIES = [
-  { label: "Jan", value: 28000 },
-  { label: "Fev", value: 58000 },
-  { label: "Mar", value: 12000 },
-  { label: "Abr", value: 36000 },
-  { label: "Mai", value: 58000 },
-  { label: "Jun", value: 18000 },
-  { label: "Jul", value: 28000 },
-  { label: "Ago", value: 88000 },
-  { label: "Set", value: 26000 },
-  { label: "Out", value: 34000 },
-  { label: "Nov", value: 9000 },
-  { label: "Dez", value: 52000 },
+  { label: "01/Out", tooltipDate: "01 de Outubro", value: 45 },
+  { label: "02/Out", tooltipDate: "02 de Outubro", value: 52 },
+  { label: "03/Out", tooltipDate: "03 de Outubro", value: 38 },
+  { label: "04/Out", tooltipDate: "04 de Outubro", value: 67 },
+  { label: "05/Out", tooltipDate: "05 de Outubro", value: 55 },
+  { label: "06/Out", tooltipDate: "06 de Outubro", value: 41 },
+  { label: "07/Out", tooltipDate: "07 de Outubro", value: 73 },
+  { label: "08/Out", tooltipDate: "08 de Outubro", value: 89 },
+  { label: "09/Out", tooltipDate: "09 de Outubro", value: 62 },
+  { label: "10/Out", tooltipDate: "10 de Outubro", value: 58 },
+  { label: "11/Out", tooltipDate: "11 de Outubro", value: 76 },
+  { label: "12/Out", tooltipDate: "12 de Outubro", value: 91 },
+  { label: "13/Out", tooltipDate: "13 de Outubro", value: 44 },
+  { label: "14/Out", tooltipDate: "14 de Outubro", value: 69 },
+  { label: "15/Out", tooltipDate: "15 de Outubro", value: 83 },
+  { label: "16/Out", tooltipDate: "16 de Outubro", value: 71 },
+  { label: "17/Out", tooltipDate: "17 de Outubro", value: 56 },
+  { label: "18/Out", tooltipDate: "18 de Outubro", value: 48 },
+  { label: "19/Out", tooltipDate: "19 de Outubro", value: 95 },
+  { label: "20/Out", tooltipDate: "20 de Outubro", value: 102 },
+  { label: "21/Out", tooltipDate: "21 de Outubro", value: 78 },
+  { label: "22/Out", tooltipDate: "22 de Outubro", value: 88 },
+  { label: "23/Out", tooltipDate: "23 de Outubro", value: 64 },
+  { label: "24/Out", tooltipDate: "24 de Outubro", value: 92 },
+  { label: "25/Out", tooltipDate: "25 de Outubro", value: 108 },
+  { label: "26/Out", tooltipDate: "26 de Outubro", value: 85 },
+  { label: "27/Out", tooltipDate: "27 de Outubro", value: 97 },
+  { label: "28/Out", tooltipDate: "28 de Outubro", value: 74 },
+  { label: "29/Out", tooltipDate: "29 de Outubro", value: 86 },
+  { label: "30/Out", tooltipDate: "30 de Outubro", value: 115 },
 ];
 
 const toUnixSeconds = (date) => Math.floor(date.getTime() / 1000);
@@ -1007,65 +1025,81 @@ useEffect(() => {
 
               <div className="ig-chart-area">
                 {FOLLOWER_GROWTH_SERIES.length ? (
-                  <>
-                    <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
-                      <div style={{ minWidth: Math.max(FOLLOWER_GROWTH_SERIES.length * 60, 100) + '%' }}>
-                        <ResponsiveContainer width="100%" height={280}>
-                          <BarChart data={FOLLOWER_GROWTH_SERIES} margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
-                            <defs>
-                              <linearGradient id="fbBarGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#1877F2" stopOpacity={1} />
-                                <stop offset="100%" stopColor="#0A66C2" stopOpacity={1} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                            <XAxis
-                              dataKey="label"
-                              tick={{ fill: '#111827' }}
-                              fontSize={11}
-                              axisLine={false}
-                              tickLine={false}
-                            />
-                            <YAxis
-                              tick={{ fill: '#111827' }}
-                              fontSize={11}
-                              axisLine={false}
-                              tickLine={false}
-                              tickFormatter={(value) => {
-                                if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
-                                return value;
-                              }}
-                            />
-                            <Tooltip
-                              cursor={{ fill: 'rgba(24, 119, 242, 0.1)' }}
-                              content={({ active, payload }) => {
-                                if (!active || !payload?.length) return null;
-                                const data = payload[0];
-                                return (
-                                  <div className="ig-follower-tooltip">
-                                    <div className="ig-follower-tooltip__label">Total seguidores: {data.value?.toLocaleString('pt-BR')}</div>
-                                    <div className="ig-follower-tooltip__date">{data.payload.label}</div>
-                                  </div>
-                                );
-                              }}
-                            />
-                            <Bar
-                              dataKey="value"
-                              fill="url(#fbBarGradient)"
-                              radius={[8, 8, 0, 0]}
-                              maxBarSize={40}
-                            />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                    <div className="ig-chart-slider">
-                      <div className="ig-chart-slider__track">
-                        <div className="ig-chart-slider__handle fb-chart-slider__handle--left" />
-                        <div className="ig-chart-slider__handle fb-chart-slider__handle--right" />
-                      </div>
-                    </div>
-                  </>
+                  <ResponsiveContainer width="100%" height={FOLLOWER_GROWTH_SERIES.length > 15 ? 380 : 280}>
+                    <BarChart
+                      data={FOLLOWER_GROWTH_SERIES}
+                      margin={{ top: 16, right: 16, bottom: FOLLOWER_GROWTH_SERIES.length > 15 ? 70 : 32, left: 0 }}
+                      barCategoryGap="35%"
+                    >
+                      <defs>
+                        <linearGradient id="fbFollowerGrowthBar" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#1877F2" />
+                          <stop offset="100%" stopColor="#0A66C2" />
+                        </linearGradient>
+                        <linearGradient id="fbFollowerGrowthBarActive" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#42A5F5" />
+                          <stop offset="45%" stopColor="#1877F2" />
+                          <stop offset="100%" stopColor="#0A66C2" />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fill: "#9ca3af", fontSize: 12 }}
+                        axisLine={false}
+                        tickLine={false}
+                        interval={FOLLOWER_GROWTH_SERIES.length > 15 ? "preserveEnd" : 0}
+                        height={32}
+                      />
+                      <YAxis
+                        tick={{ fill: "#9ca3af", fontSize: 12 }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(value) => {
+                          if (value >= 1000000) {
+                            const millions = (value / 1000000).toFixed(1);
+                            return `${millions.endsWith(".0") ? millions.slice(0, -2) : millions}M`;
+                          }
+                          if (value >= 1000) return `${Math.round(value / 1000)}k`;
+                          return value;
+                        }}
+                      />
+                      <Tooltip
+                        cursor={{ fill: "rgba(24, 119, 242, 0.25)" }}
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const dataPoint = payload[0];
+                          const tooltipValue = dataPoint.value?.toLocaleString('pt-BR');
+                          const tooltipDate = dataPoint.payload?.tooltipDate || dataPoint.payload?.label;
+                          return (
+                            <div className="ig-follower-tooltip">
+                              <div className="ig-follower-tooltip__label">
+                                Seguidores ganhos: {tooltipValue}
+                              </div>
+                              <div className="ig-follower-tooltip__date">{tooltipDate}</div>
+                            </div>
+                          );
+                        }}
+                      />
+                      <Bar
+                        dataKey="value"
+                        radius={[8, 8, 0, 0]}
+                        barSize={36}
+                        maxBarSize={48}
+                      >
+                        {FOLLOWER_GROWTH_SERIES.map((entry, index) => (
+                          <Cell
+                            key={entry.label}
+                            fill={
+                              index === FOLLOWER_GROWTH_SERIES.length - 1
+                                ? "url(#fbFollowerGrowthBarActive)"
+                                : "url(#fbFollowerGrowthBar)"
+                            }
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 ) : (
                   <div className="ig-empty-state">Sem histórico recente.</div>
                 )}
