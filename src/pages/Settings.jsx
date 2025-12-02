@@ -707,6 +707,20 @@ export default function Settings() {
 
                           <span>ID conta de anuncios: {account.adAccountId || ''}</span>
 
+                          {Array.isArray(account.adAccounts) && account.adAccounts.length > 0 && (
+                            <div className="accounts-card__adaccounts">
+                              <strong>Contas de anúncios ligadas:</strong>
+                              <ul style={{ margin: '6px 0 0 0', paddingLeft: '16px', color: '#4b5563', fontSize: '0.9rem' }}>
+                                {account.adAccounts.map((ad) => (
+                                  <li key={ad.id || ad.name}>
+                                    {ad.name || ad.id} — {ad.id}
+                                    {ad.currency ? ` (${ad.currency})` : ''}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
                         </div>
 
                         <div className="accounts-card__actions">
