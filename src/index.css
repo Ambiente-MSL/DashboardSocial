@@ -2829,6 +2829,26 @@ body:has(.facebook-dashboard--clean) .topbar__account .account-dropdown__item-na
   font-weight: 500;
 }
 
+/* Admin Dashboard - Remover espaços em branco no topo */
+.admin-dashboard--clean {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.admin-dashboard--clean .ig-clean-container {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.admin-dashboard--clean .ig-clean-header {
+  margin-top: 0 !important;
+}
+
+body:has(.admin-dashboard--clean) {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
 .filter-button {
 
   display: inline-flex;
