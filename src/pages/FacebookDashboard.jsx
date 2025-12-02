@@ -56,8 +56,8 @@ const HERO_TABS = [
   { id: "facebook", label: "Facebook", href: "/facebook", icon: Facebook },
   { id: "ads", label: "Ads", href: "/ads", icon: BarChart3 },
   { id: "reports", label: "Relatórios", href: "/relatorios", icon: FileText },
-  { id: "admin", label: "Admin", href: "/admin", icon: Shield },
   { id: "settings", label: "Configurações", href: "/configuracoes", icon: Settings },
+  { id: "admin", label: "Admin", href: "/admin", icon: Shield },
 ];
 
 const FOLLOWER_GROWTH_SERIES = [
