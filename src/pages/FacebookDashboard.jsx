@@ -1008,53 +1008,57 @@ useEffect(() => {
               <div className="ig-chart-area">
                 {FOLLOWER_GROWTH_SERIES.length ? (
                   <>
-                    <ResponsiveContainer width="100%" height={280}>
-                      <BarChart data={FOLLOWER_GROWTH_SERIES} margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
-                        <defs>
-                          <linearGradient id="fbBarGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#1877F2" stopOpacity={1} />
-                            <stop offset="100%" stopColor="#0A66C2" stopOpacity={1} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                        <XAxis
-                          dataKey="label"
-                          tick={{ fill: '#111827' }}
-                          fontSize={11}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <YAxis
-                          tick={{ fill: '#111827' }}
-                          fontSize={11}
-                          axisLine={false}
-                          tickLine={false}
-                          tickFormatter={(value) => {
-                            if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
-                            return value;
-                          }}
-                        />
-                        <Tooltip
-                          cursor={{ fill: 'rgba(24, 119, 242, 0.1)' }}
-                          content={({ active, payload }) => {
-                            if (!active || !payload?.length) return null;
-                            const data = payload[0];
-                            return (
-                              <div className="ig-follower-tooltip">
-                                <div className="ig-follower-tooltip__label">Total seguidores: {data.value?.toLocaleString('pt-BR')}</div>
-                                <div className="ig-follower-tooltip__date">{data.payload.label}</div>
-                              </div>
-                            );
-                          }}
-                        />
-                        <Bar
-                          dataKey="value"
-                          fill="url(#fbBarGradient)"
-                          radius={[8, 8, 0, 0]}
-                          maxBarSize={40}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
+                      <div style={{ minWidth: Math.max(FOLLOWER_GROWTH_SERIES.length * 60, 100) + '%' }}>
+                        <ResponsiveContainer width="100%" height={280}>
+                          <BarChart data={FOLLOWER_GROWTH_SERIES} margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
+                            <defs>
+                              <linearGradient id="fbBarGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#1877F2" stopOpacity={1} />
+                                <stop offset="100%" stopColor="#0A66C2" stopOpacity={1} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                            <XAxis
+                              dataKey="label"
+                              tick={{ fill: '#111827' }}
+                              fontSize={11}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              tick={{ fill: '#111827' }}
+                              fontSize={11}
+                              axisLine={false}
+                              tickLine={false}
+                              tickFormatter={(value) => {
+                                if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                                return value;
+                              }}
+                            />
+                            <Tooltip
+                              cursor={{ fill: 'rgba(24, 119, 242, 0.1)' }}
+                              content={({ active, payload }) => {
+                                if (!active || !payload?.length) return null;
+                                const data = payload[0];
+                                return (
+                                  <div className="ig-follower-tooltip">
+                                    <div className="ig-follower-tooltip__label">Total seguidores: {data.value?.toLocaleString('pt-BR')}</div>
+                                    <div className="ig-follower-tooltip__date">{data.payload.label}</div>
+                                  </div>
+                                );
+                              }}
+                            />
+                            <Bar
+                              dataKey="value"
+                              fill="url(#fbBarGradient)"
+                              radius={[8, 8, 0, 0]}
+                              maxBarSize={40}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
                     <div className="ig-chart-slider">
                       <div className="ig-chart-slider__track">
                         <div className="ig-chart-slider__handle fb-chart-slider__handle--left" />
