@@ -2,13 +2,7 @@
 
 - Um dashboard profissional para monitorar métricas orgânicas e pagas do Facebook e Instagram, com exportação de relatórios e visual moderno.
 
-<img src="docs/screenshot-dashboard.png" width="800"/>
-✨ Funcionalidades
-
-Funcionalidades Diferenciais da Meta
-Conexão direta com a Meta Graph API
-Métricas 
-
+# Funcionalidades:
 ✅ Conexão direta com a Meta Graph API
 ✅ Métricas orgânicas (Facebook e Instagram) e pagas (Ads)
 ✅ Gráficos interativos (linhas, pizza, comparativos)
@@ -19,25 +13,18 @@ Métricas
 ✅ Estrutura modular (backend em Flask + frontend em React)
 
 🛠️ Tecnologias Utilizadas
-Frontend
-
+# Frontend
 ⚛️ React + Vite
-
 📈 Recharts (gráficos)
-
 🎨 Tailwind CSS (estilo moderno e responsivo)
 
-Backend
-
+# Backend
 🐍 Python + Flask
-
 🔗 Integração com Meta Graph API
-
 🌍 Flask-CORS
-
 ⚡ Cache em memória (TTL)
 
-⚙️ Configuração
+#⚙️ Configuração
 1. Clonar o projeto
 git clone https://github.com/seuusuario/msl-monitor.git
 cd msl-monitor
