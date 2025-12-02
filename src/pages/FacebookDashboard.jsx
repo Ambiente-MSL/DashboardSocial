@@ -1112,7 +1112,7 @@ useEffect(() => {
                   <h4>Estatística por gênero</h4>
                 </div>
                 <div className="ig-analytics-card__body">
-                  <ResponsiveContainer width="100%" height={200}>
+                  <ResponsiveContainer width="100%" height={180}>
                     <PieChart>
                       {/* Blue circle (background) */}
                       <Pie
@@ -1120,7 +1120,7 @@ useEffect(() => {
                         dataKey="value"
                         cx="50%"
                         cy="50%"
-                        outerRadius={85}
+                        outerRadius={70}
                         innerRadius={0}
                         fill="#1877F2"
                         stroke="none"
@@ -1133,7 +1133,7 @@ useEffect(() => {
                         nameKey="name"
                         cx="50%"
                         cy="50%"
-                        outerRadius={85}
+                        outerRadius={70}
                         innerRadius={0}
                         startAngle={90}
                         endAngle={90 + (genderStatsSeries[0]?.value || 0) * 3.6}
@@ -1240,6 +1240,187 @@ useEffect(() => {
                         />
                       </ComposedChart>
                     </ResponsiveContainer>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div className="ig-analytics-grid fb-analytics-grid--pair">
+              <section className="ig-card-white fb-analytics-card">
+                <div className="ig-analytics-card__header">
+                  <h4>Comparativo em Gráfico</h4>
+                </div>
+                <div className="ig-analytics-card__body">
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{
+                      width: '100%',
+                      borderCollapse: 'separate',
+                      borderSpacing: '0',
+                      fontSize: '13px',
+                      minWidth: '500px'
+                    }}>
+                      <thead>
+                        <tr style={{
+                          background: 'linear-gradient(135deg, #1877F2 0%, #0A66C2 100%)',
+                          color: 'white'
+                        }}>
+                          <th style={{
+                            padding: '12px 16px',
+                            textAlign: 'left',
+                            fontWeight: '600',
+                            borderTopLeftRadius: '8px'
+                          }}>Tema</th>
+                          <th style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            fontWeight: '600'
+                          }}>Posts</th>
+                          <th style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            fontWeight: '600'
+                          }}>Alcance Médio</th>
+                          <th style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            fontWeight: '600'
+                          }}>Eng. Médio</th>
+                          <th style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            fontWeight: '600',
+                            borderTopRightRadius: '8px'
+                          }}>Compartilhamentos</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr style={{
+                          background: 'rgba(24, 119, 242, 0.05)',
+                          borderBottom: '1px solid rgba(24, 119, 242, 0.1)'
+                        }}>
+                          <td style={{
+                            padding: '12px 16px',
+                            fontWeight: '600',
+                            color: '#1f2937'
+                          }}>Saúde</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            color: '#374151'
+                          }}>15</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            color: '#374151'
+                          }}>8.500</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            color: '#374151'
+                          }}>320</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            fontWeight: '600',
+                            color: '#1877F2'
+                          }}>45</td>
+                        </tr>
+                        <tr style={{
+                          background: 'white',
+                          borderBottom: '1px solid rgba(24, 119, 242, 0.1)'
+                        }}>
+                          <td style={{
+                            padding: '12px 16px',
+                            fontWeight: '600',
+                            color: '#1f2937'
+                          }}>Segurança</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            color: '#374151'
+                          }}>12</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            color: '#374151'
+                          }}>12.000</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            color: '#374151'
+                          }}>480</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            fontWeight: '600',
+                            color: '#1877F2'
+                          }}>89</td>
+                        </tr>
+                        <tr style={{
+                          background: 'rgba(24, 119, 242, 0.05)',
+                          borderBottom: '1px solid rgba(24, 119, 242, 0.1)'
+                        }}>
+                          <td style={{
+                            padding: '12px 16px',
+                            fontWeight: '600',
+                            color: '#1f2937'
+                          }}>Educação</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            color: '#374151'
+                          }}>18</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            color: '#374151'
+                          }}>6.200</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            color: '#374151'
+                          }}>245</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            fontWeight: '600',
+                            color: '#1877F2'
+                          }}>32</td>
+                        </tr>
+                        <tr style={{
+                          background: 'white'
+                        }}>
+                          <td style={{
+                            padding: '12px 16px',
+                            fontWeight: '600',
+                            color: '#1f2937',
+                            borderBottomLeftRadius: '8px'
+                          }}>Entretenimento</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            color: '#374151'
+                          }}>20</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            color: '#374151'
+                          }}>15.800</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            color: '#374151'
+                          }}>680</td>
+                          <td style={{
+                            padding: '12px 16px',
+                            textAlign: 'center',
+                            fontWeight: '600',
+                            color: '#1877F2',
+                            borderBottomRightRadius: '8px'
+                          }}>124</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </section>
