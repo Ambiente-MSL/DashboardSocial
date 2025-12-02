@@ -1110,7 +1110,6 @@ useEffect(() => {
               <section className="ig-card-white fb-analytics-card">
                 <div className="ig-analytics-card__header">
                   <h4>Estatística por gênero</h4>
-                  <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
                 </div>
                 <div className="ig-analytics-card__body">
                   <ResponsiveContainer width="100%" height={200}>
@@ -1161,8 +1160,93 @@ useEffect(() => {
 
               <section className="ig-card-white fb-analytics-card">
                 <div className="ig-analytics-card__header">
+                  <h4>Top 10 Cidades</h4>
+                </div>
+                <div className="ig-top-cities-new-layout">
+                  <div className="ig-top-cities-new-layout__left">
+                    <div style={{ marginBottom: '16px' }}>
+                      <div style={{ fontSize: '32px', fontWeight: '700', color: '#1f2937', lineHeight: '1', marginBottom: '8px' }}>
+                        2.100
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span className="ig-top-city-row__icon" style={{ backgroundColor: "#1877F2", width: '12px', height: '12px', borderRadius: '3px' }}></span>
+                        <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>Fortaleza</span>
+                        <svg width="14" height="14" viewBox="0 0 16 16">
+                          <path d="M8 3 L13 9 L3 9 Z" fill="#10b981" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="ig-top-cities__table">
+                      <div className="ig-top-city-row">
+                        <div className="ig-top-city-row__left">
+                          <span className="ig-top-city-row__icon" style={{ backgroundColor: "#1877F2" }}></span>
+                          <span className="ig-top-city-row__name">São Paulo</span>
+                        </div>
+                        <span className="ig-top-city-row__value">1.850</span>
+                      </div>
+                      <div className="ig-top-city-row">
+                        <div className="ig-top-city-row__left">
+                          <span className="ig-top-city-row__icon" style={{ backgroundColor: "#42A5F5" }}></span>
+                          <span className="ig-top-city-row__name">Rio de Janeiro</span>
+                        </div>
+                        <span className="ig-top-city-row__value">1.620</span>
+                      </div>
+                      <div className="ig-top-city-row">
+                        <div className="ig-top-city-row__left">
+                          <span className="ig-top-city-row__icon" style={{ backgroundColor: "#0A66C2" }}></span>
+                          <span className="ig-top-city-row__name">Brasília</span>
+                        </div>
+                        <span className="ig-top-city-row__value">1.340</span>
+                      </div>
+                      <div className="ig-top-city-row">
+                        <div className="ig-top-city-row__left">
+                          <span className="ig-top-city-row__icon" style={{ backgroundColor: "#1976D2" }}></span>
+                          <span className="ig-top-city-row__name">Belo Horizonte</span>
+                        </div>
+                        <span className="ig-top-city-row__value">980</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="ig-top-cities-new-layout__right">
+                    <ResponsiveContainer width="100%" height={120}>
+                      <ComposedChart
+                        data={[
+                          { name: '26', value: 1800 },
+                          { name: '27', value: 1920 },
+                          { name: '28', value: 1950 },
+                          { name: '29', value: 2050 },
+                          { name: '30', value: 2020 },
+                          { name: '31', value: 2080 },
+                          { name: '01', value: 2100 }
+                        ]}
+                        margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                      >
+                        <defs>
+                          <linearGradient id="fbCityGrowthGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#1877F2" stopOpacity={0.3} />
+                            <stop offset="100%" stopColor="#1877F2" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="value"
+                          stroke="#1877F2"
+                          strokeWidth={2}
+                          fill="url(#fbCityGrowthGradient)"
+                          dot={false}
+                          animationDuration={800}
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </section>
+
+              <section className="ig-card-white fb-analytics-card">
+                <div className="ig-analytics-card__header">
                   <h4>Idade</h4>
-                  <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
                 </div>
                 <div className="ig-analytics-card__body">
                   <ResponsiveContainer width="100%" height={220}>
@@ -1199,7 +1283,6 @@ useEffect(() => {
           <section className="ig-card-white fb-analytics-card" style={{ gridColumn: '1 / -1' }}>
             <div className="ig-analytics-card__header">
               <h4>Palavras chaves mais comentadas</h4>
-              <button type="button" className="ig-card-filter">Mar 26 - Abr 01 ▾</button>
             </div>
             <div className="ig-analytics-card__body">
               <div className="ig-word-cloud fb-word-cloud--large">
