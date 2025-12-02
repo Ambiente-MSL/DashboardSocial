@@ -19,7 +19,17 @@ logger = logging.getLogger(__name__)
 # Registrador de recursos -> fetchers
 FETCHERS: Dict[str, Callable[[str, Optional[int], Optional[int], Optional[Dict[str, Any]]], Any]] = {}
 
-DEFAULT_CACHE_TABLE = os.getenv("SUPABASE_CACHE_TABLE", "ig_cache")
+def _resolve_cache_table() -> str:
+    explicit = os.getenv("CACHE_TABLE")
+    if explicit:
+        return explicit
+    for key, value in os.environ.items():
+        if key.endswith("CACHE_TABLE") and value:
+            return value
+    return "ig_cache"
+
+
+DEFAULT_CACHE_TABLE = _resolve_cache_table()
 DEFAULT_TTL_HOURS = int(os.getenv("META_CACHE_TTL_HOURS", "24"))
 DAY_SECONDS = 86_400
 CACHE_NAMESPACE = os.getenv("META_CACHE_NAMESPACE", "").strip() or "default"
@@ -200,13 +210,13 @@ def get_latest_cached_payload(
     Returns:
         Tuple contendo (payload, metadata) ou None caso não exista cache disponível.
     """
-    supabase = _get_postgres_client()
-    if supabase is None:
+    db_client = _get_postgres_client()
+    if db_client is None:
         return None
 
     table_name = get_table_name(platform)
     query = (
-        supabase.table(table_name)
+        db_client.table(table_name)
         .select("*")
         .eq("resource", resource)
     )
@@ -251,7 +261,7 @@ def _build_metadata(record: Dict[str, Any], stale: bool, source: str) -> Dict[st
 
 
 def _refresh_cache_entry(
-    supabase: PostgresClient,
+    db_client: PostgresClient,
     table_name: str,
     cache_key: str,
     resource: str,
@@ -290,14 +300,14 @@ def _refresh_cache_entry(
         "updated_at": fetched_at_iso,
     }
 
-    _persist_entry(supabase, table_name, record)
+    _persist_entry(db_client, table_name, record)
     metadata = _build_metadata(record, stale=False, source="refresh" if stored else "prime")
     return payload, metadata
 
 
 def _schedule_background_refresh(
     cache_key: str,
-    supabase: PostgresClient,
+    db_client: PostgresClient,
     table_name: str,
     resource: str,
     owner_id: str,
@@ -311,7 +321,7 @@ def _schedule_background_refresh(
     def run() -> None:
         try:
             _refresh_cache_entry(
-                supabase,
+                db_client,
                 table_name,
                 cache_key,
                 resource,
@@ -323,7 +333,7 @@ def _schedule_background_refresh(
                 extra,
                 fetcher,
                 refresh_reason="auto-stale",
-                stored=_select_entry(supabase, table_name, cache_key),
+                stored=_select_entry(db_client, table_name, cache_key),
             )
             logger.info("Cache %s atualizado em segundo plano.", cache_key)
         except Exception as err:  # noqa: BLE001
@@ -356,14 +366,14 @@ def get_cached_payload(
     """
     Recupera dados do cache armazenado no Postgres, buscando na Graph API se necessário.
     """
-    supabase = _get_postgres_client()
+    db_client = _get_postgres_client()
     fetcher = fetcher or FETCHERS.get(resource)
 
     if not fetcher:
         raise RuntimeError(f"Nenhum fetcher definido para '{resource}'")
 
     # Caso o banco não esteja configurado, sempre buscar e retornar
-    if supabase is None:
+    if db_client is None:
         payload = fetcher(owner_id, since_ts, until_ts, extra)
         now = datetime.now(timezone.utc).isoformat()
         meta = {
@@ -388,7 +398,7 @@ def get_cached_payload(
 
     table_name = get_table_name(platform)
     cache_key = _compute_cache_key(resource, owner_id, cache_since_ts, cache_until_ts, extra)
-    stored = _select_entry(supabase, table_name, cache_key)
+    stored = _select_entry(db_client, table_name, cache_key)
     now = datetime.now(timezone.utc)
 
     if stored and not force:
@@ -400,7 +410,7 @@ def get_cached_payload(
         if is_stale:
             _schedule_background_refresh(
                 cache_key,
-                supabase,
+                db_client,
                 table_name,
                 resource,
                 owner_id,
@@ -418,7 +428,7 @@ def get_cached_payload(
         return _clone_payload(stored.get("payload")), metadata
 
     payload, metadata = _refresh_cache_entry(
-        supabase,
+        db_client,
         table_name,
         cache_key,
         resource,
@@ -445,8 +455,8 @@ def mark_cache_error(
     error_message: str,
     platform: str = "instagram",
 ) -> None:
-    supabase = _get_postgres_client()
-    if supabase is None:
+    db_client = _get_postgres_client()
+    if db_client is None:
         return
 
     table_name = get_table_name(platform)
@@ -457,11 +467,11 @@ def mark_cache_error(
         _bucket_ts(_normalize_ts(until_ts)),
         _make_extra(extra),
     )
-    record = _select_entry(supabase, table_name, cache_key)
+    record = _select_entry(db_client, table_name, cache_key)
     if not record:
         return
     try:
-        supabase.table(table_name).update(
+        db_client.table(table_name).update(
             {
                 "last_refresh_status": "failed",
                 "last_refresh_error": error_message,
@@ -473,8 +483,8 @@ def mark_cache_error(
 
 
 def list_due_entries(limit: int = 10, platform: Optional[str] = None) -> List[Dict[str, Any]]:
-    supabase = _get_postgres_client()
-    if supabase is None:
+    db_client = _get_postgres_client()
+    if db_client is None:
         return []
     now_iso = datetime.now(timezone.utc).isoformat()
     platforms: List[str]
@@ -488,7 +498,7 @@ def list_due_entries(limit: int = 10, platform: Optional[str] = None) -> List[Di
         table_name = get_table_name(plat)
         try:
             response = (
-                supabase.table(table_name)
+                db_client.table(table_name)
                 .select("*")
                 .lte("next_refresh_at", now_iso)
                 .order("next_refresh_at", desc=False)

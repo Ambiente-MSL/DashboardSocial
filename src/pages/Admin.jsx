@@ -1,25 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
-import { Shield, UserCog, AlertCircle, CheckCircle } from 'lucide-react';
-import Section from '../components/Section';
-import NavigationHero from '../components/NavigationHero';
+import { Link, useLocation } from 'react-router-dom';
+import { Shield, UserCog, AlertCircle, CheckCircle, BarChart3, FileText, Settings, Instagram as InstagramIcon, Facebook } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
+const HERO_TABS = [
+  { id: "instagram", label: "Instagram", href: "/instagram", icon: InstagramIcon },
+  { id: "facebook", label: "Facebook", href: "/facebook", icon: Facebook },
+  { id: "ads", label: "Ads", href: "/ads", icon: BarChart3 },
+  { id: "reports", label: "Relatórios", href: "/relatorios", icon: FileText },
+  { id: "admin", label: "Admin", href: "/admin", icon: Shield },
+  { id: "settings", label: "Configurações", href: "/configuracoes", icon: Settings },
+];
+
 export default function Admin() {
-  const outletContext = useOutletContext() || {};
-  const { setTopbarConfig, resetTopbarConfig } = outletContext;
+  const location = useLocation();
   const { user, role, apiFetch } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [updating, setUpdating] = useState(null);
-
-  useEffect(() => {
-    if (!setTopbarConfig) return undefined;
-    setTopbarConfig({ title: 'Admin', showFilters: false });
-    return () => resetTopbarConfig?.();
-  }, [setTopbarConfig, resetTopbarConfig]);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -64,31 +64,105 @@ export default function Admin() {
 
   if (role !== 'admin') {
     return (
-      <>
-        <NavigationHero title="Admin" icon={Shield} />
-        <div className="page-content">
-          <Section title="Acesso Negado">
-            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--muted)' }}>
-              <Shield size={48} style={{ marginBottom: '1rem' }} />
-              <p>Voce nao tem permissao para acessar esta pagina.</p>
-              <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
-                Apenas usuarios com role <strong>admin</strong> podem gerenciar usuarios.
-              </p>
+      <div className="admin-dashboard admin-dashboard--clean">
+        <div className="ig-clean-container">
+          <div className="ig-hero-gradient" aria-hidden="true" />
+
+          {/* Header com Logo Admin e Tabs */}
+          <div className="ig-clean-header">
+            <div className="ig-clean-header__brand">
+              <div className="ig-clean-header__logo">
+                <Shield size={32} color="#ec4899" />
+              </div>
+              <h1>Admin</h1>
             </div>
-          </Section>
+
+            <nav className="ig-clean-tabs">
+              {HERO_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = tab.href ? location.pathname === tab.href : tab.id === "admin";
+                const linkTarget = tab.href
+                  ? (location.search ? { pathname: tab.href, search: location.search } : tab.href)
+                  : null;
+                return tab.href ? (
+                  <Link
+                    key={tab.id}
+                    to={linkTarget}
+                    className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
+                  >
+                    <Icon size={18} />
+                    <span>{tab.label}</span>
+                  </Link>
+                ) : null;
+              })}
+            </nav>
+          </div>
+
+          <div className="ig-main-layout">
+            <div className="ig-content-area">
+              <div className="ig-card-white" style={{ textAlign: 'center', padding: '3rem' }}>
+                <Shield size={48} style={{ marginBottom: '1rem', color: '#ec4899' }} />
+                <h2 style={{ marginBottom: '1rem', fontSize: '1.5rem', fontWeight: '600' }}>Acesso Negado</h2>
+                <p style={{ color: '#6b7280', marginBottom: '0.5rem' }}>
+                  Você não tem permissão para acessar esta página.
+                </p>
+                <p style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
+                  Apenas usuários com role <strong>admin</strong> podem gerenciar usuários.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <NavigationHero title="Admin" icon={Shield} />
-      <div className="page-content">
-        <Section
-          title="Gerenciamento de Usuarios"
-          description="Gerencie roles e permissoes dos usuarios do sistema."
-        >
+    <div className="admin-dashboard admin-dashboard--clean">
+      <div className="ig-clean-container">
+        <div className="ig-hero-gradient" aria-hidden="true" />
+
+        {/* Header com Logo Admin e Tabs */}
+        <div className="ig-clean-header">
+          <div className="ig-clean-header__brand">
+            <div className="ig-clean-header__logo">
+              <Shield size={32} color="#ec4899" />
+            </div>
+            <h1>Admin</h1>
+          </div>
+
+          <nav className="ig-clean-tabs">
+            {HERO_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = tab.href ? location.pathname === tab.href : tab.id === "admin";
+              const linkTarget = tab.href
+                ? (location.search ? { pathname: tab.href, search: location.search } : tab.href)
+                : null;
+              return tab.href ? (
+                <Link
+                  key={tab.id}
+                  to={linkTarget}
+                  className={`ig-clean-tab${isActive ? " ig-clean-tab--active" : ""}`}
+                >
+                  <Icon size={18} />
+                  <span>{tab.label}</span>
+                </Link>
+              ) : null;
+            })}
+          </nav>
+        </div>
+
+        <div className="ig-main-layout">
+          <div className="ig-content-area">
+            <section className="ig-card-white" style={{ marginBottom: '2rem' }}>
+              <div className="ig-analytics-card__header" style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '1rem' }}>
+                <h4 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#111827' }}>Gerenciamento de Usuários</h4>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                  Gerencie roles e permissões dos usuários do sistema.
+                </p>
+              </div>
+
+              <div style={{ padding: '1.5rem' }}>
           {error && (
             <div style={{
               padding: '1rem',
@@ -208,21 +282,24 @@ export default function Admin() {
           <div style={{
             marginTop: '1.5rem',
             padding: '1rem',
-            backgroundColor: 'var(--surface)',
-            border: '1px solid var(--border)',
+            backgroundColor: '#f9fafb',
+            border: '1px solid #e5e7eb',
             borderRadius: '0.5rem',
             fontSize: '0.875rem',
-            color: 'var(--muted)'
+            color: '#6b7280'
           }}>
-            <strong>Informacoes sobre Roles:</strong>
+            <strong style={{ color: '#111827' }}>Informações sobre Roles:</strong>
             <ul style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
-              <li><strong>Analista:</strong> Pode visualizar dashboards e relatorios.</li>
-              <li><strong>Admin:</strong> Tem acesso total, incluindo gerenciamento de usuarios.</li>
+              <li><strong>Analista:</strong> Pode visualizar dashboards e relatórios.</li>
+              <li><strong>Admin:</strong> Tem acesso total, incluindo gerenciamento de usuários.</li>
             </ul>
           </div>
-        </Section>
+              </div>
+            </section>
+          </div>
+        </div>
       </div>
-    </>
+    </div>
   );
 }
 
