@@ -512,6 +512,22 @@ def _enrich_facebook_metrics_payload(payload: Dict[str, Any]) -> None:
         },
     )
     ensure_metric("followers_total", "Seguidores da pagina", page_overview.get("followers_total"))
+    ensure_metric("video_views_3s", "Video views (3s)", page_overview.get("video_views_3s"))
+    ensure_metric(
+        "video_views_10s",
+        "Video views (10s)",
+        page_overview.get("video_views_10s") or (video_data or {}).get("views_10s"),
+    )
+    ensure_metric(
+        "video_views_30s",
+        "Video views (30s)",
+        page_overview.get("video_views_30s") or (video_data or {}).get("views_30s"),
+    )
+    ensure_metric(
+        "video_avg_watch_time",
+        "Tempo medio de visualizacao (s)",
+        page_overview.get("avg_watch_time") or (video_data or {}).get("avg_watch_time"),
+    )
 
 
 def fetch_facebook_posts(

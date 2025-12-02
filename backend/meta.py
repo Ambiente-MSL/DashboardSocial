@@ -525,6 +525,8 @@ def fb_page_window(page_id: str, since: int, until: int):
 
     engagement_total = total_reac + total_com + total_sha
     video_metrics = fetch_page_video_metrics(page_id, page_token, since, until)
+    if video_views_3s is not None:
+        video_metrics.setdefault("views_3s", video_views_3s)
     video_engagement_total = video_reac + video_com + video_sha
     video_metrics["engagement"] = {
         "total": video_engagement_total,
@@ -576,6 +578,8 @@ def fb_page_window(page_id: str, since: int, until: int):
             "page_views": page_views,
             "video_views": video_views,
             "video_views_3s": video_views_3s,
+            "video_views_10s": video_metrics.get("views_10s"),
+            "video_views_30s": video_metrics.get("views_30s"),
             "video_views_1m": video_views_60s,
             "avg_watch_time": avg_watch_time,
             "content_activity": content_activity,
@@ -591,12 +595,14 @@ def fb_page_window(page_id: str, since: int, until: int):
 
 def fetch_page_video_metrics(page_id: str, page_token: str, since: int, until: int) -> Dict[str, Optional[float]]:
     metric_candidates = {
+        "views_30s": ["page_video_views_30s"],
         "views_10s": ["page_video_views_10s"],
         "views_1m": ["page_video_views_60s_exclusive", "page_video_views_60s"],
         "avg_watch_time": ["page_video_avg_time_watched"],
         "watch_time_total": ["page_video_view_time"],
     }
     results: Dict[str, Optional[float]] = {
+        "views_30s": None,
         "views_10s": None,
         "views_1m": None,
         "avg_watch_time": None,
@@ -629,6 +635,8 @@ def fetch_page_video_metrics(page_id: str, page_token: str, since: int, until: i
 
     if results["views_10s"] is not None:
         results["views_10s"] = int(round(results["views_10s"]))
+    if results["views_30s"] is not None:
+        results["views_30s"] = int(round(results["views_30s"]))
     if results["views_1m"] is not None:
         results["views_1m"] = int(round(results["views_1m"]))
     return results

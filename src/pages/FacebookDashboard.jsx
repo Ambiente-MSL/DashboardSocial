@@ -140,6 +140,15 @@ const formatShortNumber = (value) => {
   return value.toLocaleString("pt-BR");
 };
 
+const formatDurationSeconds = (seconds) => {
+  if (!Number.isFinite(seconds)) return "--";
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remaining = Math.round(seconds - minutes * 60);
+  if (remaining <= 0) return `${minutes}m`;
+  return `${minutes}m ${remaining}s`;
+};
+
 const buildWeeklyPattern = (values) => {
   const max = Math.max(...values, 0);
   return values.map((value, index) => ({
@@ -606,6 +615,27 @@ useEffect(() => {
     ].filter(item => item.value > 0);
   }, [overviewSource, pageMetricsByKey]);
 
+  const videoWatchStats = useMemo(() => {
+    const pageVideo = overviewSource?.page_overview || {};
+    const videoData = overviewSource?.video || {};
+    const views3s = extractNumber(pageVideo.video_views_3s, null);
+    const views10s = extractNumber(videoData.views_10s ?? pageVideo.video_views_10s, null);
+    const views30s = extractNumber(videoData.views_30s ?? pageVideo.video_views_30s, null);
+    const avgWatchSec = extractNumber(videoData.avg_watch_time ?? pageVideo.avg_watch_time, null);
+    return {
+      views3s,
+      views10s,
+      views30s,
+      avgWatchSec,
+    };
+  }, [overviewSource]);
+
+  const hasVideoWatchData = useMemo(
+    () => [videoWatchStats.views3s, videoWatchStats.views10s, videoWatchStats.views30s, videoWatchStats.avgWatchSec]
+      .some((val) => Number.isFinite(val) && val >= 0),
+    [videoWatchStats],
+  );
+
   // Gender distribution (placeholder since Facebook API calls were removed)
   const genderStatsSeries = DEFAULT_GENDER_STATS;
 
@@ -884,6 +914,42 @@ useEffect(() => {
                   </div>
                 </div>
               </div>
+            </section>
+
+            <section className="ig-card" style={{ marginTop: 12 }}>
+              <header className="ig-card-header">
+                <div>
+                  <h3 className="ig-clean-title2">Visão de vídeos</h3>
+                  <p className="ig-card-subtitle">Views por duração (período filtrado)</p>
+                </div>
+              </header>
+              {overviewIsLoading ? (
+                <div className="ig-empty-state">Carregando...</div>
+              ) : hasVideoWatchData ? (
+                <div
+                  className="ig-overview-activity"
+                  style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px" }}
+                >
+                  <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{formatNumber(videoWatchStats.views3s)}</div>
+                    <div className="ig-overview-stat__label">Views 3s</div>
+                  </div>
+                  <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{formatNumber(videoWatchStats.views10s)}</div>
+                    <div className="ig-overview-stat__label">Views 10s</div>
+                  </div>
+                  <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{formatNumber(videoWatchStats.views30s)}</div>
+                    <div className="ig-overview-stat__label">Views 30s</div>
+                  </div>
+                  <div className="ig-overview-stat">
+                    <div className="ig-overview-stat__value">{formatDurationSeconds(videoWatchStats.avgWatchSec)}</div>
+                    <div className="ig-overview-stat__label">Tempo médio assistido</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="ig-empty-state">Sem dados de vídeo para o período</div>
+              )}
             </section>
           </div>
 
