@@ -678,6 +678,7 @@ export default function InstagramDashboard() {
   ]);
   const [metrics, setMetrics] = useState([]);
   const [metricsError, setMetricsError] = useState("");
+  const [metricsLoading, setMetricsLoading] = useState(false);
 
   const [posts, setPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
@@ -757,7 +758,10 @@ export default function InstagramDashboard() {
     if (!accountConfig?.instagramUserId) {
       setMetrics([]);
       setFollowerSeries([]);
+      setFollowerCounts(null);
       setReachCacheSeries([]);
+      setOverviewSnapshot(null);
+      setMetricsLoading(false);
       setMetricsError("Conta do Instagram não configurada.");
       return;
     }
@@ -768,8 +772,14 @@ export default function InstagramDashboard() {
     const effectiveUntil = untilDate || defaultEnd;
 
     const controller = new AbortController();
+    let cancelled = false;
     (async () => {
+      setMetricsLoading(true);
       setMetricsError("");
+      setOverviewSnapshot(null);
+      setMetrics([]);
+      setFollowerSeries([]);
+      setFollowerCounts(null);
       setReachCacheSeries([]);
       try {
         const params = new URLSearchParams();
@@ -780,6 +790,7 @@ export default function InstagramDashboard() {
         const resp = await fetch(url, { signal: controller.signal });
         const json = safeParseJson(await resp.text()) || {};
         if (!resp.ok) throw new Error(describeApiError(json, "Falha ao carregar metricas do Instagram."));
+        if (cancelled) return;
         setMetrics(json.metrics || []);
         setFollowerSeries(Array.isArray(json.follower_series) ? json.follower_series : []);
         setFollowerCounts(json.follower_counts || null);
@@ -798,19 +809,27 @@ export default function InstagramDashboard() {
             })
             .filter(Boolean)
           : [];
+        if (cancelled) return;
         setReachCacheSeries(reachSeries);
       } catch (err) {
-        if (err.name !== "AbortError") {
+        if (!cancelled && err.name !== "AbortError") {
           setMetrics([]);
           setFollowerSeries([]);
           setFollowerCounts(null);
           setReachCacheSeries([]);
           setMetricsError(err.message || "Não foi possível atualizar.");
         }
+      } finally {
+        if (!cancelled) {
+          setMetricsLoading(false);
+        }
       }
     })();
 
-    return () => controller.abort();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [accountConfig?.instagramUserId, sinceDate, untilDate, defaultEnd, sinceParam, untilParam]);
 
   useEffect(() => {
@@ -900,6 +919,7 @@ export default function InstagramDashboard() {
 
   // Calcula total de seguidores ganhos no período filtrado
   const followersDelta = useMemo(() => {
+    if (metricsLoading) return null;
     const sumPositiveDiff = (series) => {
       if (!Array.isArray(series) || series.length < 2) return null;
       let prev = null;
@@ -973,7 +993,7 @@ export default function InstagramDashboard() {
     }
 
     return 0;
-  }, [followerCounts, followerGrowthMetric?.value, followerSeriesInRange, followerSeriesNormalized]);
+  }, [followerCounts, followerGrowthMetric?.value, followerSeriesInRange, followerSeriesNormalized, metricsLoading]);
 
 
 
@@ -1070,7 +1090,12 @@ export default function InstagramDashboard() {
   }, [reachSeriesBase, sinceDate, untilDate]);
 
   const profileReachData = useMemo(() => {
-    const data = normalizedReachSeries.length ? normalizedReachSeries : DEFAULT_PROFILE_REACH_SERIES;
+    if (metricsLoading) return [];
+    const data = normalizedReachSeries.length
+      ? normalizedReachSeries
+      : metricsError
+        ? []
+        : DEFAULT_PROFILE_REACH_SERIES;
 
     // Limitar a 7 pontos de dados para melhor visualização
     if (data.length <= 7) return data;
@@ -1085,7 +1110,7 @@ export default function InstagramDashboard() {
     }
 
     return sampledData;
-  }, [normalizedReachSeries]);
+  }, [metricsError, metricsLoading, normalizedReachSeries]);
 
   const profileReachTotal = useMemo(() => normalizedReachSeries.reduce(
     (acc, entry) => acc + (Number.isFinite(entry.value) ? entry.value : 0),
@@ -1093,14 +1118,20 @@ export default function InstagramDashboard() {
   ), [normalizedReachSeries]);
 
   const reachValue = useMemo(() => {
+    if (metricsLoading) return null;
     if (reachMetricValue != null && reachMetricValue > 0) return reachMetricValue;
     if (normalizedReachSeries.length) {
       if (profileReachTotal > 0) return profileReachTotal;
       if (reachMetricValue != null) return reachMetricValue;
       return 0;
     }
-    return reachMetricValue ?? 0;
-  }, [normalizedReachSeries, profileReachTotal, reachMetricValue]);
+    return reachMetricValue ?? null;
+  }, [metricsLoading, normalizedReachSeries, profileReachTotal, reachMetricValue]);
+
+  const hasReachData = useMemo(
+    () => !metricsLoading && (normalizedReachSeries.length > 0 || reachMetricValue != null),
+    [metricsLoading, normalizedReachSeries.length, reachMetricValue],
+  );
 
   const peakReachPoint = useMemo(() => {
     if (!profileReachData.length) return null;
@@ -1112,9 +1143,10 @@ export default function InstagramDashboard() {
 
   useEffect(() => {
     setOverviewSnapshot(null);
-  }, [accountSnapshotKey]);
+  }, [accountSnapshotKey, sinceIso, untilIso]);
 
   const totalFollowers = useMemo(() => {
+    if (metricsLoading) return null;
     const candidateValues = [
       activeSnapshot?.followers,
       accountInfo?.followers_count,
@@ -1141,13 +1173,14 @@ export default function InstagramDashboard() {
       }
     }
 
-    return zeroFallback ?? 0;
+    return zeroFallback ?? null;
   }, [
     accountInfo,
     activeSnapshot,
     followerCounts,
     followerSeriesNormalized,
     followersMetric,
+    metricsLoading,
   ]);
 
   const engagementRateValue = tryParseNumber(engagementRateMetric?.value);
@@ -1186,44 +1219,73 @@ export default function InstagramDashboard() {
   const postsCount = filteredPosts.length;
 
   useEffect(() => {
-    if (!accountSnapshotKey) return;
+    if (!accountSnapshotKey || metricsLoading) return;
+    const hasValue = Number.isFinite(totalFollowers)
+      || Number.isFinite(reachValue)
+      || Number.isFinite(avgFollowersPerDay)
+      || Number.isFinite(postsCount);
+    if (!hasValue) return;
     setOverviewSnapshot({
       accountId: accountSnapshotKey,
-      followers: Number.isFinite(totalFollowers) ? totalFollowers : 0,
-      reach: Number.isFinite(reachValue) ? reachValue : 0,
-      followersDaily: Number.isFinite(avgFollowersPerDay) ? avgFollowersPerDay : 0,
-      posts: postsCount,
+      followers: Number.isFinite(totalFollowers) ? totalFollowers : null,
+      reach: Number.isFinite(reachValue) ? reachValue : null,
+      followersDaily: Number.isFinite(avgFollowersPerDay) ? avgFollowersPerDay : null,
+      posts: Number.isFinite(postsCount) ? postsCount : null,
     });
   }, [
     accountSnapshotKey,
     avgFollowersPerDay,
+    metricsLoading,
     postsCount,
     reachValue,
     totalFollowers,
   ]);
 
-  const overviewMetrics = useMemo(
-    () => ({
-      followers: activeSnapshot?.followers ?? totalFollowers ?? 0,
-      reach: activeSnapshot?.reach ?? reachValue ?? 0,
-      followersDaily: activeSnapshot?.followersDaily ?? avgFollowersPerDay ?? 0,
-      followersDelta: followersDelta,
-      posts: activeSnapshot?.posts ?? postsCount ?? 0,
-    }),
-    [activeSnapshot, avgFollowersPerDay, followersDelta, postsCount, reachValue, totalFollowers],
-  );
+  const reachDisplayValue = hasReachData ? reachValue : null;
+
+  const overviewMetrics = useMemo(() => {
+    if (metricsLoading) {
+      return {
+        followers: null,
+        reach: null,
+        followersDaily: null,
+        followersDelta: null,
+        posts: null,
+      };
+    }
+
+    return {
+      followers: activeSnapshot?.followers ?? totalFollowers ?? null,
+      reach: activeSnapshot?.reach ?? reachDisplayValue ?? null,
+      followersDaily: activeSnapshot?.followersDaily
+        ?? (Number.isFinite(avgFollowersPerDay) ? avgFollowersPerDay : null),
+      followersDelta,
+      posts: activeSnapshot?.posts ?? postsCount ?? null,
+    };
+  }, [
+    activeSnapshot,
+    avgFollowersPerDay,
+    followersDelta,
+    metricsLoading,
+    postsCount,
+    reachDisplayValue,
+    totalFollowers,
+  ]);
 
   const followerDeltaValue = useMemo(() => {
+    if (metricsLoading) return null;
     const numeric = Number(overviewMetrics.followersDelta);
-    return Number.isFinite(numeric) ? numeric : 0;
-  }, [overviewMetrics.followersDelta]);
+    return Number.isFinite(numeric) ? numeric : null;
+  }, [metricsLoading, overviewMetrics.followersDelta]);
 
-  const FollowerDeltaIcon = followerDeltaValue < 0 ? TrendingDown : TrendingUp;
-  const followerDeltaColor = followerDeltaValue < 0
-    ? "#ef4444"
-    : followerDeltaValue > 0
-      ? "#10b981"
-      : "#9ca3af";
+  const FollowerDeltaIcon = followerDeltaValue != null && followerDeltaValue < 0 ? TrendingDown : TrendingUp;
+  const followerDeltaColor = followerDeltaValue == null
+    ? "#9ca3af"
+    : followerDeltaValue < 0
+      ? "#ef4444"
+      : followerDeltaValue > 0
+        ? "#10b981"
+        : "#9ca3af";
 
   const engagementRateDisplay = useMemo(() => (
     engagementRateValue != null
@@ -1303,14 +1365,16 @@ export default function InstagramDashboard() {
     : []), [filteredPosts]);
 
   const followerGrowthSeriesSorted = useMemo(() => {
+    if (metricsLoading) return [];
     const source = followerSeriesInRange.length ? followerSeriesInRange : followerSeriesNormalized;
     if (!source.length) return [];
     return source
       .filter((entry) => entry?.date && Number.isFinite(entry.value))
       .sort((a, b) => (a.date > b.date ? 1 : -1));
-  }, [followerSeriesInRange, followerSeriesNormalized]);
+  }, [followerSeriesInRange, followerSeriesNormalized, metricsLoading]);
 
   const followerGrowthChartData = useMemo(() => {
+    if (metricsLoading) return [];
     if (followerGrowthSeriesSorted.length) {
       const MAX_POINTS = 64;
       const seriesToUse = followerGrowthSeriesSorted.length > MAX_POINTS
@@ -1343,12 +1407,14 @@ export default function InstagramDashboard() {
       });
     }
 
+    if (metricsError) return [];
+
     return FOLLOWER_GROWTH_SERIES.map((entry, index) => ({
       label: entry.label || `${index + 1}`,
       value: Math.max(0, extractNumber(entry.value, 0)),
       tooltipDate: entry.label || `#${index + 1}`,
     }));
-  }, [followerGrowthSeriesSorted]);
+  }, [followerGrowthSeriesSorted, metricsError, metricsLoading]);
 
   const followerGrowthDomain = useMemo(() => {
     if (!followerGrowthChartData.length) return [0, "auto"];
@@ -1751,21 +1817,47 @@ export default function InstagramDashboard() {
 
                 <div className="ig-profile-vertical__stats-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '20px' }}>
                   <div className="ig-overview-stat" style={{ paddingBottom: '16px', borderBottom: '1px solid #e5e7eb' }}>
-                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.followers)}</div>
+                    <div className="ig-overview-stat__value">
+                      {metricsLoading ? (
+                        <span className="ig-skeleton ig-skeleton--stat" aria-hidden="true" />
+                      ) : (
+                        formatNumber(overviewMetrics.followers ?? null)
+                      )}
+                    </div>
                     <div className="ig-overview-stat__label">Total de seguidores</div>
                   </div>
                   <div className="ig-overview-stat" style={{ paddingBottom: '16px', borderBottom: '1px solid #e5e7eb' }}>
-                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.reach)}</div>
+                    <div className="ig-overview-stat__value">
+                      {metricsLoading ? (
+                        <span className="ig-skeleton ig-skeleton--stat" aria-hidden="true" />
+                      ) : (
+                        formatNumber(overviewMetrics.reach ?? null)
+                      )}
+                    </div>
                     <div className="ig-overview-stat__label">Alcance</div>
                   </div>
                   <div className="ig-overview-stat" style={{ paddingTop: '8px' }}>
-                    <div className="ig-overview-stat__value">{formatNumber(overviewMetrics.posts)}</div>
+                    <div className="ig-overview-stat__value">
+                      {metricsLoading ? (
+                        <span className="ig-skeleton ig-skeleton--stat" aria-hidden="true" />
+                      ) : (
+                        formatNumber(overviewMetrics.posts ?? null)
+                      )}
+                    </div>
                     <div className="ig-overview-stat__label">Posts criados</div>
                   </div>
                   <div className="ig-overview-stat" style={{ paddingTop: '8px' }}>
                     <div className="ig-overview-stat__value" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                      {formatNumber(followerDeltaValue)}
-                      <FollowerDeltaIcon size={20} style={{ color: followerDeltaColor }} />
+                      {metricsLoading ? (
+                        <span className="ig-skeleton ig-skeleton--stat" aria-hidden="true" />
+                      ) : (
+                        <>
+                          {formatNumber(followerDeltaValue ?? null)}
+                          {followerDeltaValue != null ? (
+                            <FollowerDeltaIcon size={20} style={{ color: followerDeltaColor }} />
+                          ) : null}
+                        </>
+                      )}
                     </div>
                     <div className="ig-overview-stat__label">Seguidores ganhos</div>
                   </div>
@@ -1942,7 +2034,9 @@ export default function InstagramDashboard() {
               </header>
 
               <div className="ig-chart-area">
-                {profileReachData.length ? (
+                {metricsLoading ? (
+                  <div className="ig-chart-skeleton ig-chart-skeleton--tall" aria-hidden="true" />
+                ) : profileReachData.length ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <ComposedChart
                       data={profileReachData}
@@ -2103,7 +2197,9 @@ export default function InstagramDashboard() {
               </header>
 
               <div className="ig-chart-area">
-                {followerGrowthChartData.length ? (
+                {metricsLoading ? (
+                  <div className="ig-chart-skeleton ig-chart-skeleton--compact" aria-hidden="true" />
+                ) : followerGrowthChartData.length ? (
                   <ResponsiveContainer width="100%" height={followerGrowthChartData.length > 15 ? 380 : 280}>
                     <BarChart
                       data={followerGrowthChartData}
