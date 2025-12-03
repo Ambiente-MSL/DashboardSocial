@@ -68,6 +68,7 @@ export default function Settings() {
       id: acc.facebookPageId,
       label: acc.label || acc.facebookPageId,
       instagramUserId: acc.instagramUserId || "",
+      adAccountId: acc.adAccountId || "",
       adAccounts: acc.adAccounts || [],
     })),
     [accounts],
@@ -740,6 +741,11 @@ export default function Settings() {
                                     ) : (
                                       <div style={{ fontSize: '0.85rem', color: '#9ca3af' }}>IG não vinculado</div>
                                     )}
+                                    {page.adAccountId ? (
+                                      <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>Ad Account: {page.adAccountId}</div>
+                                    ) : (
+                                      <div style={{ fontSize: '0.85rem', color: '#9ca3af' }}>Conta de anúncios não vinculada</div>
+                                    )}
                                   </div>
                                   <div style={{ display: 'flex', gap: '4px' }}>
                                     <button
@@ -785,7 +791,9 @@ export default function Settings() {
                                     ))}
                                   </ul>
                                 ) : (
-                                  <div style={{ marginTop: '8px', fontSize: '0.8rem', color: '#9ca3af' }}>Sem contas de anúncios vinculadas</div>
+                                  <div style={{ marginTop: '8px', fontSize: '0.8rem', color: '#9ca3af' }}>
+                                    {page.adAccountId ? `Usando conta de anúncios: ${page.adAccountId}` : 'Sem contas de anúncios vinculadas'}
+                                  </div>
                                 )}
                               </>
                             )}

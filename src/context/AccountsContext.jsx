@@ -7,6 +7,14 @@ const MANAGED_ACCOUNTS_ENDPOINT = `${API_BASE_URL || ""}/api/accounts`;
 
 const AccountsContext = createContext(null);
 
+const ensureAdAccountId = (value) => {
+  if (value == null) return "";
+  const raw = String(value).trim();
+  if (!raw) return "";
+  const cleaned = raw.replace(/^act_?/i, "");
+  return cleaned ? `act_${cleaned}` : "";
+};
+
 function normalizeAccount(raw, existing = []) {
   if (!raw) return null;
   const {
@@ -25,7 +33,7 @@ function normalizeAccount(raw, existing = []) {
     label: String(label).trim(),
     facebookPageId: String(facebookPageId || "").trim(),
     instagramUserId: String(instagramUserId || "").trim(),
-    adAccountId: String(adAccountId || "").trim(),
+    adAccountId: ensureAdAccountId(adAccountId),
   };
   const profilePictureSource = raw.profilePictureUrl ?? raw.profile_picture_url;
   if (profilePictureSource) {
@@ -45,8 +53,7 @@ function normalizeAccount(raw, existing = []) {
         const adIdRaw = ad.id != null ? String(ad.id).trim() : "";
         const accountIdRaw = ad.accountId ?? ad.account_id;
         const baseId = adIdRaw || (accountIdRaw != null ? String(accountIdRaw).trim() : "");
-        if (!baseId) return null;
-        const adId = baseId.startsWith("act_") ? baseId : `act_${baseId}`;
+        const adId = ensureAdAccountId(baseId);
         if (!adId) return null;
         return {
           id: adId,
@@ -246,7 +253,7 @@ export function AccountsProvider({ children }) {
       label: payload.label.trim(),
       facebookPageId: payload.facebookPageId.trim(),
       instagramUserId: payload.instagramUserId.trim(),
-      adAccountId: payload.adAccountId.trim(),
+      adAccountId: ensureAdAccountId(payload.adAccountId),
       profilePictureUrl: payload.profilePictureUrl ? payload.profilePictureUrl.trim() : "",
       pagePictureUrl: payload.pagePictureUrl ? payload.pagePictureUrl.trim() : "",
     };
@@ -282,7 +289,7 @@ export function AccountsProvider({ children }) {
       label: payload.label.trim(),
       facebookPageId: payload.facebookPageId.trim(),
       instagramUserId: payload.instagramUserId.trim(),
-      adAccountId: payload.adAccountId.trim(),
+      adAccountId: ensureAdAccountId(payload.adAccountId),
       profilePictureUrl: payload.profilePictureUrl ? payload.profilePictureUrl.trim() : "",
       pagePictureUrl: payload.pagePictureUrl ? payload.pagePictureUrl.trim() : "",
     };
