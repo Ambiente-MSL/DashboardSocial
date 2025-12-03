@@ -4,6 +4,7 @@ import { Facebook, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { buildLegalUrl } from '../lib/legalLinks';
 import { useTranslation } from 'react-i18next';
+import logoMsl from '../assets/logo-msl.svg';
 
 const translateError = (rawMessage) => {
   if (!rawMessage) {
@@ -180,33 +181,29 @@ export default function Login() {
 
   return (
     <div className="auth-screen">
-        <div className="auth-card">
-        <div className="auth-brand" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-          <span>Monitor MSL</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <label htmlFor="lang-select" style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-              {t('lang.label')}
-            </label>
-            <select
-              id="lang-select"
-              value={lang}
-              onChange={(e) => handleLangChange(e.target.value)}
-              style={{
-                padding: '0.35rem 0.45rem',
-                borderRadius: '8px',
-                border: '1px solid #e5e7eb',
-                background: '#fff',
-                color: '#111827',
-                fontSize: '0.9rem',
-                cursor: 'pointer',
-              }}
-            >
-              <option value="pt">{t('lang.pt')}</option>
-              <option value="en">{t('lang.en')}</option>
-            </select>
-          </div>
+      <div className="auth-container">
+        <div className="auth-left">
+          <img src={logoMsl} alt="MSL Estratégia" className="auth-logo" />
+          <p className="auth-subtext-left">{t('login.no_account')}</p>
+          <Link className="auth-register-btn" to="/register">
+            {t('login.create_account')}
+          </Link>
         </div>
-        <h1 className="auth-heading">{t('login.title')}</h1>
+
+        <div className="auth-card">
+          <div className="auth-header">
+            <h1 className="auth-heading">{t('login.title')}</h1>
+            <div className="auth-lang-selector">
+              <select
+                id="lang-select"
+                value={lang}
+                onChange={(e) => handleLangChange(e.target.value)}
+              >
+                <option value="pt">{t('lang.pt')}</option>
+                <option value="en">{t('lang.en')}</option>
+              </select>
+            </div>
+          </div>
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-label" htmlFor="email">{t('login.email')}</label>
           <input
@@ -271,38 +268,32 @@ export default function Login() {
               : t('login.fb')}
         </button>
 
-        <p className="auth-footnote">
-          {t('login.no_account')}{' '}
-          <Link className="auth-link" to="/register">
-            {t('login.create_account')}
-          </Link>
-        </p>
-
-        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-          <a
-            href={buildLegalUrl('/legal/terms-of-service.html')}
-            style={{ color: '#7c3aed', textDecoration: 'underline', fontWeight: 500 }}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {t('login.legal_terms')}
-          </a>
-          <a
-            href={buildLegalUrl('/legal/privacy-policy.html')}
-            style={{ color: '#7c3aed', textDecoration: 'underline', fontWeight: 500 }}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {t('login.legal_privacy')}
-          </a>
-          <a
-            href={buildLegalUrl('/legal/privacy-policy-en.html')}
-            style={{ color: '#7c3aed', textDecoration: 'underline', fontWeight: 500 }}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {t('login.legal_privacy_en')}
-          </a>
+          <div className="auth-footer">
+            <a
+              href={buildLegalUrl('/legal/terms-of-service.html')}
+              className="auth-link"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t('login.legal_terms')}
+            </a>
+            <a
+              href={buildLegalUrl('/legal/privacy-policy.html')}
+              className="auth-link"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t('login.legal_privacy')}
+            </a>
+            <a
+              href={buildLegalUrl('/legal/privacy-policy-en.html')}
+              className="auth-link"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t('login.legal_privacy_en')}
+            </a>
+          </div>
         </div>
       </div>
     </div>
