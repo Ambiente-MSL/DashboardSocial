@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useOutletContext } from 'react-router-dom';
 
-import { ChevronDown, Edit3, Plus, Trash2, Settings as SettingsIcon } from 'lucide-react';
+import { ChevronDown, Edit3, Plus, Trash2, Settings as SettingsIcon, Check, X } from 'lucide-react';
 
 import { useTheme } from '../context/ThemeContext';
 
@@ -101,9 +101,11 @@ export default function Settings() {
 
   const [formData, setFormData] = useState(ACCOUNT_FORM_INITIAL);
 
-  const [editingId, setEditingId] = useState(null);
-
   const [formError, setFormError] = useState('');
+
+  const [editingCardId, setEditingCardId] = useState(null);
+
+  const [editingCardData, setEditingCardData] = useState(ACCOUNT_FORM_INITIAL);
 
 
 
@@ -229,25 +231,11 @@ export default function Settings() {
 
   };
 
-  const handlePrefill = (account) => {
-    if (!account) return;
-    setFormData({
-      label: account.label || "",
-      facebookPageId: account.facebookPageId || "",
-      instagramUserId: account.instagramUserId || "",
-      adAccountId: account.adAccountId || "",
-    });
-    setEditingId(null);
-    setFormError("");
-  };
-
 
 
   const resetForm = () => {
 
     setFormData(ACCOUNT_FORM_INITIAL);
-
-    setEditingId(null);
 
     setFormError('');
 
@@ -284,40 +272,12 @@ export default function Settings() {
 
 
     try {
-      if (editingId) {
-        await updateAccount(editingId, trimmed);
-      } else {
-        await addAccount(trimmed);
-      }
+      await addAccount(trimmed);
       resetForm();
       setOpenSections((prev) => ({ ...prev, accounts: true }));
     } catch (err) {
       setFormError('Não foi possível salvar a conta. Tente novamente.');
     }
-
-  };
-
-
-
-  const handleEdit = (account) => {
-
-    setFormData({
-
-      label: account.label,
-
-      facebookPageId: account.facebookPageId,
-
-      instagramUserId: account.instagramUserId,
-
-      adAccountId: account.adAccountId,
-
-    });
-
-    setEditingId(account.id);
-
-    setFormError('');
-
-    setOpenSections((prev) => ({ ...prev, accounts: true }));
 
   };
 
@@ -341,12 +301,61 @@ export default function Settings() {
 
     await removeAccount(accountId);
 
-    if (editingId === accountId) {
+  };
 
-      resetForm();
+  const handleEditCard = (pageId) => {
+    const account = accounts.find((acc) => acc.facebookPageId === pageId);
+    if (!account) return;
 
+    setEditingCardId(pageId);
+    setEditingCardData({
+      label: account.label || '',
+      facebookPageId: account.facebookPageId || '',
+      instagramUserId: account.instagramUserId || '',
+      adAccountId: account.adAccountId || '',
+    });
+  };
+
+  const handleCancelCardEdit = () => {
+    setEditingCardId(null);
+    setEditingCardData(ACCOUNT_FORM_INITIAL);
+  };
+
+  const handleCardFieldChange = (event) => {
+    const { name, value } = event.target;
+    setEditingCardData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveCardEdit = async (pageId) => {
+    const account = accounts.find((acc) => acc.facebookPageId === pageId);
+    if (!account) return;
+
+    const trimmed = {
+      label: editingCardData.label.trim(),
+      facebookPageId: editingCardData.facebookPageId.trim(),
+      instagramUserId: editingCardData.instagramUserId.trim(),
+      adAccountId: editingCardData.adAccountId.trim(),
+    };
+
+    if (!trimmed.label || !trimmed.facebookPageId || !trimmed.instagramUserId || !trimmed.adAccountId) {
+      setFormError('Preencha todos os campos obrigatorios.');
+      return;
     }
 
+    try {
+      await updateAccount(account.id, trimmed);
+      setEditingCardId(null);
+      setEditingCardData(ACCOUNT_FORM_INITIAL);
+      setFormError('');
+    } catch (err) {
+      setFormError('Não foi possível salvar as alterações.');
+    }
+  };
+
+  const handleDeleteCard = async (pageId) => {
+    const account = accounts.find((acc) => acc.facebookPageId === pageId);
+    if (!account) return;
+    await handleDelete(account.id);
   };
 
 
@@ -584,187 +593,324 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
-                      {discoveredPages.map((page) => (
-                        <div key={page.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '10px 12px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                            <div>
-                              <div style={{ fontWeight: 700 }}>{page.label}</div>
-                              <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>Page ID: {page.id}</div>
-                              {page.instagramUserId ? (
-                                <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>IG ID: {page.instagramUserId}</div>
-                              ) : (
-                                <div style={{ fontSize: '0.85rem', color: '#9ca3af' }}>IG não vinculado</div>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handlePrefill({
-                                label: page.label,
-                                facebookPageId: page.id,
-                                instagramUserId: page.instagramUserId,
-                                adAccountId: page.adAccounts?.[0]?.id || '',
-                              })}
-                              className="settings-button settings-button--outline"
-                              style={{ padding: '6px 10px', fontSize: '0.85rem' }}
-                            >
-                              Usar
-                            </button>
+                    <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+                      {discoveredPages.map((page) => {
+                        const isEditing = editingCardId === page.id;
+                        const account = accounts.find((acc) => acc.facebookPageId === page.id);
+
+                        return (
+                          <div key={page.id} style={{ background: '#fff', border: isEditing ? '2px solid #223A3A' : '1px solid #e5e7eb', borderRadius: '12px', padding: '10px 12px' }}>
+                            {isEditing ? (
+                              // Modo de edição inline
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <div>
+                                  <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Nome</label>
+                                  <input
+                                    type="text"
+                                    name="label"
+                                    value={editingCardData.label}
+                                    onChange={handleCardFieldChange}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 8px',
+                                      fontSize: '0.875rem',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: '6px',
+                                      outline: 'none',
+                                    }}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Page ID</label>
+                                  <input
+                                    type="text"
+                                    name="facebookPageId"
+                                    value={editingCardData.facebookPageId}
+                                    onChange={handleCardFieldChange}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 8px',
+                                      fontSize: '0.875rem',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: '6px',
+                                      outline: 'none',
+                                    }}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Instagram ID</label>
+                                  <input
+                                    type="text"
+                                    name="instagramUserId"
+                                    value={editingCardData.instagramUserId}
+                                    onChange={handleCardFieldChange}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 8px',
+                                      fontSize: '0.875rem',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: '6px',
+                                      outline: 'none',
+                                    }}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Ad Account ID</label>
+                                  <input
+                                    type="text"
+                                    name="adAccountId"
+                                    value={editingCardData.adAccountId}
+                                    onChange={handleCardFieldChange}
+                                    list="ad-accounts-options-inline"
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 8px',
+                                      fontSize: '0.875rem',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: '6px',
+                                      outline: 'none',
+                                    }}
+                                  />
+                                  {discoveredAdAccounts.length > 0 && (
+                                    <datalist id="ad-accounts-options-inline">
+                                      {discoveredAdAccounts.map((ad) => (
+                                        <option key={ad.id} value={ad.id}>
+                                          {ad.name || ad.id}
+                                        </option>
+                                      ))}
+                                    </datalist>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveCardEdit(page.id)}
+                                    style={{
+                                      flex: 1,
+                                      padding: '6px 10px',
+                                      fontSize: '0.85rem',
+                                      fontWeight: 600,
+                                      background: '#223A3A',
+                                      color: '#fff',
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '4px',
+                                    }}
+                                  >
+                                    <Check size={14} />
+                                    Salvar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleCancelCardEdit}
+                                    style={{
+                                      flex: 1,
+                                      padding: '6px 10px',
+                                      fontSize: '0.85rem',
+                                      fontWeight: 600,
+                                      background: '#fff',
+                                      color: '#6b7280',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '4px',
+                                    }}
+                                  >
+                                    <X size={14} />
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              // Modo de visualização
+                              <>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 700, marginBottom: '4px' }}>{page.label}</div>
+                                    <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>Page ID: {page.id}</div>
+                                    {page.instagramUserId ? (
+                                      <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>IG ID: {page.instagramUserId}</div>
+                                    ) : (
+                                      <div style={{ fontSize: '0.85rem', color: '#9ca3af' }}>IG não vinculado</div>
+                                    )}
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '4px' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditCard(page.id)}
+                                      style={{
+                                        padding: '6px',
+                                        background: 'transparent',
+                                        border: '1px solid #e5e7eb',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        color: '#223A3A',
+                                      }}
+                                      title="Editar"
+                                    >
+                                      <Edit3 size={14} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteCard(page.id)}
+                                      style={{
+                                        padding: '6px',
+                                        background: 'transparent',
+                                        border: '1px solid #fecdd3',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        color: '#b91c1c',
+                                      }}
+                                      title="Remover"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                </div>
+                                {Array.isArray(page.adAccounts) && page.adAccounts.length > 0 ? (
+                                  <ul style={{ margin: '8px 0 0 0', paddingLeft: '16px', fontSize: '0.85rem', color: '#4b5563' }}>
+                                    {page.adAccounts.map((ad) => (
+                                      <li key={ad.id}>{ad.name || ad.id} — {ad.id}</li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <div style={{ marginTop: '8px', fontSize: '0.8rem', color: '#9ca3af' }}>Sem contas de anúncios vinculadas</div>
+                                )}
+                              </>
+                            )}
                           </div>
-                          {Array.isArray(page.adAccounts) && page.adAccounts.length > 0 ? (
-                            <ul style={{ margin: '8px 0 0 0', paddingLeft: '16px', fontSize: '0.85rem', color: '#4b5563' }}>
-                              {page.adAccounts.map((ad) => (
-                                <li key={ad.id}>{ad.name || ad.id} — {ad.id}</li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <div style={{ marginTop: '8px', fontSize: '0.8rem', color: '#9ca3af' }}>Sem contas de anúncios vinculadas</div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
 
-                <form className="accounts-form" onSubmit={handleSubmit}>
+                <div style={{ marginTop: '24px', padding: '16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '12px', color: '#111827' }}>
+                    <Plus size={18} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom' }} />
+                    Adicionar nova conta
+                  </h3>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '16px' }}>
+                    Preencha os campos abaixo para adicionar uma nova conta ao sistema.
+                  </p>
 
-                  <div className="accounts-form__field">
+                  <form className="accounts-form" onSubmit={handleSubmit}>
 
-                    <label htmlFor="account-name">Nome</label>
+                    <div className="accounts-form__field">
 
-                    <input
+                      <label htmlFor="account-name">Nome</label>
 
-                      id="account-name"
+                      <input
 
-                      name="label"
+                        id="account-name"
 
-                      value={formData.label}
+                        name="label"
 
-                      onChange={handleFieldChange}
+                        value={formData.label}
 
-                      placeholder="Ex: Cliente - Marca"
+                        onChange={handleFieldChange}
 
-                    />
+                        placeholder="Ex: Cliente - Marca"
 
-                  </div>
+                      />
 
-                  <div className="accounts-form__field">
+                    </div>
 
-                    <label htmlFor="account-page-id">ID da pagina</label>
+                    <div className="accounts-form__field">
 
-                    <input
+                      <label htmlFor="account-page-id">ID da pagina</label>
 
-                      id="account-page-id"
+                      <input
 
-                      name="facebookPageId"
+                        id="account-page-id"
 
-                      value={formData.facebookPageId}
+                        name="facebookPageId"
 
-                      onChange={handleFieldChange}
+                        value={formData.facebookPageId}
 
-                      placeholder="1234567890"
+                        onChange={handleFieldChange}
 
-                    />
+                        placeholder="1234567890"
 
-                  </div>
+                      />
 
-                  <div className="accounts-form__field">
+                    </div>
 
-                    <label htmlFor="account-ig-id">ID Instagram</label>
+                    <div className="accounts-form__field">
 
-                    <input
+                      <label htmlFor="account-ig-id">ID Instagram</label>
 
-                      id="account-ig-id"
+                      <input
 
-                      name="instagramUserId"
+                        id="account-ig-id"
 
-                      value={formData.instagramUserId}
+                        name="instagramUserId"
 
-                      onChange={handleFieldChange}
+                        value={formData.instagramUserId}
 
-                      placeholder="1784..."
+                        onChange={handleFieldChange}
 
-                    />
+                        placeholder="1784..."
 
-                  </div>
+                      />
 
-                  <div className="accounts-form__field">
-                    <label htmlFor="account-ads-id">ID conta de anuncios</label>
-                    <input
-                      id="account-ads-id"
-                      name="adAccountId"
-                      value={formData.adAccountId}
-                      onChange={handleFieldChange}
-                      placeholder="act_..."
-                      list="ad-accounts-options"
-                    />
-                    {discoveredAdAccounts.length > 0 && (
-                      <>
-                        <datalist id="ad-accounts-options">
-                          {discoveredAdAccounts.map((ad) => (
-                            <option key={ad.id} value={ad.id}>
-                              {ad.name || ad.id}
-                            </option>
-                          ))}
-                        </datalist>
-                        <p className="settings-hint">
-                          Selecione uma das contas de anúncios descobertas ou digite um ID manualmente.
-                        </p>
-                      </>
-                    )}
-                  </div>
+                    </div>
 
-
-
-                  {formError && <p className="settings-form-error" role="alert">{formError}</p>}
-
-
-
-                  <div className="accounts-form__actions">
-
-                    <button type="submit" className="settings-button">
-
-                      {editingId ? (
-
+                    <div className="accounts-form__field">
+                      <label htmlFor="account-ads-id">ID conta de anuncios</label>
+                      <input
+                        id="account-ads-id"
+                        name="adAccountId"
+                        value={formData.adAccountId}
+                        onChange={handleFieldChange}
+                        placeholder="act_..."
+                        list="ad-accounts-options"
+                      />
+                      {discoveredAdAccounts.length > 0 && (
                         <>
-
-                          <Edit3 size={16} /> Salvar alteracoes
-
+                          <datalist id="ad-accounts-options">
+                            {discoveredAdAccounts.map((ad) => (
+                              <option key={ad.id} value={ad.id}>
+                                {ad.name || ad.id}
+                              </option>
+                            ))}
+                          </datalist>
+                          <p className="settings-hint">
+                            Selecione uma das contas de anúncios descobertas ou digite um ID manualmente.
+                          </p>
                         </>
-
-                      ) : (
-
-                        <>
-
-                          <Plus size={16} /> Adicionar conta
-
-                        </>
-
                       )}
+                    </div>
 
-                    </button>
 
-                    {editingId && (
 
-                      <button type="button" className="settings-button settings-button--outline" onClick={resetForm}>
+                    {formError && <p className="settings-form-error" role="alert">{formError}</p>}
 
-                        Cancelar
+
+
+                    <div className="accounts-form__actions">
+
+                      <button type="submit" className="settings-button">
+
+                        <Plus size={16} /> Adicionar conta
 
                       </button>
 
-                    )}
+                    </div>
 
-                  </div>
-
-                </form>
-
-
-
-                {editingId ? (
-
-                  <p className="settings-hint">Editando a conta selecionada. Clique em salvar para confirmar ou em cancelar para desfazer.</p>
-
-                ) : null}
+                  </form>
+                </div>
 
               </div>
 
