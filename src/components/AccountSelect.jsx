@@ -15,8 +15,6 @@ export default function AccountSelect() {
   const [isOpen, setIsOpen] = useState(false);
   const [accountsData, setAccountsData] = useState({});
   const dropdownRef = useRef(null);
-  const [statusMessage, setStatusMessage] = useState("");
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const currentValue = useMemo(() => {
     if (!availableAccounts.length) return "";
@@ -83,12 +81,6 @@ export default function AccountSelect() {
   const handleSelect = (accountId) => {
     set({ account: accountId });
     setIsOpen(false);
-    setStatusMessage("Conta selecionada. Atualizando dados...");
-    setIsRefreshing(true);
-    // Pequeno delay para garantir que o query param atualize antes do reload
-    setTimeout(() => {
-      window.location.reload();
-    }, 120);
   };
 
   const isDisabled = availableAccounts.length === 0;
@@ -162,15 +154,6 @@ export default function AccountSelect() {
                 </li>
               ))}
             </ul>
-          )}
-
-          {statusMessage && (
-            <div className="account-dropdown__status">
-              <span className={`account-dropdown__status-dot${isRefreshing ? " account-dropdown__status-dot--pulse" : ""}`} />
-              <span className="account-dropdown__status-text">
-                {isRefreshing ? statusMessage : "Conta ativa."}
-              </span>
-            </div>
           )}
         </>
       )}
