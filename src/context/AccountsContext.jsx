@@ -1,10 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { createDefaultAccounts } from "../data/accounts";
 
-
-const STORAGE_KEY = "dashboard.accounts";
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const DISCOVER_ACCOUNTS_ENDPOINT = `${API_BASE_URL || ""}/api/accounts/discover`;
+const MANAGED_ACCOUNTS_ENDPOINT = `${API_BASE_URL || ""}/api/accounts`;
 
 const AccountsContext = createContext(null);
 
@@ -71,38 +70,6 @@ function normalizeAccount(raw, existing = []) {
   return normalized;
 }
 
-function loadAccountsFromStorage() {
-  if (typeof window === "undefined") {
-    return createDefaultAccounts();
-  }
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (!stored) return createDefaultAccounts();
-    const parsed = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return createDefaultAccounts();
-    const normalized = [];
-    for (const item of parsed) {
-      const account = normalizeAccount(item, normalized);
-      if (account) {
-        normalized.push(account);
-      }
-    }
-    return normalized.length ? normalized : createDefaultAccounts();
-  } catch (err) {
-    console.warn("Falha ao carregar contas do storage, usando padrão.", err);
-    return createDefaultAccounts();
-  }
-}
-
-function saveAccountsToStorage(list) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  } catch (err) {
-    console.warn("Falha ao salvar contas no storage.", err);
-  }
-}
-
 function generateAccountId(label, existing = []) {
   const base = String(label)
     .trim()
@@ -120,22 +87,9 @@ function generateAccountId(label, existing = []) {
 }
 
 export function AccountsProvider({ children }) {
-  const [accounts, setAccounts] = useState(() => loadAccountsFromStorage());
-
-  useEffect(() => {
-    saveAccountsToStorage(accounts);
-  }, [accounts]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const listener = (event) => {
-      if (event.key === STORAGE_KEY) {
-        setAccounts(loadAccountsFromStorage());
-      }
-    };
-    window.addEventListener("storage", listener);
-    return () => window.removeEventListener("storage", listener);
-  }, []);
+  const [accounts, setAccounts] = useState(() => createDefaultAccounts());
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof fetch !== "function") {
@@ -146,6 +100,40 @@ export function AccountsProvider({ children }) {
     const controller = new AbortController();
 
     const discoverAccounts = async () => {
+      setLoading(true);
+      setError("");
+      // 1) Contas persistidas (manuais)
+      try {
+        const savedResp = await fetch(MANAGED_ACCOUNTS_ENDPOINT, { credentials: "include" });
+        if (savedResp.ok) {
+          const savedBody = await savedResp.json();
+          const rawSaved = Array.isArray(savedBody?.accounts) ? savedBody.accounts : [];
+          const normalizedSaved = [];
+          for (const item of rawSaved) {
+            const account = normalizeAccount({ ...item, source: item.source || "manual" }, normalizedSaved);
+            if (account) normalizedSaved.push(account);
+          }
+          if (!cancelled && normalizedSaved.length) {
+            setAccounts((prev) => {
+              const merged = [...prev];
+              const ids = new Set(merged.map((acc) => acc.id));
+              normalizedSaved.forEach((acc) => {
+                if (!ids.has(acc.id)) {
+                  merged.push(acc);
+                  ids.add(acc.id);
+                }
+              });
+              return merged;
+            });
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError("Falha ao carregar contas salvas.");
+        }
+      }
+
+      // 2) Descobrir contas do token
       try {
         const response = await fetch(DISCOVER_ACCOUNTS_ENDPOINT, {
           signal: controller.signal,
@@ -166,22 +154,21 @@ export function AccountsProvider({ children }) {
             discovered.push(account);
           }
         }
+        const persisted = Array.isArray(body?.persistedAccounts) ? body.persistedAccounts : [];
+        for (const item of persisted) {
+          const account = normalizeAccount({ ...item, source: item.source || "manual" }, discovered);
+          if (account) {
+            discovered.push(account);
+          }
+        }
 
         if (!discovered.length || cancelled) {
+          setLoading(false);
           return;
         }
 
         setAccounts((prev) => {
-          if (!Array.isArray(prev) || prev.length === 0) {
-            const merged = discovered.map((account) => ({
-              ...account,
-              id: account.id || generateAccountId(account.label, discovered),
-            }));
-            return merged.length ? merged : prev;
-          }
-
           const next = [...prev];
-          let changed = false;
           const indexByPageId = new Map();
           next.forEach((account, index) => {
             if (account?.facebookPageId) {
@@ -202,7 +189,7 @@ export function AccountsProvider({ children }) {
                 facebookPageId: metaAccount.facebookPageId || current.facebookPageId,
                 instagramUserId: metaAccount.instagramUserId || current.instagramUserId,
                 adAccountId: metaAccount.adAccountId || current.adAccountId,
-                id: current.id || metaAccount.id,
+                id: current.id || metaAccount.id || generateAccountId(metaAccount.label, next),
               };
               if (metaAccount.instagramUsername) {
                 merged.instagramUsername = metaAccount.instagramUsername;
@@ -222,7 +209,6 @@ export function AccountsProvider({ children }) {
               const nextSnapshot = JSON.stringify(merged);
               if (previousSnapshot !== nextSnapshot) {
                 next[existingIndex] = merged;
-                changed = true;
               }
             } else {
               const candidateId = metaAccount.id || generateAccountId(metaAccount.label, next);
@@ -232,17 +218,18 @@ export function AccountsProvider({ children }) {
               };
               next.push(newAccount);
               indexByPageId.set(pageId, next.length - 1);
-              changed = true;
             }
           });
 
-          return changed ? next : prev;
+          return next.length ? next : prev;
         });
+        setLoading(false);
       } catch (error) {
         if (cancelled || error.name === "AbortError") {
           return;
         }
         console.warn("Falha ao descobrir contas automaticamente.", error);
+        setLoading(false);
       }
     };
 
@@ -254,46 +241,80 @@ export function AccountsProvider({ children }) {
     };
   }, []);
 
-  const addAccount = (payload) => {
-    setAccounts((prev) => {
-      const nextId = generateAccountId(payload.label, prev);
-      const next = [
-        ...prev,
-        {
-          id: nextId,
-          label: payload.label.trim(),
-          facebookPageId: payload.facebookPageId.trim(),
-          instagramUserId: payload.instagramUserId.trim(),
-          adAccountId: payload.adAccountId.trim(),
-          profilePictureUrl: payload.profilePictureUrl ? payload.profilePictureUrl.trim() : "",
-          pagePictureUrl: payload.pagePictureUrl ? payload.pagePictureUrl.trim() : "",
-        },
-      ];
-      return next;
-    });
+  const addAccount = async (payload) => {
+    const body = {
+      label: payload.label.trim(),
+      facebookPageId: payload.facebookPageId.trim(),
+      instagramUserId: payload.instagramUserId.trim(),
+      adAccountId: payload.adAccountId.trim(),
+      profilePictureUrl: payload.profilePictureUrl ? payload.profilePictureUrl.trim() : "",
+      pagePictureUrl: payload.pagePictureUrl ? payload.pagePictureUrl.trim() : "",
+    };
+    try {
+      const resp = await fetch(MANAGED_ACCOUNTS_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) throw new Error(`status ${resp.status}`);
+      const data = await resp.json();
+      const account = normalizeAccount(data?.account);
+      if (!account) return;
+      setAccounts((prev) => {
+        const next = [...prev];
+        const idx = next.findIndex((acc) => acc.facebookPageId === account.facebookPageId);
+        if (idx >= 0) {
+          next[idx] = { ...next[idx], ...account };
+        } else {
+          next.push(account);
+        }
+        return next;
+      });
+    } catch (err) {
+      console.warn("Falha ao adicionar conta no backend, mantendo local.", err);
+      setAccounts((prev) => [...prev, { ...body, id: generateAccountId(body.label, prev) }]);
+    }
   };
 
-  const updateAccount = (id, payload) => {
-    setAccounts((prev) =>
-      prev.map((account) =>
-        account.id === id
-          ? {
-              ...account,
-              label: payload.label.trim(),
-              facebookPageId: payload.facebookPageId.trim(),
-              instagramUserId: payload.instagramUserId.trim(),
-              adAccountId: payload.adAccountId.trim(),
-              profilePictureUrl: payload.profilePictureUrl
-                ? payload.profilePictureUrl.trim()
-                : account.profilePictureUrl || "",
-              pagePictureUrl: payload.pagePictureUrl ? payload.pagePictureUrl.trim() : account.pagePictureUrl || "",
-            }
-          : account,
-      ),
-    );
+  const updateAccount = async (id, payload) => {
+    const body = {
+      label: payload.label.trim(),
+      facebookPageId: payload.facebookPageId.trim(),
+      instagramUserId: payload.instagramUserId.trim(),
+      adAccountId: payload.adAccountId.trim(),
+      profilePictureUrl: payload.profilePictureUrl ? payload.profilePictureUrl.trim() : "",
+      pagePictureUrl: payload.pagePictureUrl ? payload.pagePictureUrl.trim() : "",
+    };
+    try {
+      const resp = await fetch(`${MANAGED_ACCOUNTS_ENDPOINT}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) throw new Error(`status ${resp.status}`);
+      const data = await resp.json();
+      const account = normalizeAccount(data?.account);
+      if (!account) return;
+      setAccounts((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, ...account } : item)),
+      );
+    } catch (err) {
+      console.warn("Falha ao atualizar conta no backend.", err);
+    }
   };
 
-  const removeAccount = (id) => {
+  const removeAccount = async (id) => {
+    try {
+      const resp = await fetch(`${MANAGED_ACCOUNTS_ENDPOINT}/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!resp.ok) throw new Error(`status ${resp.status}`);
+    } catch (err) {
+      console.warn("Falha ao remover conta no backend.", err);
+    }
     setAccounts((prev) => {
       const next = prev.filter((account) => account.id !== id);
       return next.length ? next : createDefaultAccounts();
@@ -303,11 +324,13 @@ export function AccountsProvider({ children }) {
   const value = useMemo(
     () => ({
       accounts,
+      loading,
+      error,
       addAccount,
       updateAccount,
       removeAccount,
     }),
-    [accounts],
+    [accounts, loading, error],
   );
 
   return <AccountsContext.Provider value={value}>{children}</AccountsContext.Provider>;

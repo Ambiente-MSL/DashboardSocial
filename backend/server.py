@@ -24,6 +24,7 @@ from cache import (
     mark_cache_error,
     register_fetcher,
 )
+from uuid import uuid4
 from meta import (
     MetaAPIError,
     ads_highlights,
@@ -55,6 +56,7 @@ DEFAULT_DEV_ORIGINS = [
     "http://localhost:3010",
     "http://127.0.0.1:3010",
 ]
+CONNECTED_ACCOUNTS_TABLE = os.getenv("CONNECTED_ACCOUNTS_TABLE", "connected_accounts")
 
 
 def _resolve_allowed_origins() -> Union[str, List[str]]:
@@ -82,6 +84,55 @@ def _resolve_allowed_origins() -> Union[str, List[str]]:
     return DEFAULT_DEV_ORIGINS
 
 
+def _ensure_connected_accounts_table() -> None:
+    """
+    Garante que a tabela de contas conectadas exista para persistir contas manuais.
+    """
+    try:
+        execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {CONNECTED_ACCOUNTS_TABLE} (
+                id TEXT PRIMARY KEY,
+                label TEXT NOT NULL,
+                facebook_page_id TEXT NOT NULL,
+                instagram_user_id TEXT NOT NULL,
+                ad_account_id TEXT NOT NULL,
+                profile_picture_url TEXT,
+                page_picture_url TEXT,
+                source TEXT DEFAULT 'manual',
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            """,
+        )
+        execute(
+            f"CREATE INDEX IF NOT EXISTS {CONNECTED_ACCOUNTS_TABLE}_page_idx ON {CONNECTED_ACCOUNTS_TABLE} (facebook_page_id);"
+        )
+    except Exception as err:  # noqa: BLE001
+        logger.error("Falha ao garantir tabela de contas conectadas: %s", err)
+
+
+def _load_connected_accounts() -> List[Dict[str, Any]]:
+    try:
+        rows = fetch_all(f"SELECT * FROM {CONNECTED_ACCOUNTS_TABLE} ORDER BY label ASC")
+        return [
+            {
+                "id": row.get("id"),
+                "label": row.get("label"),
+                "facebookPageId": row.get("facebook_page_id"),
+                "instagramUserId": row.get("instagram_user_id"),
+                "adAccountId": row.get("ad_account_id"),
+                "profilePictureUrl": row.get("profile_picture_url"),
+                "pagePictureUrl": row.get("page_picture_url"),
+                "source": row.get("source") or "manual",
+            }
+            for row in rows
+        ]
+    except Exception as err:  # noqa: BLE001
+        logger.error("Falha ao carregar contas persistidas: %s", err)
+        return []
+
+
 app = Flask(__name__)
 CORS(
     app,
@@ -89,6 +140,8 @@ CORS(
     supports_credentials=True,
 )
 LEGAL_DOCS_DIR = os.path.join(app.root_path, "static", "legal")
+
+_ensure_connected_accounts_table()
 
 AUTH_SECRET_KEY = (
     os.getenv("AUTH_SECRET_KEY")
@@ -2861,6 +2914,7 @@ def discover_accounts():
             "instagramAccounts": instagram_accounts,
             "adAccounts": ad_accounts,
             "accounts": normalized_accounts,
+            "persistedAccounts": _load_connected_accounts(),
             "totalPages": len(pages),
             "totalInstagram": len(instagram_accounts),
             "totalAdAccounts": len(ad_accounts),
@@ -2879,6 +2933,122 @@ def discover_accounts():
     except Exception as err:
         logger.exception("Unexpected error in discover_accounts")
         return jsonify({"error": str(err)}), 500
+
+
+def _persist_connected_account(payload: Dict[str, Any], *, account_id: Optional[str] = None) -> Dict[str, Any]:
+    _ensure_connected_accounts_table()
+    account_id = account_id or str(uuid4())
+    params = {
+        "id": account_id,
+        "label": payload.get("label"),
+        "facebook_page_id": payload.get("facebookPageId") or payload.get("facebook_page_id"),
+        "instagram_user_id": payload.get("instagramUserId") or payload.get("instagram_user_id"),
+        "ad_account_id": payload.get("adAccountId") or payload.get("ad_account_id"),
+        "profile_picture_url": payload.get("profilePictureUrl") or payload.get("profile_picture_url"),
+        "page_picture_url": payload.get("pagePictureUrl") or payload.get("page_picture_url"),
+    }
+    execute(
+        f"""
+        INSERT INTO {CONNECTED_ACCOUNTS_TABLE} (
+            id, label, facebook_page_id, instagram_user_id, ad_account_id,
+            profile_picture_url, page_picture_url, source, created_at, updated_at
+        ) VALUES (
+            %(id)s, %(label)s, %(facebook_page_id)s, %(instagram_user_id)s, %(ad_account_id)s,
+            %(profile_picture_url)s, %(page_picture_url)s, 'manual', NOW(), NOW()
+        )
+        ON CONFLICT (id) DO UPDATE SET
+            label = EXCLUDED.label,
+            facebook_page_id = EXCLUDED.facebook_page_id,
+            instagram_user_id = EXCLUDED.instagram_user_id,
+            ad_account_id = EXCLUDED.ad_account_id,
+            profile_picture_url = EXCLUDED.profile_picture_url,
+            page_picture_url = EXCLUDED.page_picture_url,
+            updated_at = NOW();
+        """,
+        params,
+    )
+    return {
+        "id": account_id,
+        "label": params["label"],
+        "facebookPageId": params["facebook_page_id"],
+        "instagramUserId": params["instagram_user_id"],
+        "adAccountId": params["ad_account_id"],
+        "profilePictureUrl": params["profile_picture_url"],
+        "pagePictureUrl": params["page_picture_url"],
+        "source": "manual",
+    }
+
+
+@app.get("/api/accounts")
+def list_connected_accounts():
+    user, error = _authenticate_request(request)
+    if error:
+        return error
+    try:
+        rows = fetch_all(f"SELECT * FROM {CONNECTED_ACCOUNTS_TABLE} ORDER BY label ASC")
+    except Exception as err:  # noqa: BLE001
+        logger.error("Failed to list connected accounts: %s", err)
+        return jsonify({"error": "could not list accounts"}), 500
+    payload = []
+    for row in rows:
+        payload.append({
+            "id": row.get("id"),
+            "label": row.get("label"),
+            "facebookPageId": row.get("facebook_page_id"),
+            "instagramUserId": row.get("instagram_user_id"),
+            "adAccountId": row.get("ad_account_id"),
+            "profilePictureUrl": row.get("profile_picture_url"),
+            "pagePictureUrl": row.get("page_picture_url"),
+            "source": row.get("source") or "manual",
+        })
+    return jsonify({"accounts": payload})
+
+
+@app.post("/api/accounts")
+def create_connected_account():
+    user, error = _authenticate_request(request)
+    if error:
+        return error
+    body = request.get_json(silent=True) or {}
+    required = ["label", "facebookPageId", "instagramUserId", "adAccountId"]
+    for field in required:
+        if not body.get(field):
+            return jsonify({"error": f"{field} is required"}), 400
+    try:
+        account = _persist_connected_account(body)
+        return jsonify({"account": account}), 201
+    except Exception as err:  # noqa: BLE001
+        logger.error("Failed to create connected account: %s", err)
+        return jsonify({"error": "could not create account"}), 500
+
+
+@app.put("/api/accounts/<account_id>")
+def update_connected_account(account_id: str):
+    user, error = _authenticate_request(request)
+    if error:
+        return error
+    body = request.get_json(silent=True) or {}
+    if not body.get("label"):
+        return jsonify({"error": "label is required"}), 400
+    try:
+        account = _persist_connected_account(body, account_id=account_id)
+        return jsonify({"account": account})
+    except Exception as err:  # noqa: BLE001
+        logger.error("Failed to update connected account %s: %s", account_id, err)
+        return jsonify({"error": "could not update account"}), 500
+
+
+@app.delete("/api/accounts/<account_id>")
+def delete_connected_account(account_id: str):
+    user, error = _authenticate_request(request)
+    if error:
+        return error
+    try:
+        execute(f"DELETE FROM {CONNECTED_ACCOUNTS_TABLE} WHERE id = %(id)s", {"id": account_id})
+    except Exception as err:  # noqa: BLE001
+        logger.error("Failed to delete connected account %s: %s", account_id, err)
+        return jsonify({"error": "could not delete account"}), 500
+    return jsonify({"success": True})
 
 
 @app.post("/api/sync/refresh")

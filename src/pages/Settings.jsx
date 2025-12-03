@@ -255,7 +255,7 @@ export default function Settings() {
 
 
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
 
     event.preventDefault();
 
@@ -283,21 +283,17 @@ export default function Settings() {
 
 
 
-    if (editingId) {
-
-      updateAccount(editingId, trimmed);
-
-    } else {
-
-      addAccount(trimmed);
-
+    try {
+      if (editingId) {
+        await updateAccount(editingId, trimmed);
+      } else {
+        await addAccount(trimmed);
+      }
+      resetForm();
+      setOpenSections((prev) => ({ ...prev, accounts: true }));
+    } catch (err) {
+      setFormError('Não foi possível salvar a conta. Tente novamente.');
     }
-
-
-
-    resetForm();
-
-    setOpenSections((prev) => ({ ...prev, accounts: true }));
 
   };
 
@@ -327,7 +323,7 @@ export default function Settings() {
 
 
 
-  const handleDelete = (accountId) => {
+  const handleDelete = async (accountId) => {
 
     if (accounts.length <= 1) {
 
@@ -343,7 +339,7 @@ export default function Settings() {
 
     if (!confirmed) return;
 
-    removeAccount(accountId);
+    await removeAccount(accountId);
 
     if (editingId === accountId) {
 
