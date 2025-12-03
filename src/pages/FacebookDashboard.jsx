@@ -767,15 +767,15 @@ useEffect(() => {
                     {coverError}
                   </div>
                 )}
-                <div style={{ position: "absolute", right: 12, bottom: 12, display: "flex", gap: "8px" }}>
+                <div style={{ position: "absolute", right: 12, bottom: 12, display: "flex", gap: "6px" }}>
                   <label
                     htmlFor="fb-cover-upload"
                     style={{
                       background: "rgba(255,255,255,0.9)",
                       color: "#111827",
-                      borderRadius: "8px",
-                      padding: "6px 10px",
-                      fontSize: "0.85rem",
+                      borderRadius: "6px",
+                      padding: "4px 8px",
+                      fontSize: "0.75rem",
                       cursor: "pointer",
                       border: "1px solid #e5e7eb",
                       fontWeight: 600,
@@ -790,9 +790,9 @@ useEffect(() => {
                       style={{
                         background: "rgba(255,255,255,0.9)",
                         color: "#b91c1c",
-                        borderRadius: "8px",
-                        padding: "6px 10px",
-                        fontSize: "0.85rem",
+                        borderRadius: "6px",
+                        padding: "4px 8px",
+                        fontSize: "0.75rem",
                         border: "1px solid #fecdd3",
                         fontWeight: 600,
                         cursor: "pointer",

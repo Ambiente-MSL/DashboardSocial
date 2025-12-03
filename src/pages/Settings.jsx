@@ -356,8 +356,6 @@ export default function Settings() {
       <div className="ig-clean-container">
         <NavigationHero title="Configurações" icon={SettingsIcon} showGradient={false} />
 
-        <h2 className="ig-clean-title">Configurações</h2>
-
         <div className="page-content">
 
         <div className="settings-layout">
