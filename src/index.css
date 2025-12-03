@@ -2726,6 +2726,37 @@ body.theme-light {
   text-overflow: ellipsis;
 }
 
+.account-dropdown__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: #f3f4f6;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+.account-dropdown__status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.account-dropdown__status-dot--pulse {
+  background: #f59e0b;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2);
+  animation: pulseDot 1s ease-in-out infinite;
+}
+
+@keyframes pulseDot {
+  0% { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.1); }
+  100% { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3); }
+}
+
 /* Estilos específicos para topbar */
 .topbar__account .account-dropdown {
   min-width: auto;
