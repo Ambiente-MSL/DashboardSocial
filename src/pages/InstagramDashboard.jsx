@@ -424,8 +424,10 @@ const formatNumber = (value) => {
 const classifyMediaType = (post) => {
   const rawMediaType = String(post.mediaType || post.media_type || "").toUpperCase();
   const mediaProductType = String(post.mediaProductType || post.media_product_type || "").toUpperCase();
-  if (rawMediaType === "CAROUSEL_ALBUM" || mediaProductType === "CAROUSEL_ALBUM") return "CAROUSEL";
-  if (rawMediaType === "VIDEO" || rawMediaType === "REEL" || mediaProductType === "REEL") return "VIDEO";
+  const hasChildren = Array.isArray(post.children) && post.children.length > 1;
+  const isCarouselType = (value) => value.includes("CAROUSEL") || value.includes("ALBUM");
+  if (isCarouselType(rawMediaType) || isCarouselType(mediaProductType) || hasChildren) return "CAROUSEL";
+  if (rawMediaType === "VIDEO" || rawMediaType === "REEL" || mediaProductType === "REEL" || mediaProductType === "VIDEO") return "VIDEO";
   return "IMAGE";
 };
 
