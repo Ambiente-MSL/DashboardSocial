@@ -63,6 +63,23 @@ export default function Settings() {
     });
     return Array.from(map.values());
   }, [accounts]);
+  const discoveredPages = useMemo(
+    () => accounts.filter((acc) => acc.facebookPageId).map((acc) => ({
+      id: acc.facebookPageId,
+      label: acc.label || acc.facebookPageId,
+      instagramUserId: acc.instagramUserId || "",
+      adAccounts: acc.adAccounts || [],
+    })),
+    [accounts],
+  );
+  const discoveredIgAccounts = useMemo(
+    () => accounts.filter((acc) => acc.instagramUserId).map((acc) => ({
+      id: acc.instagramUserId,
+      label: acc.instagramUsername || acc.label || acc.instagramUserId,
+      pageId: acc.facebookPageId || "",
+    })),
+    [accounts],
+  );
 
 
 
@@ -210,6 +227,18 @@ export default function Settings() {
 
     setFormData((prev) => ({ ...prev, [name]: value }));
 
+  };
+
+  const handlePrefill = (account) => {
+    if (!account) return;
+    setFormData({
+      label: account.label || "",
+      facebookPageId: account.facebookPageId || "",
+      instagramUserId: account.instagramUserId || "",
+      adAccountId: account.adAccountId || "",
+    });
+    setEditingId(null);
+    setFormError("");
   };
 
 
@@ -542,6 +571,66 @@ export default function Settings() {
             {openSections.accounts && (
 
               <div className="settings-section__body">
+
+                {/* Painel de contas descobertas */}
+                {accounts.length > 0 && (
+                  <div style={{ marginBottom: '1rem', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '12px', background: '#f9fafb' }}>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                      <div style={{ flex: '1 1 160px', minWidth: 160 }}>
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Páginas</div>
+                        <div style={{ fontSize: '1.4rem', fontWeight: 700 }}>{discoveredPages.length}</div>
+                      </div>
+                      <div style={{ flex: '1 1 160px', minWidth: 160 }}>
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Contas Instagram</div>
+                        <div style={{ fontSize: '1.4rem', fontWeight: 700 }}>{discoveredIgAccounts.length}</div>
+                      </div>
+                      <div style={{ flex: '1 1 160px', minWidth: 160 }}>
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Contas de anúncios</div>
+                        <div style={{ fontSize: '1.4rem', fontWeight: 700 }}>{discoveredAdAccounts.length}</div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+                      {discoveredPages.map((page) => (
+                        <div key={page.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '10px 12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                            <div>
+                              <div style={{ fontWeight: 700 }}>{page.label}</div>
+                              <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>Page ID: {page.id}</div>
+                              {page.instagramUserId ? (
+                                <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>IG ID: {page.instagramUserId}</div>
+                              ) : (
+                                <div style={{ fontSize: '0.85rem', color: '#9ca3af' }}>IG não vinculado</div>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handlePrefill({
+                                label: page.label,
+                                facebookPageId: page.id,
+                                instagramUserId: page.instagramUserId,
+                                adAccountId: page.adAccounts?.[0]?.id || '',
+                              })}
+                              className="settings-button settings-button--outline"
+                              style={{ padding: '6px 10px', fontSize: '0.85rem' }}
+                            >
+                              Usar
+                            </button>
+                          </div>
+                          {Array.isArray(page.adAccounts) && page.adAccounts.length > 0 ? (
+                            <ul style={{ margin: '8px 0 0 0', paddingLeft: '16px', fontSize: '0.85rem', color: '#4b5563' }}>
+                              {page.adAccounts.map((ad) => (
+                                <li key={ad.id}>{ad.name || ad.id} — {ad.id}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <div style={{ marginTop: '8px', fontSize: '0.8rem', color: '#9ca3af' }}>Sem contas de anúncios vinculadas</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <form className="accounts-form" onSubmit={handleSubmit}>
 
