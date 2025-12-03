@@ -181,6 +181,18 @@ export default function Login() {
 
   return (
     <div className="auth-screen">
+      <div className="auth-lang-selector">
+        <span className="auth-lang-flag">{lang === 'pt' ? '🇧🇷' : '🇺🇸'}</span>
+        <select
+          id="lang-select"
+          value={lang}
+          onChange={(e) => handleLangChange(e.target.value)}
+        >
+          <option value="pt">Português</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+
       <div className="auth-container">
         <div className="auth-left">
           <img src={logoMsl} alt="MSL Estratégia" className="auth-logo" />
@@ -193,16 +205,6 @@ export default function Login() {
         <div className="auth-card">
           <div className="auth-header">
             <h1 className="auth-heading">{t('login.title')}</h1>
-            <div className="auth-lang-selector">
-              <select
-                id="lang-select"
-                value={lang}
-                onChange={(e) => handleLangChange(e.target.value)}
-              >
-                <option value="pt">{t('lang.pt')}</option>
-                <option value="en">{t('lang.en')}</option>
-              </select>
-            </div>
           </div>
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-label" htmlFor="email">{t('login.email')}</label>
@@ -230,16 +232,13 @@ export default function Login() {
             disabled={submitting}
           />
           {formError && <p className="auth-error">{formError}</p>}
-          <p className="auth-footnote" style={{ marginTop: '0.5rem'}}>
-            {t('login.forgot')}
-          </p>
           <button type="submit" className="auth-submit" disabled={submitting}>
             <LogIn size={16} />
             {submitting ? t('login.submit_loading') : t('login.submit')}
           </button>
         </form>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '1.25rem 0 0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '1.25rem 10% 0.75rem 10%' }}>
           <div style={{ flex: 1, height: 1, backgroundColor: '#e5e7eb' }} />
           <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>{t('login.or')}</span>
           <div style={{ flex: 1, height: 1, backgroundColor: '#e5e7eb' }} />
@@ -272,6 +271,7 @@ export default function Login() {
             <a
               href={buildLegalUrl('/legal/terms-of-service.html')}
               className="auth-link"
+              style={{ color: '#223A3A' }}
               target="_blank"
               rel="noreferrer"
             >
@@ -280,6 +280,7 @@ export default function Login() {
             <a
               href={buildLegalUrl('/legal/privacy-policy.html')}
               className="auth-link"
+              style={{ color: '#223A3A' }}
               target="_blank"
               rel="noreferrer"
             >
@@ -288,6 +289,7 @@ export default function Login() {
             <a
               href={buildLegalUrl('/legal/privacy-policy-en.html')}
               className="auth-link"
+              style={{ color: '#223A3A' }}
               target="_blank"
               rel="noreferrer"
             >

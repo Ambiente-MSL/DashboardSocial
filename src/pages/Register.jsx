@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { buildLegalUrl } from '../lib/legalLinks';
 
 const translateError = (rawMessage) => {
   if (!rawMessage) {
@@ -84,9 +85,10 @@ export default function Register() {
 
   return (
     <div className="auth-screen">
-      <div className="auth-card">
-        <div className="auth-brand">Monitor MSL</div>
-        <h1 className="auth-heading">Criar conta</h1>
+      <div className="auth-card auth-card--compact" style={{ maxWidth: '480px', margin: '0 auto' }}>
+        <div className="auth-header">
+          <h1 className="auth-heading">Criar conta</h1>
+        </div>
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-label" htmlFor="nome">
             Nome Completo
@@ -95,7 +97,7 @@ export default function Register() {
             id="nome"
             type="text"
             autoComplete="name"
-            placeholder="Digite seu nome completo"
+            placeholder="Nome completo"
             value={nome}
             onChange={(event) => setNome(event.target.value)}
             required
@@ -108,37 +110,33 @@ export default function Register() {
             id="email"
             type="email"
             autoComplete="email"
-            placeholder="Digite seu e-mail"
+            placeholder="E-mail"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
             disabled={submitting}
           />
-          <div className="auth-label-row">
-            <label className="auth-label" htmlFor="password">
-              Senha
-            </label>
-          </div>
+          <label className="auth-label" htmlFor="password">
+            Senha
+          </label>
           <input
             id="password"
             type="password"
             autoComplete="new-password"
-            placeholder="Defina uma senha"
+            placeholder="Senha"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
             disabled={submitting}
           />
-          <div className="auth-label-row">
-            <label className="auth-label" htmlFor="confirmPassword">
-              Confirmar senha
-            </label>
-          </div>
+          <label className="auth-label" htmlFor="confirmPassword">
+            Confirmar senha
+          </label>
           <input
             id="confirmPassword"
             type="password"
             autoComplete="new-password"
-            placeholder="Repita a senha"
+            placeholder="Confirmar senha"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
             required
@@ -150,9 +148,31 @@ export default function Register() {
             {submitting ? 'Criando conta...' : 'Criar conta'}
           </button>
         </form>
-        <p className="auth-footnote">
+
+        <p className="auth-legal-notice">
+          Ao criar a conta mLabs você aceita nossa{' '}
+          <a
+            href={buildLegalUrl('/legal/privacy-policy.html')}
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: '#223A3A', textDecoration: 'underline' }}
+          >
+            Políticas de privacidade
+          </a>
+          {' '}e{' '}
+          <a
+            href={buildLegalUrl('/legal/terms-of-service.html')}
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: '#223A3A', textDecoration: 'underline' }}
+          >
+            Termos de Serviço
+          </a>.
+        </p>
+
+        <p className="auth-footnote" style={{ fontSize: '15px', marginTop: '1rem' }}>
           Ja tem conta?{' '}
-          <Link className="auth-link" to="/login">
+          <Link className="auth-link" style={{ color: '#223A3A', fontSize: '15px', fontWeight: '600' }} to="/login">
             Fazer login
           </Link>
         </p>

@@ -7,13 +7,13 @@ const resources = {
   pt: {
     translation: {
       login: {
-        title: 'Login',
+        title: 'Olá! Faça seu login 👇 ',
         email: 'E-mail',
         password: 'Senha',
         submit: 'Entrar',
         submit_loading: 'Entrando...',
         forgot: 'Esqueceu a senha? Entre em contato com um administrador.',
-        no_account: 'Nao tem conta?',
+        no_account: 'Ainda não tem conta?',
         create_account: 'Criar conta',
         or: 'ou',
         fb: 'Continuar com Facebook',
