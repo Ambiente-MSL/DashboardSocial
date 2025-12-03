@@ -770,75 +770,7 @@ export default function Settings() {
 
                   <p className="settings-hint">Editando a conta selecionada. Clique em salvar para confirmar ou em cancelar para desfazer.</p>
 
-                ) : (
-
-                  <p className="settings-hint">Contas adicionadas ficam disponiveis no filtro superior dos dashboards.</p>
-
-                )}
-
-
-
-                <div className="accounts-list">
-
-                  {accounts.length ? (
-
-                    accounts.map((account) => (
-
-                      <div key={account.id} className="accounts-card">
-
-                        <div className="accounts-card__meta">
-
-                          <span className="accounts-card__title">{account.label}</span>
-
-                          <span>ID da pagina: {account.facebookPageId || ''}</span>
-
-                          <span>ID Instagram: {account.instagramUserId || ''}</span>
-
-                          <span>ID conta de anuncios: {account.adAccountId || ''}</span>
-
-                          {Array.isArray(account.adAccounts) && account.adAccounts.length > 0 && (
-                            <div className="accounts-card__adaccounts">
-                              <strong>Contas de anúncios ligadas:</strong>
-                              <ul style={{ margin: '6px 0 0 0', paddingLeft: '16px', color: '#4b5563', fontSize: '0.9rem' }}>
-                                {account.adAccounts.map((ad) => (
-                                  <li key={ad.id || ad.name}>
-                                    {ad.name || ad.id} — {ad.id}
-                                    {ad.currency ? ` (${ad.currency})` : ''}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-
-                        </div>
-
-                        <div className="accounts-card__actions">
-
-                          <button type="button" onClick={() => handleEdit(account)} aria-label={`Editar ${account.label}`}>
-
-                            <Edit3 size={15} /> Editar
-
-                          </button>
-
-                          <button type="button" onClick={() => handleDelete(account.id)} aria-label={`Remover ${account.label}`}>
-
-                            <Trash2 size={15} /> Remover
-
-                          </button>
-
-                        </div>
-
-                      </div>
-
-                    ))
-
-                  ) : (
-
-                    <p className="settings-hint">Nenhuma conta cadastrada ainda.</p>
-
-                  )}
-
-                </div>
+                ) : null}
 
               </div>
 

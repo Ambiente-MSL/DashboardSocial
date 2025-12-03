@@ -2751,6 +2751,14 @@ def discover_accounts():
     Retorna paginas do Facebook, perfis do Instagram e contas de anuncios, alem
     de uma lista normalizada pronta para preencher o seletor no frontend.
     """
+    def _normalize_ad_id(raw: Optional[str]) -> str:
+        if not raw:
+            return ""
+        raw_str = str(raw).strip()
+        if not raw_str:
+            return ""
+        return raw_str if raw_str.startswith("act_") else f"act_{raw_str}"
+
     try:
         # 1. Buscar todas as páginas que o usuário administra
         pages_response = gget("/me/accounts", params={
@@ -2805,8 +2813,11 @@ def discover_accounts():
                     for ad in ads_accounts_payload.get("data", []):
                         if not isinstance(ad, dict):
                             continue
+                        ad_id_norm = _normalize_ad_id(ad.get("id") or ad.get("account_id"))
+                        if not ad_id_norm:
+                            continue
                         ads_accounts_data.append({
-                            "id": ad.get("id"),
+                            "id": ad_id_norm,
                             "name": ad.get("name"),
                             "accountId": ad.get("account_id"),
                             "accountStatus": ad.get("account_status"),
@@ -2834,8 +2845,11 @@ def discover_accounts():
             for adaccount in adaccounts_response["data"]:
                 if not isinstance(adaccount, dict):
                     continue
+                ad_id_norm = _normalize_ad_id(adaccount.get("id") or adaccount.get("account_id"))
+                if not ad_id_norm:
+                    continue
                 ad_accounts.append({
-                    "id": adaccount.get("id"),
+                    "id": ad_id_norm,
                     "name": adaccount.get("name"),
                     "accountStatus": adaccount.get("account_status"),
                     "currency": adaccount.get("currency"),
