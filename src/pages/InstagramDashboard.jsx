@@ -762,13 +762,10 @@ export default function InstagramDashboard() {
       return;
     }
 
-    if (!sinceParam || !untilParam) {
-      setMetrics([]);
-      setFollowerSeries([]);
-      setReachCacheSeries([]);
-      setMetricsError("");
-      return;
-    }
+    const preset = IG_TOPBAR_PRESETS.find((item) => item.id === "7d") || IG_TOPBAR_PRESETS[0];
+    const fallbackStart = startOfDay(subDays(defaultEnd, (preset?.days ?? 7) - 1));
+    const effectiveSince = sinceDate || fallbackStart;
+    const effectiveUntil = untilDate || defaultEnd;
 
     const controller = new AbortController();
     (async () => {
@@ -776,8 +773,8 @@ export default function InstagramDashboard() {
       setReachCacheSeries([]);
       try {
         const params = new URLSearchParams();
-        if (sinceParam) params.set("since", sinceParam);
-        if (untilParam) params.set("until", untilParam);
+        params.set("since", toUnixSeconds(startOfDay(effectiveSince)));
+        params.set("until", toUnixSeconds(endOfDay(effectiveUntil)));
         params.set("igUserId", accountConfig.instagramUserId);
         const url = `${API_BASE_URL}/api/instagram/metrics?${params.toString()}`;
         const resp = await fetch(url, { signal: controller.signal });
@@ -814,7 +811,7 @@ export default function InstagramDashboard() {
     })();
 
     return () => controller.abort();
-  }, [accountConfig?.instagramUserId, sinceParam, untilParam]);
+  }, [accountConfig?.instagramUserId, sinceDate, untilDate, defaultEnd, sinceParam, untilParam]);
 
   useEffect(() => {
     if (!accountConfig?.instagramUserId) {
