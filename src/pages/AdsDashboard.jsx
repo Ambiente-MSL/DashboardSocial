@@ -251,9 +251,9 @@ const MOCK_INSIGHTS = [
 ];
 
 const MOCK_CAMPAIGN_PERFORMANCE = [
-  { name: "Conversão", value: 35, color: "#6366f1" },
-  { name: "Tráfego", value: 28, color: "#8b5cf6" },
-  { name: "Awareness", value: 22, color: "#a855f7" },
+  { name: "Convers?o", value: 35, color: "#6366f1" },
+  { name: "Tr?fego", value: 28, color: "#8b5cf6" },
+  { name: "Reconhecimento", value: 22, color: "#a855f7" },
   { name: "Engajamento", value: 15, color: "#c084fc" },
 ];
 
@@ -592,6 +592,42 @@ export default function AdsDashboard() {
     }
     if (adsData) return [];
     return MOCK_DETAILED_CAMPAIGNS;
+  }, [adsData]);
+
+  const objectivePerformance = useMemo(() => {
+    if (!Array.isArray(adsData?.campaigns) || !adsData.campaigns.length) {
+      return [];
+    }
+
+    const totals = new Map();
+    adsData.campaigns.forEach((campaign) => {
+      const rawObjective = (campaign.objective || "").toString();
+      if (!rawObjective) return;
+      const upper = rawObjective.toUpperCase();
+      let label = rawObjective;
+      if (upper === "CONVERSIONS") label = "Convers?o";
+      else if (upper === "TRAFFIC") label = "Tr?fego";
+      else if (upper === "ENGAGEMENT") label = "Engajamento";
+      else if (upper === "AWARENESS" || upper === "BRAND_AWARENESS" || rawObjective === "Awareness") {
+        label = "Reconhecimento";
+      }
+
+      const prev = totals.get(label) || 0;
+      totals.set(label, prev + Number(campaign.spend || 0));
+    });
+
+    const entries = Array.from(totals.entries());
+    const totalSpend = entries.reduce((sum, [, value]) => sum + value, 0);
+    if (!totalSpend) {
+      return [];
+    }
+
+    const palette = IG_DONUT_COLORS;
+    return entries.map(([name, value], index) => ({
+      name,
+      value: Math.round((value / totalSpend) * 100),
+      color: palette[index % palette.length],
+    }));
   }, [adsData]);
 
   // Gera série temporal de impressões e alcance baseada nos dados reais
@@ -1472,60 +1508,66 @@ export default function AdsDashboard() {
               </header>
 
               <div className="ig-chart-area">
-                <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
-                  <div style={{ minWidth: Math.max(MOCK_CAMPAIGN_PERFORMANCE.length * 60, 100) + '%' }}>
-                    <ResponsiveContainer width="100%" height={280}>
-                      <BarChart
-                        data={MOCK_CAMPAIGN_PERFORMANCE}
-                        margin={{ top: 16, right: 16, bottom: 16, left: 80 }}
-                        layout="vertical"
-                      >
-                        <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" horizontal={false} />
-                        <XAxis
-                          type="number"
-                          tick={{ fill: "#9ca3af", fontSize: 12 }}
-                          axisLine={false}
-                          tickLine={false}
-                          tickFormatter={(value) => `${value}%`}
-                        />
-                        <YAxis
-                          type="category"
-                          dataKey="name"
-                          tick={{ fill: "#9ca3af", fontSize: 12 }}
-                          axisLine={false}
-                          tickLine={false}
-                          width={80}
-                        />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (!active || !payload?.length) return null;
-                            return (
-                              <div className="ig-follower-tooltip">
-                                <div className="ig-follower-tooltip__label">{payload[0].payload.name}</div>
-                                <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
-                              </div>
-                            );
-                          }}
-                        />
-                        <Bar
-                          dataKey="value"
-                          radius={[0, 8, 8, 0]}
-                          barSize={32}
-                          onMouseEnter={(_, index) => setActiveCampaignIndex(index)}
-                          onMouseLeave={() => setActiveCampaignIndex(-1)}
-                        >
-                          {MOCK_CAMPAIGN_PERFORMANCE.map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={entry.color}
-                              opacity={activeCampaignIndex === -1 || activeCampaignIndex === index ? 1 : 0.5}
-                            />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                {objectivePerformance.length === 0 ? (
+                  <div style={{ padding: "16px", fontSize: "13px", color: "#6b7280" }}>
+                    Não encontramos campanhas com objetivo configurado para este período e conta selecionada.
                   </div>
-                </div>
+                ) : (
+                  <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
+                    <div style={{ minWidth: Math.max(objectivePerformance.length * 60, 100) + '%' }}>
+                      <ResponsiveContainer width="100%" height={280}>
+                        <BarChart
+                          data={objectivePerformance}
+                          margin={{ top: 16, right: 16, bottom: 16, left: 80 }}
+                          layout="vertical"
+                        >
+                          <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" horizontal={false} />
+                          <XAxis
+                            type="number"
+                            tick={{ fill: "#9ca3af", fontSize: 12 }}
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(value) => `${value}%`}
+                          />
+                          <YAxis
+                            type="category"
+                            dataKey="name"
+                            tick={{ fill: "#9ca3af", fontSize: 12 }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={80}
+                          />
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (!active || !payload?.length) return null;
+                              return (
+                                <div className="ig-follower-tooltip">
+                                  <div className="ig-follower-tooltip__label">{payload[0].payload.name}</div>
+                                  <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
+                                </div>
+                              );
+                            }}
+                          />
+                          <Bar
+                            dataKey="value"
+                            radius={[0, 8, 8, 0]}
+                            barSize={32}
+                            onMouseEnter={(_, index) => setActiveCampaignIndex(index)}
+                            onMouseLeave={() => setActiveCampaignIndex(-1)}
+                          >
+                            {objectivePerformance.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={entry.color}
+                                opacity={activeCampaignIndex === -1 || activeCampaignIndex === index ? 1 : 0.5}
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
 
