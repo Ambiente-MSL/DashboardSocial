@@ -51,6 +51,7 @@ backend/__pycache__/
 *.env
 backend/.env
 deploy/backend.env
+deploy/*.env
 
 # SO / IDE
 .DS_Store
