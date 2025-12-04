@@ -563,7 +563,7 @@ export default function AdsDashboard() {
     return MOCK_TOP_CAMPAIGNS;
   }, [adsData]);
 
-  // Gera série temporal de impressões e cliques baseada nos dados reais
+  // Gera série temporal de impressões e alcance baseada nos dados reais
   const performanceSeries = useMemo(() => {
     // Se não temos dados reais, usa o mock
     if (!adsData || !spendSeries.length) {
@@ -571,7 +571,7 @@ export default function AdsDashboard() {
     }
 
     const totalImpressions = Number(totals.impressions || 0);
-    const totalClicks = Number(totals.clicks || 0);
+    const totalReach = Number(totals.reach || 0);
     const totalSpend = Number(totals.spend || 0);
 
     // Se não temos totais, retorna array vazio
@@ -579,16 +579,16 @@ export default function AdsDashboard() {
       return [];
     }
 
-    // Distribui impressões e cliques proporcionalmente ao spend de cada dia
+    // Distribui impressões e alcance proporcionalmente ao spend de cada dia
     return spendSeries.map((day) => {
       const proportion = day.value / totalSpend;
       return {
         date: day.date,
         impressions: Math.round(totalImpressions * proportion),
-        clicks: Math.round(totalClicks * proportion),
+        reach: Math.round(totalReach * proportion),
       };
     });
-  }, [adsData, spendSeries, totals.impressions, totals.clicks, totals.spend]);
+  }, [adsData, spendSeries, totals.impressions, totals.reach, totals.spend]);
 
   const highlightedSpendIndex = activeSpendBar >= 0 ? activeSpendBar : peakSpendPoint?.index ?? -1;
   const highlightedSpendPoint = highlightedSpendIndex >= 0 ? spendSeries[highlightedSpendIndex] : null;
@@ -1116,7 +1116,7 @@ export default function AdsDashboard() {
               <header className="ig-card-header">
                 <div>
                   <h3>Performance de Métricas</h3>
-                  <p className="ig-card-subtitle">Impressões e Cliques ao longo do tempo</p>
+                  <p className="ig-card-subtitle">Impressões e Alcance ao longo do tempo</p>
                 </div>
               </header>
 
@@ -1159,7 +1159,7 @@ export default function AdsDashboard() {
                               Impressões: {formatNumber(payload[0].payload.impressions)}
                             </div>
                             <div className="ig-follower-tooltip__label">
-                              Cliques: {formatNumber(payload[0].payload.clicks)}
+                              Alcance: {formatNumber(payload[0].payload.reach)}
                             </div>
                           </div>
                         );
@@ -1172,7 +1172,7 @@ export default function AdsDashboard() {
                       strokeWidth={2}
                       fill="url(#impressionsGradient)"
                     />
-                    <Line type="monotone" dataKey="clicks" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="reach" stroke="#8b5cf6" strokeWidth={2} dot={false} />
                     {performanceSeries.length > 15 && (
                       <Brush
                         dataKey="date"
@@ -1186,7 +1186,7 @@ export default function AdsDashboard() {
                       >
                         <ComposedChart>
                           <Area dataKey="impressions" fill="#ddd6fe" stroke="none" />
-                          <Line dataKey="clicks" stroke="#c084fc" strokeWidth={1} dot={false} />
+                          <Line dataKey="reach" stroke="#c084fc" strokeWidth={1} dot={false} />
                         </ComposedChart>
                       </Brush>
                     )}
