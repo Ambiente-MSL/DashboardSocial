@@ -1690,6 +1690,52 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
         for key, value in sorted(actions_totals.items(), key=lambda item: item[1], reverse=True)
     ]
 
+    # detalhes por anúncio (criativos)
+    creatives: List[Dict[str, Any]] = []
+    try:
+        ads_res = gget(
+            f"/{act_id}/insights",
+            {
+                "fields": "ad_id,ad_name,impressions,reach,clicks,spend,ctr,cpc,actions",
+                "time_range[since]": since_str,
+                "time_range[until]": until_str,
+                "level": "ad",
+                "limit": 500,
+            },
+        )
+        for row in ads_res.get("data", []):
+            spend = float(row.get("spend", 0) or 0)
+            impressions = int(row.get("impressions", 0) or 0)
+            clicks = int(row.get("clicks", 0) or 0)
+            ctr = float(row.get("ctr", 0) or 0)
+            cpc = float(row.get("cpc", 0) or 0)
+            ad_conversions = 0.0
+            for action in row.get("actions") or []:
+                action_type = action.get("action_type")
+                if not action_type:
+                    continue
+                value = float(action.get("value", 0) or 0)
+                if any(keyword in action_type for keyword in conversion_types):
+                    ad_conversions += value
+            creatives.append(
+                {
+                    "id": row.get("ad_id"),
+                    "name": row.get("ad_name") or row.get("ad_id") or "Anúncio",
+                    "impressions": impressions,
+                    "reach": int(row.get("reach", 0) or 0),
+                    "clicks": clicks,
+                    "ctr": ctr,
+                    "spend": spend,
+                    "cpc": cpc,
+                    "conversions": int(round(ad_conversions)),
+                    "cpa": (spend / ad_conversions) if ad_conversions else None,
+                }
+            )
+    except MetaAPIError:
+        creatives = []
+    except Exception:
+        creatives = []
+
     # resumo de vídeo
     video_summary = {
         "video_views_3s": int(v3),
@@ -1830,4 +1876,5 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
         "video_summary": video_summary,  # NOVO
         "spend_series": spend_series,
         "campaigns": top_campaigns,
+        "creatives": creatives,
     }

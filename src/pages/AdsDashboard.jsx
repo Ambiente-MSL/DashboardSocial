@@ -594,6 +594,23 @@ export default function AdsDashboard() {
     return MOCK_DETAILED_CAMPAIGNS;
   }, [adsData]);
 
+  const creatives = useMemo(() => {
+    if (Array.isArray(adsData?.creatives) && adsData.creatives.length) {
+      return adsData.creatives.map((creative, index) => ({
+        id: creative.id || `creative-${index}`,
+        name: creative.name || "Anúncio",
+        type: creative.type || "Anúncio",
+        clicks: Number(creative.clicks || 0),
+        ctr: Number(creative.ctr || 0),
+        cpc: Number(creative.cpc || 0),
+        conversions: Number(creative.conversions || 0),
+        cpa: typeof creative.cpa === "number" ? creative.cpa : null,
+        roas: typeof creative.roas === "number" ? creative.roas : null,
+      }));
+    }
+    return [];
+  }, [adsData]);
+
   // Gera série temporal de impressões e alcance baseada nos dados reais
   const performanceSeries = useMemo(() => {
     // Se não temos dados reais, usa o mock
@@ -1502,7 +1519,14 @@ export default function AdsDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {MOCK_CREATIVES.map((creative) => (
+                    {creatives.length === 0 && (
+                      <tr>
+                        <td colSpan={9} style={{ padding: '14px', textAlign: 'center', color: '#6b7280', fontSize: '13px' }}>
+                          Nenhum anúncio encontrado para esta conta no período selecionado.
+                        </td>
+                      </tr>
+                    )}
+                    {creatives.map((creative) => (
                       <tr key={creative.id} style={{
                         background: 'white',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
@@ -1544,7 +1568,7 @@ export default function AdsDashboard() {
                           {formatNumber(creative.clicks)}
                         </td>
                         <td style={{ color: '#6366f1', fontWeight: 600, textAlign: 'right', padding: '12px' }}>
-                          {creative.ctr}%
+                          {formatPercentage(creative.ctr)}%
                         </td>
                         <td style={{ textAlign: 'right', padding: '12px' }}>
                           {formatCurrency(creative.cpc)}
@@ -1553,7 +1577,7 @@ export default function AdsDashboard() {
                           {formatNumber(creative.conversions)}
                         </td>
                         <td style={{ textAlign: 'right', padding: '12px' }}>
-                          {formatCurrency(creative.cpa)}
+                          {creative.cpa ? formatCurrency(creative.cpa) : '—'}
                         </td>
                         <td style={{ textAlign: 'center', padding: '12px', borderRadius: '0 8px 8px 0' }}>
                           <span style={{
@@ -1561,10 +1585,10 @@ export default function AdsDashboard() {
                             borderRadius: '6px',
                             fontSize: '12px',
                             fontWeight: '700',
-                            background: creative.roas >= 3 ? '#d1fae5' : '#fef3c7',
-                            color: creative.roas >= 3 ? '#065f46' : '#92400e'
+                            background: typeof creative.roas === 'number' && creative.roas >= 3 ? '#d1fae5' : '#fef3c7',
+                            color: typeof creative.roas === 'number' && creative.roas >= 3 ? '#065f46' : '#92400e'
                           }}>
-                            {creative.roas}x
+                            {typeof creative.roas === 'number' ? `${creative.roas}x` : '—'}
                           </span>
                         </td>
                       </tr>
