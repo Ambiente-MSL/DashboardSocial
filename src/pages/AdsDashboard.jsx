@@ -563,6 +563,33 @@ export default function AdsDashboard() {
     return MOCK_TOP_CAMPAIGNS;
   }, [adsData]);
 
+  // Gera série temporal de impressões e cliques baseada nos dados reais
+  const performanceSeries = useMemo(() => {
+    // Se não temos dados reais, usa o mock
+    if (!adsData || !spendSeries.length) {
+      return MOCK_PERFORMANCE_SERIES;
+    }
+
+    const totalImpressions = Number(totals.impressions || 0);
+    const totalClicks = Number(totals.clicks || 0);
+    const totalSpend = Number(totals.spend || 0);
+
+    // Se não temos totais, retorna array vazio
+    if (totalSpend === 0 || spendSeries.length === 0) {
+      return [];
+    }
+
+    // Distribui impressões e cliques proporcionalmente ao spend de cada dia
+    return spendSeries.map((day) => {
+      const proportion = day.value / totalSpend;
+      return {
+        date: day.date,
+        impressions: Math.round(totalImpressions * proportion),
+        clicks: Math.round(totalClicks * proportion),
+      };
+    });
+  }, [adsData, spendSeries, totals.impressions, totals.clicks, totals.spend]);
+
   const highlightedSpendIndex = activeSpendBar >= 0 ? activeSpendBar : peakSpendPoint?.index ?? -1;
   const highlightedSpendPoint = highlightedSpendIndex >= 0 ? spendSeries[highlightedSpendIndex] : null;
 
@@ -1089,69 +1116,82 @@ export default function AdsDashboard() {
               <header className="ig-card-header">
                 <div>
                   <h3>Performance de Métricas</h3>
-                  <p className="ig-card-subtitle">Impressões, Cliques e Conversões</p>
+                  <p className="ig-card-subtitle">Impressões e Cliques ao longo do tempo</p>
                 </div>
               </header>
 
               <div className="ig-chart-area">
-                <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
-                  <div style={{ minWidth: Math.max(MOCK_PERFORMANCE_SERIES.length * 80, 100) + '%' }}>
-                    <ResponsiveContainer width="100%" height={320}>
-                      <ComposedChart data={MOCK_PERFORMANCE_SERIES} margin={{ top: 16, right: 16, bottom: 32, left: 0 }}>
-                        <defs>
-                          <linearGradient id="impressionsGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
-                            <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
-                        <XAxis
-                          dataKey="date"
-                          tick={{ fill: "#9ca3af", fontSize: 12 }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <YAxis
-                          tick={{ fill: "#9ca3af", fontSize: 12 }}
-                          axisLine={false}
-                          tickLine={false}
-                          tickFormatter={(value) => {
-                            if (value >= 1000) return `${Math.round(value / 1000)}k`;
-                            return value;
-                          }}
-                        />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (!active || !payload?.length) return null;
-                            return (
-                              <div className="ig-follower-tooltip">
-                                <div className="ig-follower-tooltip__date">{payload[0].payload.date}</div>
-                                <div className="ig-follower-tooltip__label">
-                                  Impressões: {formatNumber(payload[0].payload.impressions)}
-                                </div>
-                                <div className="ig-follower-tooltip__label">
-                                  Cliques: {formatNumber(payload[0].payload.clicks)}
-                                </div>
-                                <div className="ig-follower-tooltip__label">
-                                  Conversões: {formatNumber(payload[0].payload.conversions)}
-                                </div>
-                              </div>
-                            );
-                          }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="impressions"
-                          stroke="#6366f1"
-                          strokeWidth={2}
-                          fill="url(#impressionsGradient)"
-                        />
-                        <Line type="monotone" dataKey="clicks" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-                        <Line type="monotone" dataKey="conversions" stroke="#a855f7" strokeWidth={2} dot={false} />
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
+                <ResponsiveContainer width="100%" height={performanceSeries.length > 15 ? 380 : 280}>
+                  <ComposedChart
+                    data={performanceSeries}
+                    margin={{ top: 16, right: 16, bottom: performanceSeries.length > 15 ? 70 : 32, left: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="impressionsGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(value) => {
+                        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                        if (value >= 1000) return `${Math.round(value / 1000)}k`;
+                        return value;
+                      }}
+                    />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        return (
+                          <div className="ig-follower-tooltip">
+                            <div className="ig-follower-tooltip__date">{payload[0].payload.date}</div>
+                            <div className="ig-follower-tooltip__label">
+                              Impressões: {formatNumber(payload[0].payload.impressions)}
+                            </div>
+                            <div className="ig-follower-tooltip__label">
+                              Cliques: {formatNumber(payload[0].payload.clicks)}
+                            </div>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="impressions"
+                      stroke="#6366f1"
+                      strokeWidth={2}
+                      fill="url(#impressionsGradient)"
+                    />
+                    <Line type="monotone" dataKey="clicks" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                    {performanceSeries.length > 15 && (
+                      <Brush
+                        dataKey="date"
+                        height={40}
+                        stroke="#6366f1"
+                        fill="transparent"
+                        startIndex={0}
+                        endIndex={Math.min(14, performanceSeries.length - 1)}
+                        travellerWidth={14}
+                        y={280}
+                      >
+                        <ComposedChart>
+                          <Area dataKey="impressions" fill="#ddd6fe" stroke="none" />
+                          <Line dataKey="clicks" stroke="#c084fc" strokeWidth={1} dot={false} />
+                        </ComposedChart>
+                      </Brush>
+                    )}
+                  </ComposedChart>
+                </ResponsiveContainer>
               </div>
             </section>
 
