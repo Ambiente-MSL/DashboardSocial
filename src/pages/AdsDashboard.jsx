@@ -559,10 +559,11 @@ export default function AdsDashboard() {
 
   const topCampaigns = useMemo(() => {
     if (Array.isArray(adsData?.campaigns)) {
-      // Filtra apenas campanhas ativas
+      // Filtra apenas campanhas ativas, mas considera campanhas sem status como ativas
       return adsData.campaigns.filter((campaign) => {
-        const status = campaign.effective_status || campaign.status || '';
-        return status.toUpperCase() === 'ACTIVE';
+        const status = campaign.effective_status || campaign.status || "";
+        if (!status) return true;
+        return status.toUpperCase() === "ACTIVE";
       });
     }
     if (adsData) return [];
