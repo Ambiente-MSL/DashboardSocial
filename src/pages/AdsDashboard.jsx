@@ -558,9 +558,39 @@ export default function AdsDashboard() {
   }, [spendSeries]);
 
   const topCampaigns = useMemo(() => {
-    if (Array.isArray(adsData?.campaigns)) return adsData.campaigns;
+    if (Array.isArray(adsData?.campaigns)) {
+      // Filtra apenas campanhas ativas
+      return adsData.campaigns.filter((campaign) => {
+        const status = campaign.effective_status || campaign.status || '';
+        return status.toUpperCase() === 'ACTIVE';
+      });
+    }
     if (adsData) return [];
     return MOCK_TOP_CAMPAIGNS;
+  }, [adsData]);
+
+  const activeCampaigns = useMemo(() => {
+    if (Array.isArray(adsData?.campaigns)) {
+      const onlyActive = adsData.campaigns.filter((campaign) => {
+        const status = campaign.effective_status || campaign.status || "";
+        if (!status) return true; // se backend não retornar status, assume ativo para não esconder dados
+        return status.toUpperCase() === "ACTIVE";
+      });
+      return onlyActive.map((campaign) => ({
+        id: campaign.id || campaign.campaign_id || campaign.name,
+        name: campaign.name || campaign.campaign_name || "Campanha",
+        objective: campaign.objective || "",
+        spend: Number(campaign.spend || 0),
+        impressions: Number(campaign.impressions || 0),
+        clicks: Number(campaign.clicks || 0),
+        ctr: Number.isFinite(campaign.ctr) ? campaign.ctr : Number(campaign.ctr || 0),
+        conversions: Number(campaign.conversions || 0),
+        cpa: Number.isFinite(campaign.cpa) ? campaign.cpa : null,
+        status: (campaign.effective_status || campaign.status || "ACTIVE").toUpperCase(),
+      }));
+    }
+    if (adsData) return [];
+    return MOCK_DETAILED_CAMPAIGNS;
   }, [adsData]);
 
   // Gera série temporal de impressões e alcance baseada nos dados reais
@@ -854,14 +884,14 @@ export default function AdsDashboard() {
               <div className="ig-profile-vertical__engagement">
                 <h4>Distribuição por Gênero</h4>
                 <div className="ig-profile-vertical__engagement-chart">
-                  <ResponsiveContainer width="100%" height={220}>
+                  <ResponsiveContainer width="100%" height={180}>
                     <PieChart>
                       <Pie
                         data={MOCK_GENDER_DISTRIBUTION}
                         dataKey="value"
                         nameKey="name"
-                        innerRadius={55}
-                        outerRadius={85}
+                        innerRadius={45}
+                        outerRadius={70}
                         paddingAngle={3}
                         stroke="none"
                         activeIndex={activeGenderIndex}
@@ -1199,7 +1229,7 @@ export default function AdsDashboard() {
             <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
-                  <h3>Melhores Campanhas</h3>
+                  <h3>Campanhas Ativas</h3>
                   <p className="ig-card-subtitle">Ranking por investimento no período filtrado</p>
                 </div>
               </header>
@@ -1399,7 +1429,12 @@ export default function AdsDashboard() {
               </header>
 
               <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {MOCK_DETAILED_CAMPAIGNS.map((campaign) => (
+                {activeCampaigns.length === 0 && (
+                  <div style={{ padding: '14px', border: '1px dashed #d1d5db', borderRadius: '10px', color: '#6b7280' }}>
+                    Nenhuma campanha ativa encontrada para esta conta no período selecionado.
+                  </div>
+                )}
+                {activeCampaigns.map((campaign) => (
                   <div
                     key={campaign.id}
                     style={{
@@ -1456,7 +1491,7 @@ export default function AdsDashboard() {
                     <div>
                       <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>CTR</div>
                       <div style={{ fontSize: '15px', fontWeight: '700', color: '#6366f1' }}>
-                        {campaign.ctr}%
+                        {formatPercentage(campaign.ctr)}%
                       </div>
                     </div>
 
@@ -1470,7 +1505,7 @@ export default function AdsDashboard() {
                     <div>
                       <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>CPA</div>
                       <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>
-                        {formatCurrency(campaign.cpa)}
+                        {campaign.cpa ? formatCurrency(campaign.cpa) : '—'}
                       </div>
                     </div>
 
@@ -1484,11 +1519,11 @@ export default function AdsDashboard() {
                         borderRadius: '6px',
                         fontSize: '12px',
                         fontWeight: '600',
-                        background: campaign.status === 'active' ? '#d1fae5' : '#fed7aa',
-                        color: campaign.status === 'active' ? '#065f46' : '#9a3412'
+                        background: campaign.status === 'ACTIVE' ? '#d1fae5' : '#fed7aa',
+                        color: campaign.status === 'ACTIVE' ? '#065f46' : '#9a3412'
                       }}>
-                        <span>{campaign.status === 'active' ? '🟢' : '🟠'}</span>
-                        {campaign.statusLabel}
+                        <span>{campaign.status === 'ACTIVE' ? 'ON' : 'OFF'}</span>
+                        {campaign.status === 'ACTIVE' ? 'Ativa' : (campaign.statusLabel || campaign.status || 'Status indisp.')}
                       </div>
                     </div>
                   </div>
