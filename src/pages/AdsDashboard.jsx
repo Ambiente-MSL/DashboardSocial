@@ -1026,115 +1026,48 @@ export default function AdsDashboard() {
               </div>
             </section>
 
-            {/* CRIATIVOS - PERFORMANCE DE ANÚNCIOS */}
+            {/* INSIGHTS AUTOMÁTICOS - ALERTAS IMPORTANTES */}
             <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '20px' }}>🎨</span>
-                    CRIATIVOS
+                    <span style={{ fontSize: '20px' }}>💡</span>
+                    INSIGHTS AUTOMÁTICOS
                   </h3>
-                  <p className="ig-card-subtitle">Performance por tipo de conteúdo</p>
+                  <p className="ig-card-subtitle">Alertas e recomendações inteligentes</p>
                 </div>
               </header>
 
-              <div style={{ marginTop: '16px', overflowX: 'auto' }}>
-                <table style={{
-                  width: '100%',
-                  borderCollapse: 'separate',
-                  borderSpacing: '0 8px',
-                  minWidth: '900px'
-                }}>
-                  <thead>
-                    <tr style={{
-                      background: 'transparent',
-                      fontSize: '11px',
-                      fontWeight: '600',
-                      color: '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
-                    }}>
-                      <th style={{ textAlign: 'center', padding: '8px 12px', width: '60px' }}>Preview</th>
-                      <th style={{ textAlign: 'left', padding: '8px 12px', minWidth: '180px' }}>Nome</th>
-                      <th style={{ textAlign: 'center', padding: '8px 12px', width: '90px' }}>Tipo</th>
-                      <th style={{ textAlign: 'right', padding: '8px 12px', width: '90px' }}>Cliques</th>
-                      <th style={{ textAlign: 'right', padding: '8px 12px', width: '70px' }}>CTR</th>
-                      <th style={{ textAlign: 'right', padding: '8px 12px', width: '90px' }}>CPC</th>
-                      <th style={{ textAlign: 'right', padding: '8px 12px', width: '100px' }}>Conversões</th>
-                      <th style={{ textAlign: 'right', padding: '8px 12px', width: '90px' }}>CPA</th>
-                      <th style={{ textAlign: 'center', padding: '8px 12px', width: '80px' }}>ROAS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {MOCK_CREATIVES.map((creative) => (
-                      <tr key={creative.id} style={{
-                        background: 'white',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                        borderRadius: '8px'
-                      }}>
-                        <td style={{
-                          textAlign: 'center',
-                          fontSize: '24px',
-                          padding: '12px',
-                          borderRadius: '8px 0 0 8px'
-                        }}>
-                          {creative.preview}
-                        </td>
-                        <td style={{
-                          fontWeight: 600,
-                          fontSize: '13px',
-                          padding: '12px',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          maxWidth: '200px'
-                        }}>
-                          {creative.name}
-                        </td>
-                        <td style={{ textAlign: 'center', padding: '12px' }}>
-                          <span style={{
-                            padding: '4px 10px',
-                            borderRadius: '6px',
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            background: creative.type === 'Vídeo' ? '#dbeafe' : creative.type === 'Imagem' ? '#fce7f3' : '#e0e7ff',
-                            color: creative.type === 'Vídeo' ? '#1e40af' : creative.type === 'Imagem' ? '#9f1239' : '#3730a3',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {creative.type}
-                          </span>
-                        </td>
-                        <td style={{ fontWeight: 600, textAlign: 'right', padding: '12px' }}>
-                          {formatNumber(creative.clicks)}
-                        </td>
-                        <td style={{ color: '#6366f1', fontWeight: 600, textAlign: 'right', padding: '12px' }}>
-                          {creative.ctr}%
-                        </td>
-                        <td style={{ textAlign: 'right', padding: '12px' }}>
-                          {formatCurrency(creative.cpc)}
-                        </td>
-                        <td style={{ color: '#10b981', fontWeight: 600, textAlign: 'right', padding: '12px' }}>
-                          {formatNumber(creative.conversions)}
-                        </td>
-                        <td style={{ textAlign: 'right', padding: '12px' }}>
-                          {formatCurrency(creative.cpa)}
-                        </td>
-                        <td style={{ textAlign: 'center', padding: '12px', borderRadius: '0 8px 8px 0' }}>
-                          <span style={{
-                            padding: '4px 8px',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            fontWeight: '700',
-                            background: creative.roas >= 3 ? '#d1fae5' : '#fef3c7',
-                            color: creative.roas >= 3 ? '#065f46' : '#92400e'
-                          }}>
-                            {creative.roas}x
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {MOCK_INSIGHTS.map((insight) => (
+                  <div
+                    key={insight.id}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.9)',
+                      border: `1px solid ${insight.color}30`,
+                      borderLeft: `4px solid ${insight.color}`,
+                      borderRadius: '8px',
+                      padding: '16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateX(4px)';
+                      e.currentTarget.style.boxShadow = `0 4px 12px ${insight.color}20`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateX(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <span style={{ fontSize: '24px' }}>{insight.icon}</span>
+                    <span style={{ fontSize: '14px', color: '#374151', fontWeight: 500 }}>
+                      {insight.message}
+                    </span>
+                  </div>
+                ))}
               </div>
             </section>
           </div>
@@ -1529,118 +1462,115 @@ export default function AdsDashboard() {
               </div>
             </section>
 
-            {/* 4. CAMPANHAS DETALHADAS - ANÁLISE PROFUNDA */}
+            {/* 4. CRIATIVOS - PERFORMANCE DE ANÚNCIOS */}
             <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '20px' }}>📋</span>
-                    CAMPANHAS
+                    <span style={{ fontSize: '20px' }}>🎨</span>
+                    CRIATIVOS
                   </h3>
-                  <p className="ig-card-subtitle">Status e performance detalhada</p>
+                  <p className="ig-card-subtitle">Performance por tipo de conteúdo</p>
                 </div>
               </header>
 
-              <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {activeCampaigns.length === 0 && (
-                  <div style={{ padding: '14px', border: '1px dashed #d1d5db', borderRadius: '10px', color: '#6b7280' }}>
-                    Nenhuma campanha ativa encontrada para esta conta no período selecionado.
-                  </div>
-                )}
-                {activeCampaigns.map((campaign) => (
-                  <div
-                    key={campaign.id}
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%)',
-                      border: '1px solid rgba(0, 0, 0, 0.08)',
-                      borderRadius: '12px',
-                      padding: '20px',
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-                      gap: '16px',
-                      alignItems: 'center',
-                      transition: 'all 0.2s ease',
-                      cursor: 'pointer'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.1)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  >
-                    <div style={{ gridColumn: 'span 2' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', marginBottom: '4px' }}>
-                        {campaign.name}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                        {campaign.objective}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>Gasto</div>
-                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>
-                        {formatCurrency(campaign.spend)}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>Impressões</div>
-                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>
-                        {formatNumber(campaign.impressions)}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>Cliques</div>
-                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>
-                        {formatNumber(campaign.clicks)}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>CTR</div>
-                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#6366f1' }}>
-                        {formatPercentage(campaign.ctr)}%
-                      </div>
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>Conversões</div>
-                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#10b981' }}>
-                        {formatNumber(campaign.conversions)}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>CPA</div>
-                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>
-                        {campaign.cpa ? formatCurrency(campaign.cpa) : '—'}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>Status</div>
-                      <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        background: campaign.status === 'ACTIVE' ? '#d1fae5' : '#fed7aa',
-                        color: campaign.status === 'ACTIVE' ? '#065f46' : '#9a3412'
+              <div style={{ marginTop: '16px', overflowX: 'auto' }}>
+                <table style={{
+                  width: '100%',
+                  borderCollapse: 'separate',
+                  borderSpacing: '0 8px',
+                  minWidth: '900px'
+                }}>
+                  <thead>
+                    <tr style={{
+                      background: 'transparent',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      color: '#6b7280',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      <th style={{ textAlign: 'center', padding: '8px 12px', width: '60px' }}>Preview</th>
+                      <th style={{ textAlign: 'left', padding: '8px 12px', minWidth: '180px' }}>Nome</th>
+                      <th style={{ textAlign: 'center', padding: '8px 12px', width: '90px' }}>Tipo</th>
+                      <th style={{ textAlign: 'right', padding: '8px 12px', width: '90px' }}>Cliques</th>
+                      <th style={{ textAlign: 'right', padding: '8px 12px', width: '70px' }}>CTR</th>
+                      <th style={{ textAlign: 'right', padding: '8px 12px', width: '90px' }}>CPC</th>
+                      <th style={{ textAlign: 'right', padding: '8px 12px', width: '100px' }}>Conversões</th>
+                      <th style={{ textAlign: 'right', padding: '8px 12px', width: '90px' }}>CPA</th>
+                      <th style={{ textAlign: 'center', padding: '8px 12px', width: '80px' }}>ROAS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {MOCK_CREATIVES.map((creative) => (
+                      <tr key={creative.id} style={{
+                        background: 'white',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                        borderRadius: '8px'
                       }}>
-                        <span>{campaign.status === 'ACTIVE' ? 'ON' : 'OFF'}</span>
-                        {campaign.status === 'ACTIVE' ? 'Ativa' : (campaign.statusLabel || campaign.status || 'Status indisp.')}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                        <td style={{
+                          textAlign: 'center',
+                          fontSize: '24px',
+                          padding: '12px',
+                          borderRadius: '8px 0 0 8px'
+                        }}>
+                          {creative.preview}
+                        </td>
+                        <td style={{
+                          fontWeight: 600,
+                          fontSize: '13px',
+                          padding: '12px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: '200px'
+                        }}>
+                          {creative.name}
+                        </td>
+                        <td style={{ textAlign: 'center', padding: '12px' }}>
+                          <span style={{
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            background: creative.type === 'Vídeo' ? '#dbeafe' : creative.type === 'Imagem' ? '#fce7f3' : '#e0e7ff',
+                            color: creative.type === 'Vídeo' ? '#1e40af' : creative.type === 'Imagem' ? '#9f1239' : '#3730a3',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {creative.type}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: 600, textAlign: 'right', padding: '12px' }}>
+                          {formatNumber(creative.clicks)}
+                        </td>
+                        <td style={{ color: '#6366f1', fontWeight: 600, textAlign: 'right', padding: '12px' }}>
+                          {creative.ctr}%
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '12px' }}>
+                          {formatCurrency(creative.cpc)}
+                        </td>
+                        <td style={{ color: '#10b981', fontWeight: 600, textAlign: 'right', padding: '12px' }}>
+                          {formatNumber(creative.conversions)}
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '12px' }}>
+                          {formatCurrency(creative.cpa)}
+                        </td>
+                        <td style={{ textAlign: 'center', padding: '12px', borderRadius: '0 8px 8px 0' }}>
+                          <span style={{
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            background: creative.roas >= 3 ? '#d1fae5' : '#fef3c7',
+                            color: creative.roas >= 3 ? '#065f46' : '#92400e'
+                          }}>
+                            {creative.roas}x
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </section>
 
@@ -1887,52 +1817,7 @@ export default function AdsDashboard() {
               </div>
             </section>
 
-            {/* 9. INSIGHTS AUTOMÁTICOS - ALERTAS IMPORTANTES */}
-            <section className="ig-growth-clean">
-              <header className="ig-card-header">
-                <div>
-                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '20px' }}>💡</span>
-                    INSIGHTS AUTOMÁTICOS
-                  </h3>
-                  <p className="ig-card-subtitle">Alertas e recomendações inteligentes</p>
-                </div>
-              </header>
-
-              <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {MOCK_INSIGHTS.map((insight) => (
-                  <div
-                    key={insight.id}
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.9)',
-                      border: `1px solid ${insight.color}30`,
-                      borderLeft: `4px solid ${insight.color}`,
-                      borderRadius: '8px',
-                      padding: '16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateX(4px)';
-                      e.currentTarget.style.boxShadow = `0 4px 12px ${insight.color}20`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateX(0)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  >
-                    <span style={{ fontSize: '24px' }}>{insight.icon}</span>
-                    <span style={{ fontSize: '14px', color: '#374151', fontWeight: 500 }}>
-                      {insight.message}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* 10. EXPORTAR - AÇÃO FINAL */}
+            {/* 9. EXPORTAR - AÇÃO FINAL */}
             <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
