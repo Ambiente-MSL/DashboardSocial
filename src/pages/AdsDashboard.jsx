@@ -257,7 +257,7 @@ const MOCK_CAMPAIGN_PERFORMANCE = [
   { name: "Engajamento", value: 15, color: "#c084fc" },
 ];
 
-const IG_DONUT_COLORS = ["#6366f1", "#8b5cf6", "#a855f7", "#c084fc", "#d8b4fe"];
+const IG_DONUT_COLORS = ["#6366f1", "#f97316", "#a855f7", "#c084fc", "#d8b4fe"];
 
 const ADS_TOPBAR_PRESETS = [
   { id: "7d", label: "7 dias", days: 7 },
@@ -1025,6 +1025,76 @@ export default function AdsDashboard() {
                 </div>
               </div>
             </section>
+
+            {/* CRIATIVOS - PERFORMANCE DE ANÚNCIOS */}
+            <section className="ig-growth-clean">
+              <header className="ig-card-header">
+                <div>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '20px' }}>🎨</span>
+                    CRIATIVOS
+                  </h3>
+                  <p className="ig-card-subtitle">Performance por tipo de conteúdo</p>
+                </div>
+              </header>
+
+              <div className="posts-table-container" style={{ marginTop: '16px' }}>
+                <table className="posts-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '60px' }}>Preview</th>
+                      <th>Nome</th>
+                      <th>Tipo</th>
+                      <th>Cliques</th>
+                      <th>CTR</th>
+                      <th>CPC</th>
+                      <th>Conversões</th>
+                      <th>CPA</th>
+                      <th>ROAS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {MOCK_CREATIVES.map((creative) => (
+                      <tr key={creative.id}>
+                        <td style={{ textAlign: 'center', fontSize: '24px' }}>
+                          {creative.preview}
+                        </td>
+                        <td style={{ fontWeight: 600, fontSize: '13px' }}>{creative.name}</td>
+                        <td>
+                          <span style={{
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            background: creative.type === 'Vídeo' ? '#dbeafe' : creative.type === 'Imagem' ? '#fce7f3' : '#e0e7ff',
+                            color: creative.type === 'Vídeo' ? '#1e40af' : creative.type === 'Imagem' ? '#9f1239' : '#3730a3'
+                          }}>
+                            {creative.type}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: 600 }}>{formatNumber(creative.clicks)}</td>
+                        <td style={{ color: '#6366f1', fontWeight: 600 }}>{creative.ctr}%</td>
+                        <td>{formatCurrency(creative.cpc)}</td>
+                        <td style={{ color: '#10b981', fontWeight: 600 }}>{formatNumber(creative.conversions)}</td>
+                        <td>{formatCurrency(creative.cpa)}</td>
+                        <td>
+                          <span style={{
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            background: creative.roas >= 3 ? '#d1fae5' : '#fef3c7',
+                            color: creative.roas >= 3 ? '#065f46' : '#92400e'
+                          }}>
+                            {creative.roas}x
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
           </div>
 
           {/* Right Column - Charts */}
@@ -1203,7 +1273,7 @@ export default function AdsDashboard() {
                       strokeWidth={2}
                       fill="url(#impressionsGradient)"
                     />
-                    <Line type="monotone" dataKey="reach" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="reach" stroke="#f97316" strokeWidth={2} dot={false} />
                     {performanceSeries.length > 15 && (
                       <Brush
                         dataKey="date"
@@ -1217,7 +1287,7 @@ export default function AdsDashboard() {
                       >
                         <ComposedChart>
                           <Area dataKey="impressions" fill="#ddd6fe" stroke="none" />
-                          <Line dataKey="reach" stroke="#c084fc" strokeWidth={1} dot={false} />
+                          <Line dataKey="reach" stroke="#fb923c" strokeWidth={1} dot={false} />
                         </ComposedChart>
                       </Brush>
                     )}
@@ -1532,129 +1602,7 @@ export default function AdsDashboard() {
               </div>
             </section>
 
-            {/* 5. CRIATIVOS - PERFORMANCE DE ANÚNCIOS */}
-            <section className="ig-growth-clean">
-              <header className="ig-card-header">
-                <div>
-                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '20px' }}>🎨</span>
-                    CRIATIVOS
-                  </h3>
-                  <p className="ig-card-subtitle">Performance por tipo de conteúdo</p>
-                </div>
-              </header>
-
-              <div className="posts-table-container" style={{ marginTop: '16px' }}>
-                <table className="posts-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '60px' }}>Preview</th>
-                      <th>Nome</th>
-                      <th>Tipo</th>
-                      <th>Cliques</th>
-                      <th>CTR</th>
-                      <th>CPC</th>
-                      <th>Conversões</th>
-                      <th>CPA</th>
-                      <th>ROAS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {MOCK_CREATIVES.map((creative) => (
-                      <tr key={creative.id}>
-                        <td style={{ textAlign: 'center', fontSize: '24px' }}>
-                          {creative.preview}
-                        </td>
-                        <td style={{ fontWeight: 600, fontSize: '13px' }}>{creative.name}</td>
-                        <td>
-                          <span style={{
-                            padding: '4px 10px',
-                            borderRadius: '6px',
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            background: creative.type === 'Vídeo' ? '#dbeafe' : creative.type === 'Imagem' ? '#fce7f3' : '#e0e7ff',
-                            color: creative.type === 'Vídeo' ? '#1e40af' : creative.type === 'Imagem' ? '#9f1239' : '#3730a3'
-                          }}>
-                            {creative.type}
-                          </span>
-                        </td>
-                        <td style={{ fontWeight: 600 }}>{formatNumber(creative.clicks)}</td>
-                        <td style={{ color: '#6366f1', fontWeight: 600 }}>{creative.ctr}%</td>
-                        <td>{formatCurrency(creative.cpc)}</td>
-                        <td style={{ color: '#10b981', fontWeight: 600 }}>{formatNumber(creative.conversions)}</td>
-                        <td>{formatCurrency(creative.cpa)}</td>
-                        <td>
-                          <span style={{
-                            padding: '4px 8px',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            fontWeight: '700',
-                            background: creative.roas >= 3 ? '#d1fae5' : '#fef3c7',
-                            color: creative.roas >= 3 ? '#065f46' : '#92400e'
-                          }}>
-                            {creative.roas}x
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            {/* 6. Age Distribution - ENTENDER PÚBLICO */}
-            <section className="ig-growth-clean">
-              <header className="ig-card-header">
-                <div>
-                  <h3>Distribuição por Idade</h3>
-                  <p className="ig-card-subtitle">Alcance por faixa etária</p>
-                </div>
-              </header>
-
-              <div className="ig-chart-area">
-                <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
-                  <div style={{ minWidth: Math.max(MOCK_AGE_DISTRIBUTION.length * 100, 100) + '%' }}>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={MOCK_AGE_DISTRIBUTION} margin={{ top: 16, right: 16, bottom: 16, left: 0 }}>
-                        <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" vertical={false} />
-                        <XAxis
-                          dataKey="range"
-                          tick={{ fill: "#9ca3af", fontSize: 12 }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <YAxis
-                          tick={{ fill: "#9ca3af", fontSize: 12 }}
-                          axisLine={false}
-                          tickLine={false}
-                          tickFormatter={(value) => `${value}%`}
-                        />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (!active || !payload?.length) return null;
-                            return (
-                              <div className="ig-follower-tooltip">
-                                <div className="ig-follower-tooltip__label">
-                                  {payload[0].payload.range} anos
-                                </div>
-                                <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
-                              </div>
-                            );
-                          }}
-                        />
-                        <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={48}>
-                          {MOCK_AGE_DISTRIBUTION.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* 7. Campaign Performance by Objective - VISÃO ESTRATÉGICA */}
+            {/* 5. Campaign Performance by Objective - VISÃO ESTRATÉGICA */}
             <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
