@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { createDefaultAccounts } from "../data/accounts";
+import { useAuth } from "./AuthContext";
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 const DISCOVER_ACCOUNTS_ENDPOINT = `${API_BASE_URL || ""}/api/accounts/discover`;
@@ -97,6 +98,7 @@ export function AccountsProvider({ children }) {
   const [accounts, setAccounts] = useState(() => createDefaultAccounts());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { apiFetch, token } = useAuth();
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof fetch !== "function") {
@@ -110,10 +112,9 @@ export function AccountsProvider({ children }) {
       setLoading(true);
       setError("");
       // 1) Contas persistidas (manuais)
-      try {
-        const savedResp = await fetch(MANAGED_ACCOUNTS_ENDPOINT, { credentials: "include" });
-        if (savedResp.ok) {
-          const savedBody = await savedResp.json();
+      if (token) {
+        try {
+          const savedBody = await apiFetch(MANAGED_ACCOUNTS_ENDPOINT);
           const rawSaved = Array.isArray(savedBody?.accounts) ? savedBody.accounts : [];
           const normalizedSaved = [];
           for (const item of rawSaved) {
@@ -133,10 +134,10 @@ export function AccountsProvider({ children }) {
               return merged;
             });
           }
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError("Falha ao carregar contas salvas.");
+        } catch (err) {
+          if (!cancelled) {
+            setError("Falha ao carregar contas salvas.");
+          }
         }
       }
 
@@ -246,7 +247,7 @@ export function AccountsProvider({ children }) {
       cancelled = true;
       controller.abort();
     };
-  }, []);
+  }, [apiFetch, token]);
 
   const addAccount = async (payload) => {
     const body = {
@@ -258,14 +259,10 @@ export function AccountsProvider({ children }) {
       pagePictureUrl: payload.pagePictureUrl ? payload.pagePictureUrl.trim() : "",
     };
     try {
-      const resp = await fetch(MANAGED_ACCOUNTS_ENDPOINT, {
+      const data = await apiFetch(MANAGED_ACCOUNTS_ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
+        body,
       });
-      if (!resp.ok) throw new Error(`status ${resp.status}`);
-      const data = await resp.json();
       const account = normalizeAccount(data?.account);
       if (!account) return;
       setAccounts((prev) => {
@@ -294,14 +291,10 @@ export function AccountsProvider({ children }) {
       pagePictureUrl: payload.pagePictureUrl ? payload.pagePictureUrl.trim() : "",
     };
     try {
-      const resp = await fetch(`${MANAGED_ACCOUNTS_ENDPOINT}/${id}`, {
+      const data = await apiFetch(`${MANAGED_ACCOUNTS_ENDPOINT}/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
+        body,
       });
-      if (!resp.ok) throw new Error(`status ${resp.status}`);
-      const data = await resp.json();
       const account = normalizeAccount(data?.account);
       if (!account) return;
       setAccounts((prev) =>
@@ -314,11 +307,9 @@ export function AccountsProvider({ children }) {
 
   const removeAccount = async (id) => {
     try {
-      const resp = await fetch(`${MANAGED_ACCOUNTS_ENDPOINT}/${id}`, {
+      const resp = await apiFetch(`${MANAGED_ACCOUNTS_ENDPOINT}/${id}`, {
         method: "DELETE",
-        credentials: "include",
       });
-      if (!resp.ok) throw new Error(`status ${resp.status}`);
     } catch (err) {
       console.warn("Falha ao remover conta no backend.", err);
     }
