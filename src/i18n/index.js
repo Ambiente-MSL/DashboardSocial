@@ -7,7 +7,7 @@ const resources = {
   pt: {
     translation: {
       login: {
-        title: 'Olá! Faça seu login 👇 ',
+        title: 'Olá! Faça seu login 👇',
         email: 'E-mail',
         password: 'Senha',
         submit: 'Entrar',
@@ -25,7 +25,7 @@ const resources = {
         error_network: 'Falha de rede ao conectar. Tente novamente em instantes.',
         legal_terms: 'Termos de Serviço',
         legal_privacy: 'Políticas de Privacidade',
-        legal_privacy_en: 'Privacy Policy',
+        legal_privacy_en: 'Privacy Policy(EN)',
       },
       lang: {
         label: 'Idioma',

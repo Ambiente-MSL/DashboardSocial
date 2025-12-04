@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useLocation, useOutletContext } from "react-router-dom";
 import { differenceInCalendarDays, endOfDay, startOfDay, subDays } from "date-fns";
 import {
@@ -19,6 +19,7 @@ import {
   ReferenceLine,
   ReferenceDot,
   Sector,
+  Brush,
 } from "recharts";
 import {
   TrendingUp,
@@ -28,15 +29,12 @@ import {
   Users,
   Target,
   Activity,
-  Zap,
   BarChart3,
   FileText,
   Facebook,
   Instagram as InstagramIcon,
   Settings,
   Shield,
-  ChevronLeft,
-  ChevronRight,
   Info,
 } from "lucide-react";
 import { useAccounts } from "../context/AccountsContext";
@@ -319,7 +317,6 @@ export default function AdsDashboard() {
   const [adsData, setAdsData] = useState(null);
   const [adsError, setAdsError] = useState("");
   const [adsLoading, setAdsLoading] = useState(false);
-  const spendScrollRef = useRef(null);
   const adAccountId = useMemo(() => {
     if (!selectedAccount) return "";
     if (selectedAccount.adAccountId) return selectedAccount.adAccountId;
@@ -560,12 +557,6 @@ export default function AdsDashboard() {
     );
   }, [spendSeries]);
 
-  const spendChartMinWidth = useMemo(() => {
-    const dataLength = spendSeries?.length || 0;
-    // Para 7 dias: 100%, para 30 dias: ~200%, mantém barras mais próximas
-    return Math.max(dataLength * 20, 100);
-  }, [spendSeries]);
-
   const topCampaigns = useMemo(() => {
     if (Array.isArray(adsData?.campaigns)) return adsData.campaigns;
     if (adsData) return [];
@@ -574,12 +565,6 @@ export default function AdsDashboard() {
 
   const highlightedSpendIndex = activeSpendBar >= 0 ? activeSpendBar : peakSpendPoint?.index ?? -1;
   const highlightedSpendPoint = highlightedSpendIndex >= 0 ? spendSeries[highlightedSpendIndex] : null;
-  const scrollSpendChart = useCallback((direction) => {
-    const container = spendScrollRef.current;
-    if (!container) return;
-    const delta = Math.max(container.clientWidth * 0.7, 320);
-    container.scrollBy({ left: direction * delta, behavior: "smooth" });
-  }, []);
 
   return (
     <div className="instagram-dashboard instagram-dashboard--clean">
@@ -990,47 +975,18 @@ export default function AdsDashboard() {
             <section className="ig-growth-clean">
               <header className="ig-card-header">
                 <div>
-                  <h3>Investimento ao Longo do Tempo</h3>
+                  <h3>Investimento ao longo do tempo</h3>
                   <p className="ig-card-subtitle">Gastos diários em campanhas</p>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <button
-                    type="button"
-                    onClick={() => scrollSpendChart(-1)}
-                    aria-label="Voltar período"
-                    className="topbar__chip"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => scrollSpendChart(1)}
-                    aria-label="Avançar período"
-                    className="topbar__chip"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
                 </div>
               </header>
 
               <div className="ig-chart-area">
-                <div
-                  ref={spendScrollRef}
-                  style={{
-                    width: "100%",
-                    overflowX: "auto",
-                    overflowY: "hidden",
-                    paddingBottom: "8px",
-                    scrollbarWidth: "thin",
-                  }}
-                >
-                  <div style={{ minWidth: `${spendChartMinWidth}%`, height: 320 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={spendSeries}
-                        margin={{ top: 16, right: 16, bottom: 32, left: 0 }}
-                        barCategoryGap="5%"
-                      >
+                <ResponsiveContainer width="100%" height={spendSeries.length > 15 ? 380 : 280}>
+                  <BarChart
+                    data={spendSeries}
+                    margin={{ top: 16, right: 16, bottom: spendSeries.length > 15 ? 70 : 32, left: 0 }}
+                    barCategoryGap="35%"
+                  >
                         <defs>
                           <linearGradient id="spendBar" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor="#6366f1" />
@@ -1096,7 +1052,7 @@ export default function AdsDashboard() {
                         <Bar
                           dataKey="value"
                           radius={[12, 12, 0, 0]}
-                          barSize={36}
+                          barSize={spendSeries.length > 15 ? 30 : 36}
                           onMouseEnter={(_, index) => setActiveSpendBar(index)}
                           onMouseLeave={() => setActiveSpendBar(-1)}
                         >
@@ -1107,10 +1063,24 @@ export default function AdsDashboard() {
                             />
                           ))}
                         </Bar>
+                        {spendSeries.length > 15 && (
+                          <Brush
+                            dataKey="date"
+                            height={40}
+                            stroke="#8b5cf6"
+                            fill="transparent"
+                            startIndex={0}
+                            endIndex={Math.min(14, spendSeries.length - 1)}
+                            travellerWidth={14}
+                            y={280}
+                          >
+                            <BarChart>
+                              <Bar dataKey="value" fill="#ddd6fe" radius={[3, 3, 0, 0]} />
+                            </BarChart>
+                          </Brush>
+                        )}
                       </BarChart>
                     </ResponsiveContainer>
-                  </div>
-                </div>
               </div>
             </section>
 
