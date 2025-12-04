@@ -308,6 +308,10 @@ export default function AdsDashboard() {
   );
   const [getQuery, setQuery] = useQueryState({ account: availableAccounts[0]?.id || "" });
   const queryAccountId = getQuery("account");
+  const selectedAccount = useMemo(() => {
+    if (!availableAccounts.length) return {};
+    return availableAccounts.find((acc) => acc.id === queryAccountId) || availableAccounts[0];
+  }, [availableAccounts, queryAccountId]);
 
   const [activeSpendBar, setActiveSpendBar] = useState(-1);
   const [activeGenderIndex, setActiveGenderIndex] = useState(-1);
@@ -316,14 +320,14 @@ export default function AdsDashboard() {
   const [adsError, setAdsError] = useState("");
   const [adsLoading, setAdsLoading] = useState(false);
   const spendScrollRef = useRef(null);
-  const primaryAccount = useMemo(() => {
-    if (!availableAccounts.length) return {};
-    const selected = availableAccounts.find((acc) => acc.id === queryAccountId);
-    if (selected?.adAccountId) return selected;
-    const firstWithAds = availableAccounts.find((acc) => acc.adAccountId);
-    return selected || firstWithAds || availableAccounts[0];
-  }, [availableAccounts, queryAccountId]);
-  const adAccountId = primaryAccount.adAccountId || "";
+  const adAccountId = useMemo(() => {
+    if (!selectedAccount) return "";
+    if (selectedAccount.adAccountId) return selectedAccount.adAccountId;
+    if (Array.isArray(selectedAccount.adAccounts) && selectedAccount.adAccounts.length > 0) {
+      return selectedAccount.adAccounts[0]?.id || "";
+    }
+    return "";
+  }, [selectedAccount]);
   const actParam = adAccountId
     ? (adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`)
     : "";
@@ -410,7 +414,7 @@ export default function AdsDashboard() {
   useEffect(() => {
     setAdsData(null);
     setAdsError("");
-  }, [queryAccountId, sinceDate?.getTime?.(), untilDate?.getTime?.()]);
+  }, [queryAccountId, adAccountId, sinceDate?.getTime?.(), untilDate?.getTime?.()]);
 
   useEffect(() => {
     let cancelled = false;

@@ -64,13 +64,19 @@ export default function Settings() {
     return Array.from(map.values());
   }, [accounts]);
   const discoveredPages = useMemo(
-    () => accounts.filter((acc) => acc.facebookPageId).map((acc) => ({
-      id: acc.facebookPageId,
-      label: acc.label || acc.facebookPageId,
-      instagramUserId: acc.instagramUserId || "",
-      adAccountId: acc.adAccountId || "",
-      adAccounts: acc.adAccounts || [],
-    })),
+    () => accounts.filter((acc) => acc.facebookPageId).map((acc) => {
+      const adAccounts = Array.isArray(acc.adAccounts) ? acc.adAccounts : [];
+      const resolvedAdAccountId = acc.adAccountId || (adAccounts[0]?.id || "");
+      const usesAdFallback = !acc.adAccountId && adAccounts.length > 0;
+      return {
+        id: acc.facebookPageId,
+        label: acc.label || acc.facebookPageId,
+        instagramUserId: acc.instagramUserId || "",
+        adAccountId: resolvedAdAccountId,
+        adAccounts,
+        usesAdFallback,
+      };
+    }),
     [accounts],
   );
   const discoveredIgAccounts = useMemo(
@@ -107,6 +113,7 @@ export default function Settings() {
   const [editingCardId, setEditingCardId] = useState(null);
 
   const [editingCardData, setEditingCardData] = useState(ACCOUNT_FORM_INITIAL);
+  const [adAccountSaving, setAdAccountSaving] = useState('');
 
 
 
@@ -304,6 +311,28 @@ export default function Settings() {
 
   };
 
+  const handleAdAccountSelect = async (pageId, adAccountId) => {
+    const account = accounts.find((acc) => acc.facebookPageId === pageId);
+    if (!account || !adAccountId) return;
+
+    setAdAccountSaving(pageId);
+    try {
+      await updateAccount(account.id, {
+        label: account.label || '',
+        facebookPageId: account.facebookPageId || '',
+        instagramUserId: account.instagramUserId || '',
+        adAccountId,
+        profilePictureUrl: account.profilePictureUrl || '',
+        pagePictureUrl: account.pagePictureUrl || '',
+      });
+      setFormError('');
+    } catch (err) {
+      setFormError('Nao foi possivel salvar a conta de anuncios selecionada.');
+    } finally {
+      setAdAccountSaving('');
+    }
+  };
+
   const handleEditCard = (pageId) => {
     const account = accounts.find((acc) => acc.facebookPageId === pageId);
     if (!account) return;
@@ -313,7 +342,7 @@ export default function Settings() {
       label: account.label || '',
       facebookPageId: account.facebookPageId || '',
       instagramUserId: account.instagramUserId || '',
-      adAccountId: account.adAccountId || '',
+      adAccountId: account.adAccountId || (Array.isArray(account.adAccounts) && account.adAccounts[0]?.id) || '',
     });
   };
 
@@ -785,14 +814,43 @@ export default function Settings() {
                                   </div>
                                 </div>
                                 {Array.isArray(page.adAccounts) && page.adAccounts.length > 0 ? (
-                                  <ul style={{ margin: '8px 0 0 0', paddingLeft: '16px', fontSize: '0.85rem', color: '#4b5563' }}>
-                                    {page.adAccounts.map((ad) => (
-                                      <li key={ad.id}>{ad.name || ad.id} — {ad.id}</li>
-                                    ))}
-                                  </ul>
+                                  <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Conta de anuncios</label>
+                                    {page.adAccounts.length > 1 ? (
+                                      <select
+                                        value={page.adAccountId || (page.adAccounts[0]?.id || '')}
+                                        onChange={(event) => handleAdAccountSelect(page.id, event.target.value)}
+                                        style={{
+                                          width: '100%',
+                                          padding: '8px 10px',
+                                          border: '1px solid #d1d5db',
+                                          borderRadius: '8px',
+                                          background: '#fff',
+                                          fontSize: '0.9rem',
+                                          color: '#111827',
+                                        }}
+                                        disabled={adAccountSaving === page.id}
+                                      >
+                                        {page.adAccounts.map((ad) => (
+                                          <option key={ad.id} value={ad.id}>
+                                            {ad.name || ad.id} - {ad.id}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    ) : (
+                                      <div style={{ fontSize: '0.85rem', color: '#4b5563', padding: '6px 8px', background: '#f3f4f6', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                                        Usando conta de anuncios: {page.adAccountId || page.adAccounts[0].id}
+                                      </div>
+                                    )}
+                                    {page.usesAdFallback && (
+                                      <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                                        Selecionamos a primeira conta de anuncios detectada para esta pagina.
+                                      </div>
+                                    )}
+                                  </div>
                                 ) : (
                                   <div style={{ marginTop: '8px', fontSize: '0.8rem', color: '#9ca3af' }}>
-                                    {page.adAccountId ? `Usando conta de anúncios: ${page.adAccountId}` : 'Sem contas de anúncios vinculadas'}
+                                    {page.adAccountId ? `Usando conta de anuncios: ${page.adAccountId}` : 'Sem contas de anuncios vinculadas'}
                                   </div>
                                 )}
                               </>
