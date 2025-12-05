@@ -259,8 +259,8 @@ const MOCK_INSIGHTS = [
 ];
 
 const MOCK_CAMPAIGN_PERFORMANCE = [
-  { name: "Convers?o", value: 35, color: "#6366f1" },
-  { name: "Tr?fego", value: 28, color: "#8b5cf6" },
+  { name: "Conversão", value: 35, color: "#6366f1" },
+  { name: "Tráfego", value: 28, color: "#8b5cf6" },
   { name: "Reconhecimento", value: 22, color: "#a855f7" },
   { name: "Engajamento", value: 15, color: "#c084fc" },
 ];
@@ -278,8 +278,8 @@ const DEFAULT_ADS_RANGE_DAYS = 7;
 const translateObjective = (value) => {
   if (!value) return "";
   const upper = String(value).toUpperCase();
-  if (upper === "CONVERSIONS") return "Convers?o";
-  if (upper === "TRAFFIC" || upper === "LINK_CLICKS") return "Tr?fego";
+  if (upper === "CONVERSIONS") return "Conversão";
+  if (upper === "TRAFFIC" || upper === "LINK_CLICKS") return "Tráfego";
   if (upper === "ENGAGEMENT" || upper === "OUTCOME_ENGAGEMENT") return "Engajamento";
   if (upper === "AWARENESS" || upper === "BRAND_AWARENESS" || upper === "OUTCOME_AWARENESS") return "Reconhecimento";
   return value;
@@ -1569,59 +1569,60 @@ export default function AdsDashboard() {
                     Não encontramos campanhas com objetivo configurado para este período e conta selecionada.
                   </div>
                 ) : (
-                  <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
-                    <div style={{ minWidth: Math.max(objectivePerformance.length * 60, 100) + '%' }}>
-                      <ResponsiveContainer width="100%" height={280}>
-                        <BarChart
-                          data={objectivePerformance}
-                          margin={{ top: 16, right: 16, bottom: 16, left: 80 }}
-                          layout="vertical"
+                  <div style={{ width: '100%' }}>
+                    <ResponsiveContainer
+                      width="100%"
+                      height={Math.max(220, objectivePerformance.length * 42)}
+                    >
+                      <BarChart
+                        data={objectivePerformance}
+                        margin={{ top: 16, right: 16, bottom: 16, left: 80 }}
+                        layout="vertical"
+                      >
+                        <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" horizontal={false} />
+                        <XAxis
+                          type="number"
+                          tick={{ fill: "#9ca3af", fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={(value) => `${value}%`}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          tick={{ fill: "#9ca3af", fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={80}
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            return (
+                              <div className="ig-follower-tooltip">
+                                <div className="ig-follower-tooltip__label">{payload[0].payload.name}</div>
+                                <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar
+                          dataKey="value"
+                          radius={[0, 8, 8, 0]}
+                          barSize={26}
+                          onMouseEnter={(_, index) => setActiveCampaignIndex(index)}
+                          onMouseLeave={() => setActiveCampaignIndex(-1)}
                         >
-                          <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 8" horizontal={false} />
-                          <XAxis
-                            type="number"
-                            tick={{ fill: "#9ca3af", fontSize: 12 }}
-                            axisLine={false}
-                            tickLine={false}
-                            tickFormatter={(value) => `${value}%`}
-                          />
-                          <YAxis
-                            type="category"
-                            dataKey="name"
-                            tick={{ fill: "#9ca3af", fontSize: 12 }}
-                            axisLine={false}
-                            tickLine={false}
-                            width={80}
-                          />
-                          <Tooltip
-                            content={({ active, payload }) => {
-                              if (!active || !payload?.length) return null;
-                              return (
-                                <div className="ig-follower-tooltip">
-                                  <div className="ig-follower-tooltip__label">{payload[0].payload.name}</div>
-                                  <div className="ig-follower-tooltip__date">{payload[0].value}%</div>
-                                </div>
-                              );
-                            }}
-                          />
-                          <Bar
-                            dataKey="value"
-                            radius={[0, 8, 8, 0]}
-                            barSize={32}
-                            onMouseEnter={(_, index) => setActiveCampaignIndex(index)}
-                            onMouseLeave={() => setActiveCampaignIndex(-1)}
-                          >
-                            {objectivePerformance.map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={entry.color}
-                                opacity={activeCampaignIndex === -1 || activeCampaignIndex === index ? 1 : 0.5}
-                              />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
+                          {objectivePerformance.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={entry.color}
+                              opacity={activeCampaignIndex === -1 || activeCampaignIndex === index ? 1 : 0.5}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
                 )}
               </div>
@@ -1633,7 +1634,7 @@ export default function AdsDashboard() {
                 <div>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '20px' }}>🧭</span>
-                    SEGMENTAÇÃO E PÚBLICO
+                    Segmentação e público
                   </h3>
                   <p className="ig-card-subtitle">Distribuição demográfica e comportamental</p>
                 </div>
