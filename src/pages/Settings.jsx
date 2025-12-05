@@ -181,7 +181,7 @@ export default function Settings() {
 
         title: 'Alcance em queda',
 
-        message: 'O alcance caiu 35% em relação a semana anterior.'
+        message: 'O alcance caiu 35% em relacao a semana anterior.'
 
       },
 
@@ -193,7 +193,7 @@ export default function Settings() {
 
         title: 'Post em alta',
 
-        message: 'Novo post com +10% de engajamento que a média.'
+        message: 'Novo post com +10% de engajamento que a media.'
 
       },
 
@@ -205,7 +205,7 @@ export default function Settings() {
 
         title: 'Campanha limitada',
 
-        message: 'Campanha X atingiu o limite de orçamento.'
+        message: 'Campanha X atingiu o limite de orcamento.'
 
       }
 

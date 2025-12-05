@@ -1635,7 +1635,6 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
         cpc = float(row.get("cpc", 0) or 0)
         cpm = float(row.get("cpm", 0) or 0)
         frequency = float(row.get("frequency", 0) or 0)
-        followers = 0
 
         totals["spend"] += spend
         totals["impressions"] += impressions
@@ -1651,8 +1650,6 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
             actions_totals[action_type] = actions_totals.get(action_type, 0.0) + value
             if any(keyword in action_type for keyword in conversion_types):
                 conversions += value
-            if "follow" in action_type or "page_follow" in action_type:
-                followers += value
             # capturar ações típicas de vídeo
             if action_type == "video_3_sec_watched_actions":
                 v3 += value
@@ -1668,18 +1665,17 @@ def ads_highlights(act_id: str, since_str: str, until_str: str):
         campaign_entry = {
             "id": row.get("campaign_id") or row.get("campaign_name"),
             "name": row.get("campaign_name") or "Campanha",
-            "objective": row.get("objective") or "",
-            "impressions": impressions,
-            "clicks": clicks,
-            "ctr": ctr,
-            "spend": spend,
-            "cpc": cpc,
-            "cpm": cpm,
-            "frequency": frequency,
-            "conversions": int(round(conversions)),
-            "cpa": (spend / conversions) if conversions else None,
-            "followers": int(round(followers)),
-        }
+        "objective": row.get("objective") or "",
+        "impressions": impressions,
+        "clicks": clicks,
+        "ctr": ctr,
+        "spend": spend,
+        "cpc": cpc,
+        "cpm": cpm,
+        "frequency": frequency,
+        "conversions": int(round(conversions)),
+        "cpa": (spend / conversions) if conversions else None,
+    }
         campaigns.append(campaign_entry)
 
     averages = {
