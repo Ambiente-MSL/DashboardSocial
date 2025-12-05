@@ -320,7 +320,7 @@ def refresh_daily_rollup(account_id: str, comments: Sequence[Dict[str, object]])
         {
             "account_id": account_id,
             "comment_date": day,
-            "comments_count": count,
+            "total_comments": count,
         }
         for day, count in counts.items()
     ]
