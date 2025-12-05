@@ -228,21 +228,16 @@ def normalize_comment_record(
         return None
     like_count = int(comment.get("like_count") or 0)
     username = (comment.get("username") or "").strip() or None
-    metadata = {
-        "source": "graph",
-        "fetched_at": fetched_at.isoformat(),
-        "media_timestamp": media_timestamp.isoformat(),
-    }
     record = {
+        "id": comment_id,
         "account_id": account_id,
         "media_id": media_id,
-        "comment_id": comment_id,
-        "parent_id": parent_id,
         "username": username,
         "text": text,
         "like_count": like_count,
-        "created_at_utc": created_at.isoformat(),
-        "metadata": metadata,
+        "timestamp": created_at.isoformat(),
+        "created_at": fetched_at.isoformat(),
+        "updated_at": fetched_at.isoformat(),
     }
     return record
 
@@ -261,13 +256,13 @@ def fetch_existing_comment_ids(client, comment_ids: Sequence[str]) -> set[str]:
         chunk = comment_ids[chunk_start:chunk_start + chunk_size]
         response = (
             client.table(IG_COMMENTS_TABLE)
-            .select("comment_id")
-            .in_("comment_id", chunk)
+            .select("id")
+            .in_("id", chunk)
             .execute()
         )
         data = getattr(response, "data", None) or []
         for row in data:
-            comment_id = row.get("comment_id")
+            comment_id = row.get("id")
             if comment_id:
                 existing.add(str(comment_id))
     return existing
@@ -282,14 +277,14 @@ def upsert_comments(rows: Sequence[Dict[str, object]]) -> Tuple[int, int]:
 
     deduplicated: Dict[str, Dict[str, object]] = {}
     for row in rows:
-        deduplicated[row["comment_id"]] = row
+        deduplicated[row["id"]] = row
     deduped_rows = list(deduplicated.values())
 
-    existing_ids = fetch_existing_comment_ids(client, [row["comment_id"] for row in deduped_rows])
+    existing_ids = fetch_existing_comment_ids(client, [row["id"] for row in deduped_rows])
     inserted = 0
     updated = 0
     for row in deduped_rows:
-        if row["comment_id"] in existing_ids:
+        if row["id"] in existing_ids:
             updated += 1
         else:
             inserted += 1
@@ -297,7 +292,7 @@ def upsert_comments(rows: Sequence[Dict[str, object]]) -> Tuple[int, int]:
     for chunk in chunked(deduped_rows, 500):
         response = (
             client.table(IG_COMMENTS_TABLE)
-            .upsert(chunk, on_conflict="comment_id")
+            .upsert(chunk, on_conflict="id")
             .execute()
         )
         if getattr(response, "error", None):
@@ -314,7 +309,7 @@ def refresh_daily_rollup(account_id: str, comments: Sequence[Dict[str, object]])
 
     counts: Dict[str, int] = defaultdict(int)
     for comment in comments:
-        created_at_iso = comment.get("created_at_utc")
+        created_at_iso = comment.get("timestamp") or comment.get("created_at")
         if not created_at_iso:
             continue
         created_at = parse_timestamp(created_at_iso)

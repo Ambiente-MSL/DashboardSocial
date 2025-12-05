@@ -7,6 +7,7 @@ import math
 import secrets
 import unicodedata
 import uuid
+import json
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Sequence, Union
@@ -348,13 +349,13 @@ def fetch_comments_for_wordcloud(
     while True:
         query = (
             client.table(IG_COMMENTS_TABLE)
-            .select("comment_id,text,created_at_utc")
+            .select("id,comment_id,text,timestamp,created_at,created_at_utc")
             .eq("account_id", account_id)
         )
         if since_iso:
-            query = query.gte("created_at_utc", since_iso)
+            query = query.gte("timestamp", since_iso).gte("created_at_utc", since_iso).gte("created_at", since_iso)
         if until_iso:
-            query = query.lte("created_at_utc", until_iso)
+            query = query.lte("timestamp", until_iso).lte("created_at_utc", until_iso).lte("created_at", until_iso)
         response = (
             query.order("created_at_utc", desc=False)
             .range(offset, offset + page_size - 1)
@@ -368,6 +369,47 @@ def fetch_comments_for_wordcloud(
             break
         offset += page_size
     return rows
+
+
+def fetch_daily_wordcloud(
+    client,
+    account_id: str,
+    since_iso: Optional[str],
+    until_iso: Optional[str],
+) -> Dict[str, Any]:
+    """
+    Lê agregados diários de comentários e word_freq da tabela ig_comments_daily.
+    """
+    query = client.table(IG_COMMENTS_DAILY_TABLE).select("comment_date,total_comments,word_freq").eq("account_id", account_id)
+    if since_iso:
+        query = query.gte("comment_date", since_iso.split("T")[0])
+    if until_iso:
+        query = query.lte("comment_date", until_iso.split("T")[0])
+    response = query.order("comment_date", desc=False).execute()
+    if response.error:
+        raise RuntimeError(response.error.get("message") or "failed to load ig_comments_daily")
+    rows = response.data or []
+
+    counter: Counter[str] = Counter()
+    total_comments = 0
+    for row in rows:
+        total_comments += int(row.get("total_comments") or 0)
+        freq_payload = row.get("word_freq")
+        if not freq_payload:
+            continue
+        if isinstance(freq_payload, str):
+            try:
+                freq_payload = json.loads(freq_payload)
+            except Exception:
+                freq_payload = {}
+        if isinstance(freq_payload, dict):
+            for word, value in freq_payload.items():
+                try:
+                    counter[word] += int(value or 0)
+                except Exception:
+                    continue
+
+    return {"words": counter, "total_comments": total_comments}
 
 
 def fetch_facebook_metrics(
@@ -2652,16 +2694,23 @@ def instagram_comments_wordcloud():
         return jsonify({"error": "Database client is not configured"}), 500
 
     try:
-        rows = fetch_comments_for_wordcloud(client, ig_user_id, since_iso, until_iso)
+        # Primeiro tenta usar agregados diários
+        daily = fetch_daily_wordcloud(client, ig_user_id, since_iso, until_iso)
+        counter: Counter[str] = Counter(daily.get("words") or {})
+        total_comments_daily = int(daily.get("total_comments") or 0)
+
+        # Se não houver dados diários, busca comentários brutos
+        if not counter:
+            rows = fetch_comments_for_wordcloud(client, ig_user_id, since_iso, until_iso)
+            for row in rows:
+                tokens = tokenize_wordcloud_text(str((row or {}).get("text") or ""))
+                if tokens:
+                    counter.update(tokens)
+            total_comments_daily = len(rows)
+
     except Exception as err:  # noqa: BLE001
         logger.exception("Failed to fetch comments for wordcloud")
         return jsonify({"error": str(err)}), 500
-
-    counter: Counter[str] = Counter()
-    for row in rows:
-        tokens = tokenize_wordcloud_text(str((row or {}).get("text") or ""))
-        if tokens:
-            counter.update(tokens)
 
     words_payload = [
         {"word": word, "count": count}
@@ -2672,7 +2721,7 @@ def instagram_comments_wordcloud():
         "igUserId": ig_user_id,
         "since": since_date.isoformat(),
         "until": until_date.isoformat(),
-        "total_comments": len(rows),
+        "total_comments": total_comments_daily,
         "words": words_payload,
     }
     return jsonify(response)
