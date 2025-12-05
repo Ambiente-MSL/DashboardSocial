@@ -251,8 +251,8 @@ const MOCK_INSIGHTS = [
 ];
 
 const MOCK_CAMPAIGN_PERFORMANCE = [
-  { name: "Convers?o", value: 35, color: "#6366f1" },
-  { name: "Tr?fego", value: 28, color: "#8b5cf6" },
+  { name: "Conversão", value: 35, color: "#6366f1" },
+  { name: "Tráfego", value: 28, color: "#8b5cf6" },
   { name: "Reconhecimento", value: 22, color: "#a855f7" },
   { name: "Engajamento", value: 15, color: "#c084fc" },
 ];
@@ -270,8 +270,8 @@ const DEFAULT_ADS_RANGE_DAYS = 7;
 const translateObjective = (value) => {
   if (!value) return "";
   const upper = String(value).toUpperCase();
-  if (upper === "CONVERSIONS") return "Convers?o";
-  if (upper === "TRAFFIC" || upper === "LINK_CLICKS") return "Tr?fego";
+  if (upper === "CONVERSIONS") return "Conversão";
+  if (upper === "TRAFFIC" || upper === "LINK_CLICKS") return "Tráfego";
   if (upper === "ENGAGEMENT" || upper === "OUTCOME_ENGAGEMENT") return "Engajamento";
   if (upper === "AWARENESS" || upper === "BRAND_AWARENESS" || upper === "OUTCOME_AWARENESS") return "Reconhecimento";
   return value;
@@ -602,6 +602,7 @@ export default function AdsDashboard() {
         ctr: Number.isFinite(campaign.ctr) ? campaign.ctr : Number(campaign.ctr || 0),
         conversions: Number(campaign.conversions || 0),
         cpa: Number.isFinite(campaign.cpa) ? campaign.cpa : null,
+        followers: Number(campaign.followers || 0),
         status: (campaign.effective_status || campaign.status || "ACTIVE").toUpperCase(),
       }));
     }
@@ -1115,6 +1116,61 @@ export default function AdsDashboard() {
               </div>
             </section>
           </div>
+
+
+            {/* Seguidores ganhos por campanha */}
+            <section className="ig-growth-clean">
+              <header className="ig-card-header">
+                <div>
+                  <h3>Seguidores ganhos por campanha</h3>
+                  <p className="ig-card-subtitle">Total de novos seguidores atribu?dos a cada campanha</p>
+                </div>
+              </header>
+
+              {activeCampaigns.length === 0 ? (
+                <div style={{ padding: "14px", border: "1px dashed #d1d5db", borderRadius: "10px", color: "#6b7280" }}>
+                  N?o encontramos campanhas com seguidores atribu?dos no per?odo e conta selecionados.
+                </div>
+              ) : (
+                <div style={{ marginTop: "12px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "10px" }}>
+                  {activeCampaigns
+                    .filter((c) => Number(c.followers || 0) > 0)
+                    .sort((a, b) => Number(b.followers || 0) - Number(a.followers || 0))
+                    .map((campaign) => (
+                      <div key={campaign.id} style={{
+                        background: "rgba(255,255,255,0.9)",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: "10px",
+                        padding: "12px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "6px"
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+                          <div style={{ fontWeight: 700, color: "#111827", fontSize: "14px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {campaign.name}
+                          </div>
+                          <span style={{ fontSize: "12px", padding: "4px 8px", borderRadius: "6px", background: "#eef2ff", color: "#3730a3", fontWeight: 600 }}>
+                            {campaign.objective || "Objetivo"}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: "13px", color: "#374151" }}>Seguidores ganhos</div>
+                        <div style={{ fontSize: "20px", fontWeight: 800, color: "#111827" }}>
+                          {formatNumber(Number(campaign.followers || 0))}
+                        </div>
+                        <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                          Investimento: {formatCurrency(Number(campaign.spend || 0))}
+                        </div>
+                      </div>
+                    ))}
+                  {activeCampaigns.filter((c) => Number(c.followers || 0) > 0).length === 0 && (
+                    <div style={{ padding: "14px", border: "1px dashed #d1d5db", borderRadius: "10px", color: "#6b7280" }}>
+                      Nenhuma campanha reportou seguidores ganhos neste per?odo.
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
 
           {/* Right Column - Charts */}
           <div className="ig-clean-grid__right">
