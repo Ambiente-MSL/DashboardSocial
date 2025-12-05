@@ -349,15 +349,15 @@ def fetch_comments_for_wordcloud(
     while True:
         query = (
             client.table(IG_COMMENTS_TABLE)
-            .select("id,comment_id,text,timestamp,created_at,created_at_utc")
+            .select("id,text,timestamp,created_at")
             .eq("account_id", account_id)
         )
         if since_iso:
-            query = query.gte("timestamp", since_iso).gte("created_at_utc", since_iso).gte("created_at", since_iso)
+            query = query.gte("timestamp", since_iso).gte("created_at", since_iso)
         if until_iso:
-            query = query.lte("timestamp", until_iso).lte("created_at_utc", until_iso).lte("created_at", until_iso)
+            query = query.lte("timestamp", until_iso).lte("created_at", until_iso)
         response = (
-            query.order("created_at_utc", desc=False)
+            query.order("timestamp", desc=False)
             .range(offset, offset + page_size - 1)
             .execute()
         )

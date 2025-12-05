@@ -17,24 +17,24 @@ CREATE UNIQUE INDEX IF NOT EXISTS app_users_email_lower_idx ON app_users (LOWER(
 CREATE UNIQUE INDEX IF NOT EXISTS app_users_facebook_id_idx ON app_users (facebook_id) WHERE facebook_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS ig_comments (
-    comment_id TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     account_id TEXT NOT NULL,
     media_id TEXT,
-    parent_id TEXT,
     username TEXT,
     text TEXT NOT NULL,
     like_count INTEGER DEFAULT 0,
-    created_at_utc TIMESTAMPTZ NOT NULL,
-    metadata JSONB DEFAULT '{}'::jsonb,
-    fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    timestamp TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS ig_comments_daily (
     account_id TEXT NOT NULL,
     comment_date DATE NOT NULL,
-    comments_count INTEGER NOT NULL DEFAULT 0,
+    total_comments INTEGER NOT NULL DEFAULT 0,
+    word_freq JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (account_id, comment_date)
 );
 
