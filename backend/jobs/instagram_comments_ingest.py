@@ -365,9 +365,9 @@ def ingest_account_comments(ig_user_id: str, days: int) -> Tuple[int, int, int]:
                     parent_id=None,
                     fetched_at=fetched_at,
                 )
-                if record and record["comment_id"] not in seen_comment_ids:
+                if record and record["id"] not in seen_comment_ids:
                     collected_comments.append(record)
-                    seen_comment_ids.add(record["comment_id"])
+                    seen_comment_ids.add(record["id"])
 
                 reply_count = comment.get("comment_count") or 0
                 if reply_count:
@@ -381,9 +381,9 @@ def ingest_account_comments(ig_user_id: str, days: int) -> Tuple[int, int, int]:
                                 parent_id=comment["id"],
                                 fetched_at=fetched_at,
                             )
-                            if reply_record and reply_record["comment_id"] not in seen_comment_ids:
+                            if reply_record and reply_record["id"] not in seen_comment_ids:
                                 collected_comments.append(reply_record)
-                                seen_comment_ids.add(reply_record["comment_id"])
+                                seen_comment_ids.add(reply_record["id"])
                     except MetaAPIError as err:
                         logger.warning(
                             "[comments] Failed to fetch replies for %s: %s",
