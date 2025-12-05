@@ -578,18 +578,22 @@ export default function InstagramDashboard() {
   const { setTopbarConfig, resetTopbarConfig } = outlet;
   const location = useLocation();
   const { apiFetch } = useAuth();
-  const { accounts } = useAccounts();
+  const { accounts, loading: accountsLoading } = useAccounts();
   const availableAccounts = accounts.length ? accounts : DEFAULT_ACCOUNTS;
   const [getQuery, setQuery] = useQueryState({ account: FALLBACK_ACCOUNT_ID });
   const queryAccountId = getQuery("account");
 
   useEffect(() => {
     if (!availableAccounts.length) return;
-    if (!queryAccountId || !availableAccounts.some((account) => account.id === queryAccountId)) {
+    if (!queryAccountId) {
+      setQuery({ account: availableAccounts[0].id });
+      return;
+    }
+    if (!accountsLoading && !availableAccounts.some((account) => account.id === queryAccountId)) {
       setQuery({ account: availableAccounts[0].id });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availableAccounts.length, queryAccountId]);
+  }, [availableAccounts.length, queryAccountId, accountsLoading]);
 
   const accountId = queryAccountId && availableAccounts.some((account) => account.id === queryAccountId)
     ? queryAccountId

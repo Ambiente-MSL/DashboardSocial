@@ -111,7 +111,7 @@ const { setTopbarConfig, resetTopbarConfig } = outletContext;
   const { search } = useLocation();
   const buildLink = (pathname) => (search ? { pathname, search } : pathname);
 
-  const { accounts } = useAccounts();
+  const { accounts, loading: accountsLoading } = useAccounts();
 
   const availableAccounts = accounts.length ? accounts : DEFAULT_ACCOUNTS;
 
@@ -134,16 +134,15 @@ const { setTopbarConfig, resetTopbarConfig } = outletContext;
 
 
   useEffect(() => {
-
     if (!availableAccounts.length) return;
-
-    if (!accountIdQuery || !availableAccounts.some((account) => account.id === accountIdQuery)) {
-
+    if (!accountIdQuery) {
       setQuery({ account: availableAccounts[0].id });
-
+      return;
     }
-
-  }, [availableAccounts, accountIdQuery, setQuery]);
+    if (!accountsLoading && !availableAccounts.some((account) => account.id === accountIdQuery)) {
+      setQuery({ account: availableAccounts[0].id });
+    }
+  }, [availableAccounts, accountIdQuery, setQuery, accountsLoading]);
 
 
 

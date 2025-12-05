@@ -8,7 +8,7 @@ const FALLBACK_ACCOUNT_ID = DEFAULT_ACCOUNTS[0]?.id || "";
 const API_BASE_URL = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
 
 export default function AccountSelect() {
-  const { accounts } = useAccounts();
+  const { accounts, loading } = useAccounts();
   const availableAccounts = accounts.length ? accounts : DEFAULT_ACCOUNTS;
   const [get, set] = useQueryState({ account: FALLBACK_ACCOUNT_ID });
   const queryAccount = get("account");
@@ -31,10 +31,16 @@ export default function AccountSelect() {
 
   useEffect(() => {
     if (!availableAccounts.length) return;
-    if (!queryAccount || !availableAccounts.some((account) => account.id === queryAccount)) {
+    // Se não há conta na query (ou storage), define a primeira disponível
+    if (!queryAccount) {
+      set({ account: availableAccounts[0].id });
+      return;
+    }
+    // Apenas depois de carregar as contas reais, faça fallback se o ID salvo não existir mais
+    if (!loading && !availableAccounts.some((account) => account.id === queryAccount)) {
       set({ account: availableAccounts[0].id });
     }
-  }, [availableAccounts, queryAccount, set]);
+  }, [availableAccounts, queryAccount, loading, set]);
 
   useEffect(() => {
     const fetchAccountData = async (account) => {

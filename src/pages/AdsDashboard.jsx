@@ -316,7 +316,7 @@ export default function AdsDashboard() {
   const location = useLocation();
   const outletContext = useOutletContext() || {};
   const { setTopbarConfig, resetTopbarConfig } = outletContext;
-  const { accounts } = useAccounts();
+  const { accounts, loading: accountsLoading } = useAccounts();
   const { apiFetch } = useAuth();
   const availableAccounts = useMemo(
     () => (accounts.length ? accounts : DEFAULT_ACCOUNTS),
@@ -349,11 +349,15 @@ export default function AdsDashboard() {
 
   useEffect(() => {
     if (!availableAccounts.length) return;
-    if (!queryAccountId || !availableAccounts.some((acc) => acc.id === queryAccountId)) {
+    if (!queryAccountId) {
+      setQuery({ account: availableAccounts[0].id });
+      return;
+    }
+    if (!accountsLoading && !availableAccounts.some((acc) => acc.id === queryAccountId)) {
       setQuery({ account: availableAccounts[0].id });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availableAccounts.length, queryAccountId]);
+  }, [availableAccounts.length, queryAccountId, accountsLoading]);
 
   const now = useMemo(() => new Date(), []);
   const defaultEnd = useMemo(() => endOfDay(subDays(startOfDay(now), 1)), [now]);
