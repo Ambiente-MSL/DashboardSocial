@@ -267,6 +267,16 @@ const ADS_TOPBAR_PRESETS = [
 
 const DEFAULT_ADS_RANGE_DAYS = 7;
 
+const translateObjective = (value) => {
+  if (!value) return "";
+  const upper = String(value).toUpperCase();
+  if (upper === "CONVERSIONS") return "Convers?o";
+  if (upper === "TRAFFIC" || upper === "LINK_CLICKS") return "Tr?fego";
+  if (upper === "ENGAGEMENT" || upper === "OUTCOME_ENGAGEMENT") return "Engajamento";
+  if (upper === "AWARENESS" || upper === "BRAND_AWARENESS" || upper === "OUTCOME_AWARENESS") return "Reconhecimento";
+  return value;
+};
+
 const renderActiveShape = (props) => {
   const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
   return (
@@ -560,11 +570,16 @@ export default function AdsDashboard() {
   const topCampaigns = useMemo(() => {
     if (Array.isArray(adsData?.campaigns)) {
       // Filtra apenas campanhas ativas, mas considera campanhas sem status como ativas
-      return adsData.campaigns.filter((campaign) => {
-        const status = campaign.effective_status || campaign.status || "";
-        if (!status) return true;
-        return status.toUpperCase() === "ACTIVE";
-      });
+      return adsData.campaigns
+        .filter((campaign) => {
+          const status = campaign.effective_status || campaign.status || "";
+          if (!status) return true;
+          return status.toUpperCase() === "ACTIVE";
+        })
+        .map((campaign) => ({
+          ...campaign,
+          objectiveLabel: translateObjective(campaign.objective),
+        }));
     }
     if (adsData) return [];
     return MOCK_TOP_CAMPAIGNS;
@@ -580,7 +595,7 @@ export default function AdsDashboard() {
       return onlyActive.map((campaign) => ({
         id: campaign.id || campaign.campaign_id || campaign.name,
         name: campaign.name || campaign.campaign_name || "Campanha",
-        objective: campaign.objective || "",
+        objective: translateObjective(campaign.objective),
         spend: Number(campaign.spend || 0),
         impressions: Number(campaign.impressions || 0),
         clicks: Number(campaign.clicks || 0),
@@ -603,14 +618,7 @@ export default function AdsDashboard() {
     adsData.campaigns.forEach((campaign) => {
       const rawObjective = (campaign.objective || "").toString();
       if (!rawObjective) return;
-      const upper = rawObjective.toUpperCase();
-      let label = rawObjective;
-      if (upper === "CONVERSIONS") label = "Convers?o";
-      else if (upper === "TRAFFIC") label = "Tr?fego";
-      else if (upper === "ENGAGEMENT") label = "Engajamento";
-      else if (upper === "AWARENESS" || upper === "BRAND_AWARENESS" || rawObjective === "Awareness") {
-        label = "Reconhecimento";
-      }
+      const label = translateObjective(rawObjective);
 
       const prev = totals.get(label) || 0;
       totals.set(label, prev + Number(campaign.spend || 0));
@@ -1444,10 +1452,10 @@ export default function AdsDashboard() {
                             fontWeight: "600",
                             background: campaign.objective === "Conversões" ? "#dbeafe" :
                                        campaign.objective === "Tráfego" ? "#fce7f3" :
-                                       campaign.objective === "Awareness" ? "#e0e7ff" : "#f3f4f6",
+                                       campaign.objectiveLabel === "Reconhecimento" ? "#e0e7ff" : "#f3f4f6",
                             color: campaign.objective === "Conversões" ? "#1e40af" :
                                   campaign.objective === "Tráfego" ? "#9f1239" :
-                                  campaign.objective === "Awareness" ? "#3730a3" : "#374151",
+                                  campaign.objectiveLabel === "Reconhecimento" ? "#3730a3" : "#374151",
                             whiteSpace: "nowrap"
                           }}>
                             {campaign.objective || "—"}
