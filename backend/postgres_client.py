@@ -36,6 +36,7 @@ class TableQuery:
         self._filters: List[Tuple[str, str, str]] = []
         self._orders: List[Tuple[str, bool]] = []
         self._limit: Optional[int] = None
+        self._offset: Optional[int] = None
         self._insert_rows: Optional[List[Dict[str, Any]]] = None
         self._update_payload: Optional[Dict[str, Any]] = None
         self._on_conflict: Optional[List[str]] = None
@@ -85,6 +86,18 @@ class TableQuery:
         if not _COLUMN_RE.match(column):
             raise ValueError(f"Invalid column name '{column}'.")
         self._orders.append((column, desc))
+        return self
+
+    def offset(self, count: int) -> "TableQuery":
+        self._offset = int(count)
+        return self
+
+    def range(self, start: int, end: int) -> "TableQuery":
+        start_int = int(start)
+        end_int = int(end)
+        self._offset = max(0, start_int)
+        if end_int >= start_int:
+            self._limit = end_int - start_int + 1
         return self
 
     def limit(self, count: int) -> "TableQuery":
@@ -163,7 +176,10 @@ class TableQuery:
         limit_clause = sql.SQL("")
         if self._limit is not None:
             limit_clause = sql.SQL(" LIMIT {limit}").format(limit=sql.Literal(self._limit))
-        return base + where_clause + order_clause + limit_clause, params
+        offset_clause = sql.SQL("")
+        if self._offset is not None:
+            offset_clause = sql.SQL(" OFFSET {offset}").format(offset=sql.Literal(self._offset))
+        return base + where_clause + order_clause + limit_clause + offset_clause, params
 
     def _build_insert(self) -> Tuple[sql.SQL, Dict[str, Any]]:
         rows = self._insert_rows or []
